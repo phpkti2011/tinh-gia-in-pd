@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files (KHÔNG commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Legacy / reference files chứa hardcoded secret (xem docs/security/SECURITY_NOTES.md).
+# Giữ trên đĩa làm tham khảo dev, KHÔNG đưa vào baseline.
+google-apps-script.js
+tinh gia ep nhu + tinh cuon nhu_v189.249 (1).html
+Tinh-gia-decal 12-7-2024 (3).xlsx

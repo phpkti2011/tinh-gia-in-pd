@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+    .input-group {
+        @apply bg-gray-800 border border-gray-700 p-6 rounded-xl mb-6 shadow-sm;
+    }
+    .input-group h2 {
+        @apply border-b border-gray-600 pb-3 mb-4 text-lg font-semibold text-gray-200;
+    }
+    label {
+        @apply block mb-2 text-sm font-medium text-gray-400;
+    }
+    input[type="number"], select, input[type="text"] {
+        @apply w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md py-2 px-3 transition-colors duration-200;
+    }
+    input[type="number"]:focus, select:focus, input[type="text"]:focus {
+        @apply outline-none border-blue-500 ring-2 ring-blue-500/40;
+    }
+    select:disabled, input:disabled {
+        @apply bg-gray-600 opacity-70 cursor-not-allowed;
+    }
+    .unit {
+        @apply absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none;
+    }
+    canvas {
+        @apply bg-gray-800 rounded-lg border border-gray-600 w-full h-auto;
+    }
+    #results th, #results td {
+        @apply p-3 border-b border-gray-700;
+    }
+    #results th {
+        @apply bg-gray-700 text-gray-300 text-center;
+    }
+    tr[title]:hover {
+        @apply cursor-help;
+    }
+    
+    /* Styles for Settings Panel */
+    #settingsContent input[type="number"] {
+        padding-right: 3.5rem; /* Make space for unit */
+    }
+    .settings-grid {
+        @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+    }
+    
+    .tab-button {
+        @apply py-4 px-1 border-b-2 font-medium text-lg;
+    }
+    .tab-button.active {
+        @apply border-blue-500 text-blue-400;
+    }
+    .tab-button.inactive {
+        @apply border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-500 transition-colors;
+    }
+    
+    /* Animation cho trạng thái đang tính toán */
+    .calculating-indicator {
+        transition: opacity 0.3s ease;
+    }
+}
