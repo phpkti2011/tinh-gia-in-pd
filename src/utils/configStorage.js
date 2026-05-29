@@ -3,6 +3,18 @@ import { LARGE_PRINT_DEFAULT_CONFIG } from '../config/largePrintConfig';
 import { DECAL_DEFAULT_CONFIG } from '../config/decalConfig';
 import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
 import { fetchCloudConfig, saveCloudConfig, isCloudEnabled, restoreInfinity } from './cloudSync';
+import { validateDecalConfig } from '../modules/decal/config/index.js';
+
+// TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
+// isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
+function deepValidateDecal(data, source) {
+    const v = validateDecalConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} decalConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
 
 // Module name → localStorage key → default config mapping
 const MODULE_MAP = {
@@ -52,8 +64,13 @@ export async function loadConfigFromCloud(moduleName) {
         try {
             const cloudData = await fetchCloudConfig(moduleName);
             if (isValidConfig(moduleName, cloudData)) {
-                localStorage.setItem(mod.key, JSON.stringify(cloudData));
-                return cloudData;
+                // TASK-0005.5: thêm deep schema check cho decal
+                if (moduleName === 'decalConfig' && !deepValidateDecal(cloudData, 'cloud')) {
+                    // skip — sẽ fallback localStorage/default bên dưới
+                } else {
+                    localStorage.setItem(mod.key, JSON.stringify(cloudData));
+                    return cloudData;
+                }
             }
         } catch (e) {
             console.warn(`[ConfigStorage] Cloud load failed for ${moduleName}:`, e.message);
@@ -65,7 +82,14 @@ export async function loadConfigFromCloud(moduleName) {
         const saved = localStorage.getItem(mod.key);
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
-            if (isValidConfig(moduleName, parsed)) return parsed;
+            if (isValidConfig(moduleName, parsed)) {
+                // TASK-0005.5: thêm deep schema check cho decal
+                if (moduleName === 'decalConfig' && !deepValidateDecal(parsed, 'localStorage')) {
+                    // skip — fallback default
+                } else {
+                    return parsed;
+                }
+            }
         }
     } catch (e) {}
 
@@ -77,6 +101,13 @@ export async function loadConfigFromCloud(moduleName) {
 export async function saveConfigToCloud(moduleName, config, password) {
     const mod = MODULE_MAP[moduleName];
     if (!mod) return false;
+
+    // TASK-0005.5: gate decal config bằng schema validation TRƯỚC khi ghi
+    // bất kỳ nơi nào (localStorage + cloud). Module khác giữ behavior cũ.
+    if (moduleName === 'decalConfig' && !deepValidateDecal(config, 'saveConfigToCloud')) {
+        const v = validateDecalConfig(config);
+        return { local: false, cloud: false, error: `Decal config invalid: ${v.errors.join('; ')}` };
+    }
 
     // Luôn lưu localStorage
     localStorage.setItem(mod.key, JSON.stringify(config));
@@ -179,8 +210,13 @@ export function loadDecalConfig() {
         const saved = localStorage.getItem('decalConfig');
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
-            if (isValidConfig('decalConfig', parsed)) return parsed;
-            console.warn("[ConfigStorage] localStorage decalConfig không hợp lệ, dùng config mặc định.");
+            if (isValidConfig('decalConfig', parsed)) {
+                // TASK-0005.5: deep schema validation thay cho chỉ shallow key check
+                if (deepValidateDecal(parsed, 'localStorage')) return parsed;
+                // Nếu deep fail thì rơi xuống default
+            } else {
+                console.warn("[ConfigStorage] localStorage decalConfig thiếu key thiết yếu, dùng config mặc định.");
+            }
         }
     } catch(e) {
         console.error("Lỗi khi đọc decal config:", e);
@@ -189,6 +225,9 @@ export function loadDecalConfig() {
 }
 
 export function saveDecalConfig(config) {
+    // TASK-0005.5: gate trước khi ghi localStorage. Trả về false để caller
+    // (DecalSettingsPanel.handleSave) biết và hiển thị lỗi.
+    if (!deepValidateDecal(config, 'saveDecalConfig')) return false;
     try {
         localStorage.setItem('decalConfig', JSON.stringify(config));
         return true;

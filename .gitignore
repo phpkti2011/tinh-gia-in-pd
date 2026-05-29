@@ -20,6 +20,9 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Office lock files (Word/Excel/PowerPoint tạo ~$<filename> khi mở document)
+~$*
+
 # Legacy / reference files chứa hardcoded secret (xem docs/security/SECURITY_NOTES.md).
 # Giữ trên đĩa làm tham khảo dev, KHÔNG đưa vào baseline.
 google-apps-script.js

@@ -44,7 +44,14 @@ export default function DecalSettingsPanel({ config, onSave, onCancel }) {
 
     const handleSave = () => {
         try {
-            saveDecalConfig(localConfig);
+            // TASK-0005.5: saveDecalConfig giờ trả về false nếu config fail
+            // schema validation. Không gọi onSave (tránh update React state với
+            // config xấu) và hiển thị lỗi cho admin.
+            const ok = saveDecalConfig(localConfig);
+            if (!ok) {
+                alert('Cấu hình decal không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.');
+                return;
+            }
             alert('Đã lưu cài đặt! Chương trình sẽ tính toán lại với giá mới.');
             onSave(localConfig);
         } catch (e) {

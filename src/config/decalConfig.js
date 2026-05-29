@@ -1,53 +1,10 @@
-export const DECAL_DEFAULT_CONFIG = {
-    basePrintWidth: 330,
-    basePrintHeight: 330,
-    areaConversionFactor: 0.35,
-    marginShortSide: 28,
-    marginLongSide: 50,
-    stickerGap: 2,
-    laminationCost: 500,
-    printSheetSizes: [
-        { label: '330 x 330 mm', w: 330, h: 330 },
-        { label: '330 x 480 mm', w: 330, h: 480 },
-    ],
-    demiCutSurchargeTiers: [
-        { upTo: 20, percent: 20 },
-        { upTo: 30, percent: 35 },
-        { upTo: Infinity, percent: 45 }
-    ],
-    decalCosts: {
-        'Decal giấy': 0,
-        'Decal nhựa': 1200,
-        'Decal xi': 1400,
-        'Decal kraf': 0,
-        'Decal vỡ': 9000,
-        'Decal 7 màu': 0,
-        'Decal nhựa bóng (amazon chấm bi xanh)': 0,
-        'Decal trong dày (#60)': 0,
-    },
-    progressiveTiers: [
-        { upTo: 1, price: 100000 },
-        { upTo: 2, price: 40000 },
-        { upTo: 10, price: 20000 },
-        { upTo: 20, price: 8000 },
-        { upTo: 30, price: 5000 },
-        { upTo: 40, price: 4500 },
-        { upTo: 50, price: 4200 },
-        { upTo: 100, price: 4000 },
-        { upTo: 200, price: 3800 },
-        { upTo: 300, price: 3600 },
-        { upTo: 400, price: 3400 },
-        { upTo: 500, price: 3200 },
-        { upTo: 600, price: 3000 },
-        { upTo: 700, price: 2800 },
-        { upTo: 800, price: 2600 },
-        { upTo: 900, price: 2400 },
-        { upTo: 1000, price: 2300 },
-        { upTo: Infinity, price: 2200 },
-    ],
-    stickerSheetSizes: [
-        { label: 'Khổ A4 (210 x 297 mm)', w: 210, h: 297 },
-        { label: 'Khổ A5 (148 x 210 mm)', w: 148, h: 210 },
-        { label: 'Khổ A6 (100 x 145 mm)', w: 100, h: 145 },
-    ],
-};
+// Compatibility shim (TASK-0005 — decal config tách vào module mới).
+//
+// Nguồn chính: src/modules/decal/config/defaultConfig.js
+// File này giữ lại để code cũ (src/utils/configStorage.js + golden tests
+// cũ) không cần đổi đường dẫn import.
+//
+// Khi tất cả consumer được cập nhật sang module path mới ở task tương lai,
+// file này có thể xoá.
+
+export { DECAL_DEFAULT_CONFIG } from '../modules/decal/config/defaultConfig.js';
