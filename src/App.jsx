@@ -118,9 +118,12 @@ function SmallPrintModule({ onBack }) {
             if (!mainResult || mainResult.productsPerSheet <= 0) { setErrorMsg("Lỗi: Số sản phẩm / tờ không hợp lệ."); setResults([]); return; }
             const totalQuantity = params.productQuantity;
             const totalPrintSheets = Math.ceil(totalQuantity / mainResult.productsPerSheet);
-            const { cost: holePunchingCost, customerPrice: holePunchingCustomerPrice } = calculateFinishingCost(totalQuantity, params.holePunchingType, config.HOLE_PUNCHING_CONFIG);
-            const { cost: creasingCost, customerPrice: creasingCustomerPrice } = calculateFinishingCost(totalQuantity, params.creasingType, config.CREASING_CONFIG);
-            const { cost: mountingCost, customerPrice: mountingCustomerPrice } = calculateFinishingCost(totalPrintSheets, params.mountingType, config.MOUNTING_CONFIG);
+            // TASK-0008.6: calculateFinishingCost cần INNER config (object có
+            // cost_tiers/customer_tiers ở top level), không phải OUTER có subkeys.
+            // Trước fix: hole-punch/cấn/bồi luôn = 0 → khách bị tính thiếu phí.
+            const { cost: holePunchingCost, customerPrice: holePunchingCustomerPrice } = calculateFinishingCost(totalQuantity, params.holePunchingType, config.HOLE_PUNCHING_CONFIG?.[params.holePunchingType]);
+            const { cost: creasingCost, customerPrice: creasingCustomerPrice } = calculateFinishingCost(totalQuantity, params.creasingType, config.CREASING_CONFIG?.[params.creasingType]);
+            const { cost: mountingCost, customerPrice: mountingCustomerPrice } = calculateFinishingCost(totalPrintSheets, params.mountingType, config.MOUNTING_CONFIG?.[params.mountingType]);
             const { moldCost, laborCost, laborCustomerPrice } = calculateDieCuttingCosts(params, totalPrintSheets, mainResult.isDecal, config);
             const finishingCustomerPrices = { holePunching: holePunchingCustomerPrice, creasing: creasingCustomerPrice, mounting: mountingCustomerPrice };
             const dieCuttingCustomerPrice = { moldCost, laborCustomerPrice };
