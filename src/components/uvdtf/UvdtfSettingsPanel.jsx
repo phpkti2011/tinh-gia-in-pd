@@ -54,7 +54,14 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
 
     const handleSave = () => {
         try {
-            saveUvdtfConfig(localConfig);
+            // TASK-0013: saveUvdtfConfig giờ trả false nếu config fail schema
+            // validation. Không gọi onSave (tránh update React state với config
+            // xấu) và hiển thị lỗi cho admin.
+            const ok = saveUvdtfConfig(localConfig);
+            if (!ok) {
+                alert('Cau hinh UV DTF khong hop le, khong luu. Mo Console de xem chi tiet loi.');
+                return;
+            }
             alert('Luu thanh cong! Chuong trinh se tinh toan lai voi gia moi.');
             onSave(localConfig);
         } catch (e) {

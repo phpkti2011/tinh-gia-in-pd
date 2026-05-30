@@ -1,12 +1,10 @@
-export const UVDTF_DEFAULT_CONFIG = {
-    materialWidthCM: 55,
-    printableWidthCM: 53,
-    paddingCM: 0.4,
-    minBillableMeters: 1,
-    priceTiers: [
-        { maxMeters: 2, price: 440000 },
-        { maxMeters: 5, price: 390000 },
-        { maxMeters: 10, price: 330000 },
-        { maxMeters: Infinity, price: 280000 },
-    ],
-};
+// Compatibility shim (TASK-0013 — uvdtf config tách vào module mới).
+//
+// Nguồn chính: src/modules/uvdtf/config/defaultConfig.js
+// File này giữ lại để code cũ (src/utils/configStorage.js + golden test
+// cũ) không cần đổi đường dẫn import.
+//
+// Khi tất cả consumer được cập nhật sang module path mới ở task tương lai,
+// file này có thể xoá.
+
+export { UVDTF_DEFAULT_CONFIG } from '../modules/uvdtf/config/defaultConfig.js';

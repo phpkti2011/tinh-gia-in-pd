@@ -5,6 +5,7 @@ import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
 import { fetchCloudConfig, saveCloudConfig, isCloudEnabled, restoreInfinity } from './cloudSync';
 import { validateDecalConfig } from '../modules/decal/config/index.js';
 import { validateSmallPrintConfig } from '../modules/small-print/config/index.js';
+import { validateUvDtfConfig } from '../modules/uvdtf/config/index.js';
 
 // TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
 // isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
@@ -22,6 +23,16 @@ function deepValidatePrint(data, source) {
     const v = validateSmallPrintConfig(data);
     if (!v.isValid) {
         console.warn(`[ConfigStorage] ${source} printConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// TASK-0013: deep schema validation cho UV DTF config (uvdtfConfig).
+function deepValidateUvdtf(data, source) {
+    const v = validateUvDtfConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} uvdtfConfig không pass schema:`, v.errors);
         return false;
     }
     return true;
@@ -75,10 +86,12 @@ export async function loadConfigFromCloud(moduleName) {
         try {
             const cloudData = await fetchCloudConfig(moduleName);
             if (isValidConfig(moduleName, cloudData)) {
-                // TASK-0005.5 / TASK-0010: thêm deep schema check cho decal + print
+                // TASK-0005.5 / TASK-0010 / TASK-0013: deep schema check cho decal + print + uvdtf
                 if (moduleName === 'decalConfig' && !deepValidateDecal(cloudData, 'cloud')) {
-                    // skip — sẽ fallback localStorage/default bên dưới
+                    // skip — fallback
                 } else if (moduleName === 'printConfig' && !deepValidatePrint(cloudData, 'cloud')) {
+                    // skip — fallback
+                } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(cloudData, 'cloud')) {
                     // skip — fallback
                 } else {
                     localStorage.setItem(mod.key, JSON.stringify(cloudData));
@@ -96,10 +109,12 @@ export async function loadConfigFromCloud(moduleName) {
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
             if (isValidConfig(moduleName, parsed)) {
-                // TASK-0005.5 / TASK-0010: thêm deep schema check cho decal + print
+                // TASK-0005.5 / TASK-0010 / TASK-0013: deep schema check cho decal + print + uvdtf
                 if (moduleName === 'decalConfig' && !deepValidateDecal(parsed, 'localStorage')) {
                     // skip — fallback default
                 } else if (moduleName === 'printConfig' && !deepValidatePrint(parsed, 'localStorage')) {
+                    // skip — fallback default
+                } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(parsed, 'localStorage')) {
                     // skip — fallback default
                 } else {
                     return parsed;
@@ -126,6 +141,10 @@ export async function saveConfigToCloud(moduleName, config, password) {
     if (moduleName === 'printConfig' && !deepValidatePrint(config, 'saveConfigToCloud')) {
         const v = validateSmallPrintConfig(config);
         return { local: false, cloud: false, error: `Print config invalid: ${v.errors.join('; ')}` };
+    }
+    if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(config, 'saveConfigToCloud')) {
+        const v = validateUvDtfConfig(config);
+        return { local: false, cloud: false, error: `UV DTF config invalid: ${v.errors.join('; ')}` };
     }
 
     // Luôn lưu localStorage
@@ -269,8 +288,13 @@ export function loadUvdtfConfig() {
         const saved = localStorage.getItem('uvdtfConfig');
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
-            if (isValidConfig('uvdtfConfig', parsed)) return parsed;
-            console.warn("[ConfigStorage] localStorage uvdtfConfig không hợp lệ, dùng config mặc định.");
+            if (isValidConfig('uvdtfConfig', parsed)) {
+                // TASK-0013: deep schema validation thay cho chỉ shallow key check
+                if (deepValidateUvdtf(parsed, 'localStorage')) return parsed;
+                // else fallback
+            } else {
+                console.warn("[ConfigStorage] localStorage uvdtfConfig thiếu key thiết yếu, dùng config mặc định.");
+            }
         }
     } catch(e) {
         console.error("Lỗi khi đọc UV DTF config:", e);
@@ -279,6 +303,9 @@ export function loadUvdtfConfig() {
 }
 
 export function saveUvdtfConfig(config) {
+    // TASK-0013: gate trước khi ghi localStorage. Trả về false để caller
+    // (UvdtfSettingsPanel.handleSave) biết và hiển thị lỗi.
+    if (!deepValidateUvdtf(config, 'saveUvdtfConfig')) return false;
     try {
         localStorage.setItem('uvdtfConfig', JSON.stringify(config));
         return true;
