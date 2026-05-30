@@ -170,11 +170,12 @@ describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
             setAppsScriptUrl('');
         });
 
-        it('saveConfigToCloud("printConfig", invalid) vẫn ghi localStorage (chưa gate)', async () => {
-            // printConfig chưa có validation riêng — TASK-0005.5 chỉ áp dụng decal.
-            const r = await saveConfigToCloud('printConfig', { foo: 'bar' }, 'pw');
+        it('saveConfigToCloud("largePrintConfig", invalid) vẫn ghi localStorage (chưa gate)', async () => {
+            // largePrintConfig chưa có validation riêng — TASK-0005.5 chỉ áp dụng decal.
+            // (printConfig đã được gate ở TASK-0010, không dùng để test backward compat ở đây nữa.)
+            const r = await saveConfigToCloud('largePrintConfig', { foo: 'bar' }, 'pw');
             expect(r.local).toBe(true);  // vẫn ghi
-            expect(localStorage.getItem('printConfig')).not.toBeNull();
+            expect(localStorage.getItem('largePrintConfig')).not.toBeNull();
         });
     });
 });

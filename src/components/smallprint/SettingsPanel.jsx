@@ -61,7 +61,14 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
 
     const handleSave = () => {
         try {
-            saveConfig(localConfig);
+            // TASK-0010: saveConfig giờ trả về false nếu config fail schema
+            // validation. Không gọi onSave (tránh update React state với
+            // config xấu) và hiển thị lỗi cho admin.
+            const ok = saveConfig(localConfig);
+            if (!ok) {
+                alert('Cấu hình in KTS không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.');
+                return;
+            }
             alert('Đã lưu cài đặt! Chương trình sẽ tính toán lại với giá mới.');
             onSave(localConfig);
         } catch (e) {

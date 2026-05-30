@@ -4,6 +4,7 @@ import { DECAL_DEFAULT_CONFIG } from '../config/decalConfig';
 import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
 import { fetchCloudConfig, saveCloudConfig, isCloudEnabled, restoreInfinity } from './cloudSync';
 import { validateDecalConfig } from '../modules/decal/config/index.js';
+import { validateSmallPrintConfig } from '../modules/small-print/config/index.js';
 
 // TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
 // isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
@@ -11,6 +12,16 @@ function deepValidateDecal(data, source) {
     const v = validateDecalConfig(data);
     if (!v.isValid) {
         console.warn(`[ConfigStorage] ${source} decalConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// TASK-0010: deep schema validation cho small-print config (printConfig).
+function deepValidatePrint(data, source) {
+    const v = validateSmallPrintConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} printConfig không pass schema:`, v.errors);
         return false;
     }
     return true;
@@ -64,9 +75,11 @@ export async function loadConfigFromCloud(moduleName) {
         try {
             const cloudData = await fetchCloudConfig(moduleName);
             if (isValidConfig(moduleName, cloudData)) {
-                // TASK-0005.5: thêm deep schema check cho decal
+                // TASK-0005.5 / TASK-0010: thêm deep schema check cho decal + print
                 if (moduleName === 'decalConfig' && !deepValidateDecal(cloudData, 'cloud')) {
                     // skip — sẽ fallback localStorage/default bên dưới
+                } else if (moduleName === 'printConfig' && !deepValidatePrint(cloudData, 'cloud')) {
+                    // skip — fallback
                 } else {
                     localStorage.setItem(mod.key, JSON.stringify(cloudData));
                     return cloudData;
@@ -83,8 +96,10 @@ export async function loadConfigFromCloud(moduleName) {
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
             if (isValidConfig(moduleName, parsed)) {
-                // TASK-0005.5: thêm deep schema check cho decal
+                // TASK-0005.5 / TASK-0010: thêm deep schema check cho decal + print
                 if (moduleName === 'decalConfig' && !deepValidateDecal(parsed, 'localStorage')) {
+                    // skip — fallback default
+                } else if (moduleName === 'printConfig' && !deepValidatePrint(parsed, 'localStorage')) {
                     // skip — fallback default
                 } else {
                     return parsed;
@@ -102,11 +117,15 @@ export async function saveConfigToCloud(moduleName, config, password) {
     const mod = MODULE_MAP[moduleName];
     if (!mod) return false;
 
-    // TASK-0005.5: gate decal config bằng schema validation TRƯỚC khi ghi
-    // bất kỳ nơi nào (localStorage + cloud). Module khác giữ behavior cũ.
+    // TASK-0005.5 / TASK-0010: gate decal + print config bằng schema validation
+    // TRƯỚC khi ghi bất kỳ nơi nào (localStorage + cloud).
     if (moduleName === 'decalConfig' && !deepValidateDecal(config, 'saveConfigToCloud')) {
         const v = validateDecalConfig(config);
         return { local: false, cloud: false, error: `Decal config invalid: ${v.errors.join('; ')}` };
+    }
+    if (moduleName === 'printConfig' && !deepValidatePrint(config, 'saveConfigToCloud')) {
+        const v = validateSmallPrintConfig(config);
+        return { local: false, cloud: false, error: `Print config invalid: ${v.errors.join('; ')}` };
     }
 
     // Luôn lưu localStorage
@@ -162,8 +181,13 @@ export function loadConfig() {
         const savedConfigStr = localStorage.getItem('printConfig');
         if (savedConfigStr) {
             const parsed = restoreInfinity(JSON.parse(savedConfigStr));
-            if (isValidConfig('printConfig', parsed)) return parsed;
-            console.warn("[ConfigStorage] localStorage printConfig không hợp lệ, dùng config mặc định.");
+            if (isValidConfig('printConfig', parsed)) {
+                // TASK-0010: deep schema validation thay cho chỉ shallow key check
+                if (deepValidatePrint(parsed, 'localStorage')) return parsed;
+                // else fallback
+            } else {
+                console.warn("[ConfigStorage] localStorage printConfig thiếu key thiết yếu, dùng config mặc định.");
+            }
         }
     } catch(e) {
         console.error("Lỗi khi đọc config từ localStorage:", e);
@@ -172,6 +196,9 @@ export function loadConfig() {
 }
 
 export function saveConfig(config) {
+    // TASK-0010: gate trước khi ghi localStorage. Trả về false để caller
+    // (SettingsPanel.handleSave) biết và hiển thị lỗi.
+    if (!deepValidatePrint(config, 'saveConfig')) return false;
     try {
         localStorage.setItem('printConfig', JSON.stringify(config));
         return true;

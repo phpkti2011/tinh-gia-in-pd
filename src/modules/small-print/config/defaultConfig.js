@@ -1,0 +1,232 @@
+// Small-print (in KTS khổ nhỏ) — bảng giá mặc định.
+//
+// Di chuyển từ src/config/defaultConfig.js ở TASK-0010 (config schema/version).
+// KHÔNG đổi giá trị so với bản gốc — chỉ đổi vị trí file để phù hợp với
+// cấu trúc module mới (src/modules/small-print/).
+//
+// Schema validation: xem src/modules/small-print/config/schema.js
+// Version metadata:  xem src/modules/small-print/config/version.js
+
+export const DEFAULT_CONFIG = {
+    PROFIT_MARGIN_TIERS: [
+        { max_cost: 200000, margin: 0.75 },
+        { max_cost: 500000, margin: 0.70 },
+        { max_cost: 1000000, margin: 0.65 },
+        { max_cost: 2000000, margin: 0.60 },
+        { max_cost: Infinity, margin: 0.55 }
+    ],
+    PRINTABLE_AREA_CONFIG: {
+        digital_cut_margin_total: 1.8,
+        regular_cut_width_margin_total: 0.8,
+        vk_point_height_margin: 0.8,
+        non_vk_point_height_margin: 0.1,
+        custom_width_margin: 0.8,
+        custom_height_margin: 1.0
+    },
+    ART_PAPER_SURCHARGE: 80000,
+    PRINTER_CONFIG: {
+        'C2060': {
+            name: 'C2060',
+            maxW: 33.0,
+            maxH: 120.0,
+            clickTiers: [ { maxH: 33, clicks: 1 }, { maxH: 48, clicks: 2 }, { maxH: 76, clicks: 3 }, { maxH: 92, clicks: 4 }, { maxH: 120, clicks: 5 } ],
+            vkPoints: [33, 48, 76, 92, 120],
+            prices: { '4color': 750 }
+        },
+        'C6085': {
+            name: 'C6085',
+            maxW: 33.0,
+            maxH: 120.0,
+            clickTiers: [ { maxH: 35, clicks: 1 }, { maxH: 48, clicks: 2 }, { maxH: 76, clicks: 3 }, { maxH: 92, clicks: 4 }, { maxH: 120, clicks: 5 } ],
+            vkPoints: [35, 48, 76, 92, 120],
+            prices: { '4color': 650, '1color': 400 }
+        }
+    },
+    LAMINATION_CONFIG: {
+        WIDTH: 32,
+        PRICE_PER_METER: 2200
+    },
+    VARIABLE_DATA_CONFIG: {
+        price_500: 200000,
+        price_1000: 300000,
+        price_over_1000_base: 500000,
+        price_over_1000_progressive: 100000,
+        progressive_step: 1000
+    },
+    PRINT_CONTENT_CONFIG: {
+        single_content_surcharge: 0.20,
+        tiers: [
+            { min: 2, max: 5, surcharge: 0.10 },
+            { min: 6, max: 10, surcharge: 0.20 },
+            { min: 11, max: 25, surcharge: 0.30 },
+            { min: 26, max: Infinity, surcharge: 0.35 }
+        ]
+    },
+    HOLE_PUNCHING_CONFIG: {
+        '1_vi_tri': {
+            cost_tiers: [
+                { max_qty: 99, price: 40000, type: 'package' },
+                { max_qty: 500, price: 75000, type: 'package' },
+                { max_qty: Infinity, price: 125, type: 'per_piece' }
+            ],
+            customer_tiers: [
+                { max_qty: 99, price: 80000, type: 'package' },
+                { max_qty: 500, price: 150000, type: 'package' },
+                { max_qty: Infinity, price: 250, type: 'per_piece' }
+            ]
+        },
+        '2_vi_tri': {
+            cost_tiers: [
+                { max_qty: 99, price: 70000, type: 'package' },
+                { max_qty: 500, price: 125000, type: 'package' },
+                { max_qty: Infinity, price: 200, type: 'per_piece' }
+            ],
+            customer_tiers: [
+                { max_qty: 99, price: 140000, type: 'package' },
+                { max_qty: 500, price: 250000, type: 'package' },
+                { max_qty: Infinity, price: 400, type: 'per_piece' }
+            ]
+        }
+    },
+    CREASING_CONFIG: {
+        'co_can': {
+            cost_tiers: [
+                { max_qty: 500, price: 75000, type: 'package' },
+                { max_qty: Infinity, price: 100, type: 'per_piece' }
+            ],
+            customer_tiers: [
+                { max_qty: 500, price: 150000, type: 'package' },
+                { max_qty: Infinity, price: 200, type: 'per_piece' }
+            ]
+        }
+    },
+    MOUNTING_CONFIG: {
+        'yes': {
+            cost_tiers: [
+                { max_qty: 50, price: 50000, type: 'package' },
+                { max_qty: 200, price: 100000, type: 'package' },
+                { max_qty: 500, price: 150000, type: 'package' },
+                { max_qty: Infinity, price: 225000, type: 'package' }
+            ],
+            customer_tiers: [
+                { max_qty: 50, price: 100000, type: 'package' },
+                { max_qty: 200, price: 200000, type: 'package' },
+                { max_qty: 500, price: 300000, type: 'package' },
+                { max_qty: Infinity, price: 450000, type: 'package' }
+            ]
+        }
+    },
+     DIE_CUTTING_MOLD_COST_CONFIG: {
+        simple: { base_size: 21, base_price: 120000 },
+        envelope: { threshold_area: 960, small_price: 160000, large_price: 220000 },
+        box: { threshold_area: 336, small_price: 200000, large_price: 300000 },
+        bag: { threshold_area: 1376, small_price: 300000, large_price: 500000 },
+        tag: { threshold_w: 10, threshold_h: 6, price_per_cm2: 700, hole_price: 10000 }
+    },
+    DIE_CUTTING_LABOR_CONFIG: {
+         cost_tiers: [
+            { max_qty: 500, price: 100000, type: 'package' },
+            { max_qty: 1200, price: 175000, type: 'package' },
+            { max_qty: Infinity, price: 225000, type: 'package' }
+        ],
+        customer_tiers: [
+            { max_qty: 500, price: 200000, type: 'package' },
+            { max_qty: 1200, price: 350000, type: 'package' },
+            { max_qty: Infinity, price: 450000, type: 'package' }
+        ],
+        decal_surcharge: 0.25,
+        small_tag_surcharge: 0.25
+    },
+    DIGITAL_DIE_CUTTING_CONFIG: {
+         cost_tiers: [
+            { max_qty: 10, price: 50000, type: 'package' },
+            { max_qty: 100, price: 90000, type: 'package' },
+            { max_qty: 300, price: 125000, type: 'package' },
+            { max_qty: 600, price: 175000, type: 'package' },
+            { max_qty: 1200, price: 250000, type: 'package' }
+        ],
+        customer_tiers: [
+            { max_qty: 10, price: 100000, type: 'package' },
+            { max_qty: 100, price: 180000, type: 'package' },
+            { max_qty: 300, price: 250000, type: 'package' },
+            { max_qty: 600, price: 350000, type: 'package' },
+            { max_qty: 1200, price: 500000, type: 'package' }
+        ]
+    },
+    PAPER_STOCK_DATA: [
+        { name: 'C150', pricePerReam: 1200000, pricingModel: 'ream', description: 'Giấy Couche 150gsm', customerSurcharge: 0 },
+        { name: 'C200', pricePerReam: 1600000, pricingModel: 'ream', description: 'Giấy Couche 200gsm', customerSurcharge: 0 },
+        { name: 'C250', pricePerReam: 2000000, pricingModel: 'ream', description: 'Giấy Couche 250gsm', customerSurcharge: 0 },
+        { name: 'C300', pricePerReam: 2200000, pricingModel: 'ream', description: 'Giấy Couche 300gsm', customerSurcharge: 0 },
+        { name: 'B300', pricePerReam: 2600000, pricingModel: 'ream', description: 'Giấy Bristol 300gsm', customerSurcharge: 0 },
+        { name: 'F250', pricePerReam: 2200000, pricingModel: 'ream', description: 'Giấy Ford 250gsm', customerSurcharge: 0 },
+        { name: 'F300', pricePerReam: 3000000, pricingModel: 'ream', description: 'Giấy Ford 300gsm', customerSurcharge: 0 },
+        { name: 'I300', pricePerReam: 2100000, pricingModel: 'ream', description: 'Giấy Ivory 300gsm', customerSurcharge: 0 },
+        { name: 'Giấy mỹ thuật', pricePerReam: 'custom', pricingModel: 'custom', description: 'Giá và khổ tùy chọn', customerSurcharge: 0 },
+        { name: 'Decal giấy đế mỏng (VHM)', pricePerSqm: 9000, pricingModel: 'sqm', description: 'Chỉ in cắt thành phẩm, không bế demi', supplier: 'Vũ Hoàng Minh', customerSurcharge: 500 },
+        { name: 'Decal giấy đế dày (LH)', pricePerSqm: 10000, pricingModel: 'sqm', description: 'Bế demi', supplier: 'Linh Hiếu', customerSurcharge: 500 },
+        { name: 'Decal nhựa mờ (LH)', pricePerSqm: 16000, pricingModel: 'sqm', description: 'Đế logo H xám', supplier: 'Linh Hiếu', customerSurcharge: 1000 },
+        { name: 'Decal trong #60 mic (VHM)', pricePerSqm: 22000, pricingModel: 'sqm', description: 'Đế logo khami xám', supplier: 'Vũ Hoàng Minh', customerSurcharge: 1000 },
+        { name: 'Decal nhựa bóng (VHM)', pricePerSqm: 22000, pricingModel: 'sqm', description: 'Đế logo amazon chấm bị xanh', supplier: 'Vũ Hoàng Minh', customerSurcharge: 1000 },
+        { name: 'Decal nhựa mờ (VHM)', pricePerSqm: 16000, pricingModel: 'sqm', description: 'Đế logo Amazon xám', supplier: 'Vũ Hoàng Minh', customerSurcharge: 1000 },
+        { name: 'Decal bể dẻo (VHM)', pricePerSqm: 50000, pricingModel: 'sqm', description: 'Decal tem vỡ, dẻo', supplier: 'Vũ Hoàng Minh', customerSurcharge: 9000 },
+        { name: 'Decal 7 màu (VHM)', pricePerSqm: 25000, pricingModel: 'sqm', description: 'Khổ cuộn lớn 153cm', supplier: 'Vũ Hoàng Minh', customerSurcharge: 3500 },
+        { name: 'Decal xi bạc mờ/bóng', pricingModel: 'per_sheet', sheetPrice: 8000, sheetSize: { w: 33, h: 48 }, description: 'Khổ cố định 33x48cm', supplier: 'Minh Nguyệt', customerSurcharge: 2000 }
+    ],
+    STANDARD_LARGE_SHEET_SIZES: [
+        { name: 'Khổ 65 x 86 cm', w: 65, h: 86 }, { name: 'Khổ 79 x 109 cm', w: 79, h: 109 }
+    ],
+    ART_PAPER_LARGE_SHEET_SIZES: [
+        { name: 'Khổ 79 x 109 cm', w: 79, h: 109 },
+        { name: 'Khổ 72 x 102 cm', w: 72, h: 102 },
+        { name: 'Khổ 70 x 100 cm', w: 70, h: 100 },
+        { name: 'Tùy chọn', w: 'custom', h: 'custom' }
+    ],
+    COMMON_SHEET_SIZES: [
+        { w: 32.2, h: 21.2 }, { w: 32.2, h: 28.3 }, { w: 32.2, h: 33.0 },
+        { w: 32.2, h: 35.0 }, { w: 32.2, h: 42.8 }, { w: 32.2, h: 47.0 },
+        { w: 32.2, h: 48.0 }, { w: 33.0, h: 48.0 },
+         { w: 32.2, h: 65.0 }, { w: 33.0, h: 109.0 },
+         { w: 39.5, h: 54.5 }, { w: 43.0, h: 65.0 }, { w: 54.5, h: 79.0 }
+    ],
+    DECAL_SHEET_SIZES: [
+        { w: 32.2, h: 33.0 },
+        { w: 32.2, h: 35.0 },
+        { w: 33.0, h: 48.0 }
+    ],
+    A4_CONVERSION_RATES: {
+        '21.2': 1, '28.3': 1.35, '33.0': 1.5, '35.0': 1.5, '42.8': 2, '47.0': 2.4, '48.0': 2.4,
+        '65.0': 3.0, '109.0': 5.2
+    },
+    EP_KIM_CONFIG: {
+        pricePerArea: 5,
+        moldPerArea: 2000,
+        minPriceNormal: 400,
+        minPriceSpecial: 700,
+        minTotalSmall: 250000,
+        shippingSmall: 50000,
+        minTotalLarge: 300000,
+        shippingLarge: 100000,
+        thresholdW: 20,
+        thresholdH: 14,
+        foilPadWidth: 1,
+        foilPadLength: 0.7,
+        foilRollLengthM: 110
+    },
+    CUSTOMER_PRICE_TIERS: [
+        { min: 1, max: 5, print: 10000, laminate: 8000, type: 'per_page' },
+        { min: 6, max: 10, print: 8000, laminate: 5000, type: 'per_page' },
+        { min: 11, max: 15, print: 80000, laminate: 50000, type: 'package' },
+        { min: 16, max: 50, print: 5000, laminate: 3000, type: 'per_page' },
+        { min: 51, max: 79, print: 250000, laminate: 50000, type: 'package' },
+        { min: 80, max: 100, print: 3000, laminate: 1000, type: 'per_page' },
+        { min: 101, max: 119, print: 300000, laminate: 60000, type: 'package' },
+        { min: 120, max: 500, print: 2500, laminate: 800, type: 'per_page' },
+        { min: 501, max: 559, print: 1250000, laminate: 250000, type: 'package' },
+        { min: 560, max: 1000, print: 2200, laminate: 600, type: 'per_page' },
+        { min: 1001, max: 2000, print: 1800, laminate: 250, type: 'per_page' },
+        { min: 2001, max: 3000, print: 1750, laminate: 250, type: 'per_page' },
+        { min: 3001, max: 4500, print: 1700, laminate: 250, type: 'per_page' },
+        { min: 4501, max: Infinity, print: 1670, laminate: 250, type: 'per_page' }
+    ]
+};
