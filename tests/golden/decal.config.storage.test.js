@@ -164,18 +164,8 @@ describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
         });
     });
 
-    // ─────────────────────────────────────────────────────────────────────
-    describe('Backward compat: module khác không bị gate validation decal', () => {
-        beforeEach(() => {
-            setAppsScriptUrl('');
-        });
-
-        it('saveConfigToCloud("largePrintConfig", invalid) vẫn ghi localStorage (chưa gate)', async () => {
-            // largePrintConfig chưa có validation riêng — TASK-0005.5 chỉ áp dụng decal.
-            // (printConfig đã được gate ở TASK-0010, không dùng để test backward compat ở đây nữa.)
-            const r = await saveConfigToCloud('largePrintConfig', { foo: 'bar' }, 'pw');
-            expect(r.local).toBe(true);  // vẫn ghi
-            expect(localStorage.getItem('largePrintConfig')).not.toBeNull();
-        });
-    });
+    // Backward-compat describe block removed in TASK-0017:
+    // largePrintConfig đã được gate ở TASK-0017 → không còn module nào "ungated"
+    // để test backward compat. All 4 module config (decal/print/uvdtf/largePrint)
+    // đều đã wire validation.
 });

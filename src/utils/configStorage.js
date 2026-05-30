@@ -6,6 +6,7 @@ import { fetchCloudConfig, saveCloudConfig, isCloudEnabled, restoreInfinity } fr
 import { validateDecalConfig } from '../modules/decal/config/index.js';
 import { validateSmallPrintConfig } from '../modules/small-print/config/index.js';
 import { validateUvDtfConfig } from '../modules/uvdtf/config/index.js';
+import { validateLargePrintConfig } from '../modules/large-print/config/index.js';
 
 // TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
 // isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
@@ -33,6 +34,16 @@ function deepValidateUvdtf(data, source) {
     const v = validateUvDtfConfig(data);
     if (!v.isValid) {
         console.warn(`[ConfigStorage] ${source} uvdtfConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// TASK-0017: deep schema validation cho large-print config (largePrintConfig).
+function deepValidateLargePrint(data, source) {
+    const v = validateLargePrintConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} largePrintConfig không pass schema:`, v.errors);
         return false;
     }
     return true;
@@ -86,12 +97,15 @@ export async function loadConfigFromCloud(moduleName) {
         try {
             const cloudData = await fetchCloudConfig(moduleName);
             if (isValidConfig(moduleName, cloudData)) {
-                // TASK-0005.5 / TASK-0010 / TASK-0013: deep schema check cho decal + print + uvdtf
+                // TASK-0005.5 / TASK-0010 / TASK-0013 / TASK-0017:
+                // deep schema check cho decal + print + uvdtf + large-print
                 if (moduleName === 'decalConfig' && !deepValidateDecal(cloudData, 'cloud')) {
                     // skip — fallback
                 } else if (moduleName === 'printConfig' && !deepValidatePrint(cloudData, 'cloud')) {
                     // skip — fallback
                 } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(cloudData, 'cloud')) {
+                    // skip — fallback
+                } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(cloudData, 'cloud')) {
                     // skip — fallback
                 } else {
                     localStorage.setItem(mod.key, JSON.stringify(cloudData));
@@ -109,12 +123,15 @@ export async function loadConfigFromCloud(moduleName) {
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
             if (isValidConfig(moduleName, parsed)) {
-                // TASK-0005.5 / TASK-0010 / TASK-0013: deep schema check cho decal + print + uvdtf
+                // TASK-0005.5 / TASK-0010 / TASK-0013 / TASK-0017:
+                // deep schema check cho decal + print + uvdtf + large-print
                 if (moduleName === 'decalConfig' && !deepValidateDecal(parsed, 'localStorage')) {
                     // skip — fallback default
                 } else if (moduleName === 'printConfig' && !deepValidatePrint(parsed, 'localStorage')) {
                     // skip — fallback default
                 } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(parsed, 'localStorage')) {
+                    // skip — fallback default
+                } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(parsed, 'localStorage')) {
                     // skip — fallback default
                 } else {
                     return parsed;
@@ -145,6 +162,10 @@ export async function saveConfigToCloud(moduleName, config, password) {
     if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(config, 'saveConfigToCloud')) {
         const v = validateUvDtfConfig(config);
         return { local: false, cloud: false, error: `UV DTF config invalid: ${v.errors.join('; ')}` };
+    }
+    if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(config, 'saveConfigToCloud')) {
+        const v = validateLargePrintConfig(config);
+        return { local: false, cloud: false, error: `Large print config invalid: ${v.errors.join('; ')}` };
     }
 
     // Luôn lưu localStorage
@@ -232,8 +253,13 @@ export function loadLargePrintConfig() {
         const saved = localStorage.getItem('largePrintConfig');
         if (saved) {
             const parsed = restoreInfinity(JSON.parse(saved));
-            if (isValidConfig('largePrintConfig', parsed)) return parsed;
-            console.warn("[ConfigStorage] localStorage largePrintConfig không hợp lệ, dùng config mặc định.");
+            if (isValidConfig('largePrintConfig', parsed)) {
+                // TASK-0017: deep schema validation thay cho chỉ shallow key check
+                if (deepValidateLargePrint(parsed, 'localStorage')) return parsed;
+                // else fallback
+            } else {
+                console.warn("[ConfigStorage] localStorage largePrintConfig thiếu key thiết yếu, dùng config mặc định.");
+            }
         }
     } catch(e) {
         console.error("Lỗi khi đọc large print config:", e);
@@ -242,6 +268,9 @@ export function loadLargePrintConfig() {
 }
 
 export function saveLargePrintConfig(config) {
+    // TASK-0017: gate trước khi ghi localStorage. Trả về false để caller
+    // (LPSettingsPanel.handleSave) biết và hiển thị lỗi.
+    if (!deepValidateLargePrint(config, 'saveLargePrintConfig')) return false;
     try {
         localStorage.setItem('largePrintConfig', JSON.stringify(config));
         return true;

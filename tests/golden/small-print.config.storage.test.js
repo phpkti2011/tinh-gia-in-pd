@@ -157,16 +157,7 @@ describe('TASK-0010: validateSmallPrintConfig wired vào configStorage', () => {
         });
     });
 
-    // ─────────────────────────────────────────────────────────────────────
-    describe('Backward compat: module khác không bị gate validation print', () => {
-        beforeEach(() => {
-            setAppsScriptUrl('');
-        });
-
-        it('saveConfigToCloud("largePrintConfig", invalid) vẫn ghi localStorage (chưa gate)', async () => {
-            const r = await saveConfigToCloud('largePrintConfig', { foo: 'bar' }, 'pw');
-            expect(r.local).toBe(true);
-            expect(localStorage.getItem('largePrintConfig')).not.toBeNull();
-        });
-    });
+    // Backward-compat describe block removed in TASK-0017:
+    // largePrintConfig đã được gate ở TASK-0017 → không còn module nào "ungated"
+    // để test backward compat. All 4 module config đều đã wire validation.
 });

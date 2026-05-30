@@ -156,17 +156,7 @@ describe('TASK-0013: validateUvDtfConfig wired vào configStorage', () => {
         });
     });
 
-    // ─────────────────────────────────────────────────────────────────────
-    describe('Backward compat: module khác không bị gate validation uvdtf', () => {
-        beforeEach(() => {
-            setAppsScriptUrl('');
-        });
-
-        it('saveConfigToCloud("largePrintConfig", invalid) vẫn ghi localStorage (chưa gate)', async () => {
-            // largePrintConfig là module duy nhất còn lại chưa schema validation.
-            const r = await saveConfigToCloud('largePrintConfig', { foo: 'bar' }, 'pw');
-            expect(r.local).toBe(true);
-            expect(localStorage.getItem('largePrintConfig')).not.toBeNull();
-        });
-    });
+    // Backward-compat describe block removed in TASK-0017:
+    // largePrintConfig đã được gate ở TASK-0017 → không còn module nào "ungated"
+    // để test backward compat. All 4 module config đều đã wire validation.
 });

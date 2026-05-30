@@ -54,7 +54,14 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
 
     const handleSave = () => {
         try {
-            saveLargePrintConfig(localConfig);
+            // TASK-0017: saveLargePrintConfig giờ trả false nếu config fail
+            // schema validation. Không gọi onSave (tránh update React state
+            // với config xấu) và hiển thị lỗi cho admin.
+            const ok = saveLargePrintConfig(localConfig);
+            if (!ok) {
+                alert('Cấu hình in khổ lớn không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.');
+                return;
+            }
             alert('Đã lưu cài đặt! Chương trình sẽ tính toán lại với giá mới.');
             onSave(localConfig);
         } catch (e) {
