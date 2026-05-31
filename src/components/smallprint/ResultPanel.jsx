@@ -1,14 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getPrintableArea, getProfitMargin, calculatePrintContentSurcharge } from '../../utils/calculator';
 import { LargeSheetVisualizer, PrintSheetVisualizer } from './SheetVisualizer';
-
-const ADMIN_PASSWORD = 'TEMP_ADMIN_PASSWORD_PLACEHOLDER';
+import { useAuth } from '../../auth/useAuth';
+import { useUserRole } from '../../auth/useUserRole';
 
 export default function ResultPanel({ results, quote, params, config, isCalculating, errorMsg, finishingCustomerPrices, dieCuttingCustomerPrice, holePunchingCost, creasingCost, mountingCost, moldCost, laborCost, variableDataCost, foilResult, onChange }) {
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [showAdminInput, setShowAdminInput] = useState(false);
-    const [adminPass, setAdminPass] = useState('');
-    const [adminError, setAdminError] = useState('');
+    // P2-03: Admin reveal (giá vốn / giá tối thiểu) giờ dựa vào Supabase role.
+    // Trước: hardcoded ADMIN_PASSWORD + inline input. Sau: tự động hiện khi user
+    // đã login admin (qua AdminGate ở tab Settings). Không có login inline trên
+    // tab tính giá — staff thấy báo giá khách bình thường; admin thấy thêm
+    // cost columns + "Giá tối thiểu" panel khi session admin còn hiệu lực.
+    const { user } = useAuth();
+    const { isAdmin } = useUserRole(user);
+
     const [selectedResult, setSelectedResult] = useState(null);
     const [showStickyBar, setShowStickyBar] = useState(false);
     const priceSectionRef = useRef(null);
@@ -23,17 +27,6 @@ export default function ResultPanel({ results, quote, params, config, isCalculat
         observer.observe(el);
         return () => observer.disconnect();
     }, [results]);
-
-    const handleAdminUnlock = () => {
-        if (adminPass === ADMIN_PASSWORD) {
-            setIsAdmin(true);
-            setShowAdminInput(false);
-            setAdminPass('');
-            setAdminError('');
-        } else {
-            setAdminError('Sai mật khẩu!');
-        }
-    };
 
     const validResults = results;
     const bestPreferredOption = validResults.find(r => r.cutSheetH <= 48);
@@ -76,29 +69,13 @@ export default function ResultPanel({ results, quote, params, config, isCalculat
     return (
         <div className="lg:col-span-3 transition-opacity duration-300" style={{ opacity: isCalculating ? 0.5 : 1 }}>
 
-            {/* Nút Admin */}
-            <div className="flex justify-end mb-2">
-                {isAdmin ? (
-                    <button onClick={() => setIsAdmin(false)} className="text-xs text-gray-500 hover:text-red-400">🔓 Admin (thoát)</button>
-                ) : showAdminInput ? (
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="password"
-                            value={adminPass}
-                            onChange={(e) => setAdminPass(e.target.value)}
-                            onKeyUp={(e) => e.key === 'Enter' && handleAdminUnlock()}
-                            placeholder="Mật khẩu admin..."
-                            className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs w-44 focus:outline-none focus:border-blue-500"
-                            autoFocus
-                        />
-                        <button onClick={handleAdminUnlock} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded">OK</button>
-                        <button onClick={() => { setShowAdminInput(false); setAdminPass(''); setAdminError(''); }} className="text-xs text-gray-500 hover:text-white">Hủy</button>
-                        {adminError && <span className="text-xs text-red-400">{adminError}</span>}
-                    </div>
-                ) : (
-                    <button onClick={() => setShowAdminInput(true)} className="text-xs text-gray-600 hover:text-gray-400">🔒 Admin</button>
-                )}
-            </div>
+            {/* P2-03: Admin badge — hiển thị status khi đã login admin (qua tab Settings).
+                Không có inline login: muốn unlock cost view → vào tab Cài Đặt → AdminGate xử lý. */}
+            {isAdmin && (
+                <div className="flex justify-end mb-2">
+                    <span className="text-xs text-green-400">🔓 Admin mode</span>
+                </div>
+            )}
 
             {/* Phương án tối ưu nhất — chỉ admin */}
             <div className={`bg-gray-800 p-6 rounded-lg border border-green-500 mb-8 ${(!isShowingMinPrice || !isAdmin) ? 'hidden' : ''}`}>

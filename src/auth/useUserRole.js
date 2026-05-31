@@ -3,7 +3,7 @@
 // Auto-fetch khi user.id thay đổi. Expose `refreshRole()` để re-fetch thủ công
 // (ví dụ sau khi admin vừa cập nhật role qua Dashboard).
 //
-// CHƯA wire vào UI ở P2-02 — sẽ wire ở P2-03 thay TEMP_ADMIN_PASSWORD_PLACEHOLDER.
+// P2-03: đã wire qua AdminGate (src/auth/AdminGate.jsx) để gate 4 SettingsPanel.
 
 import { useState, useEffect, useCallback } from 'react';
 import { getUserRole, isAdminRole } from './roleService.js';

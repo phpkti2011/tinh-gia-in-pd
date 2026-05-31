@@ -41,23 +41,10 @@ function NumInput({ configValue, onCommit, isPercentage = false, className, step
 }
 
 export default function SettingsPanel({ config, onSave, onCancel }) {
-    const [password, setPassword] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [errorMsg, setErrorMsg] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-
+    // P2-03: Password gate cũ đã được xoá. Auth/role check giờ thực hiện ngoài
+    // component qua <AdminGate> wrapper ở App.jsx — chỉ admin
+    // (useUserRole.isAdmin === true) mới render được panel này.
     const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
-
-    const handlePasswordCheck = (e) => {
-        if (e.key === 'Enter' || e.type === 'click') {
-            if (password === 'TEMP_ADMIN_PASSWORD_PLACEHOLDER') {
-                setIsAuthenticated(true);
-                setErrorMsg('');
-            } else {
-                setErrorMsg('Mật khẩu không đúng!');
-            }
-        }
-    };
 
     const handleSave = () => {
         try {
@@ -99,37 +86,6 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
     const inputClsPr = inputCls + " pr-12";
     const inputClsSm = "w-36 bg-gray-900 border border-gray-700 rounded px-2 py-1 pr-8 text-white focus:outline-none focus:border-blue-500 text-sm";
     const labelCls = "text-gray-400 text-sm block mb-1";
-
-    if (!isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 w-full max-w-md text-center">
-                    <h2 className="text-2xl font-bold text-white mb-6">Xác Thực Quản Trị Viên</h2>
-                    <div className="relative mb-4">
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyUp={handlePasswordCheck}
-                            placeholder="Nhập mật khẩu..."
-                            className="w-full bg-gray-900 border border-gray-600 rounded px-4 py-3 pr-12 text-white focus:outline-none focus:border-blue-500 text-center text-lg tracking-widest"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(v => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                            tabIndex={-1}
-                        >
-                            {showPassword ? '🙈' : '👁'}
-                        </button>
-                    </div>
-                    {errorMsg && <p className="text-red-500 mb-4">{errorMsg}</p>}
-                    <button onClick={handlePasswordCheck} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200">Xác Nhận</button>
-                    <button onClick={onCancel} className="mt-4 text-gray-400 hover:text-white underline">Quay Lại</button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">

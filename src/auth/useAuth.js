@@ -6,8 +6,9 @@
 // Hook tự subscribe vào onAuthStateChange — auto-update khi session thay đổi
 // (login/logout từ tab khác, session refresh, …).
 //
-// LƯU Ý: hook chưa được wire vào App.jsx ở P2-01. Sẽ wire ở P2-02/P2-03 khi
-// thay TEMP_ADMIN_PASSWORD_PLACEHOLDER bằng auth thật + role check.
+// P2-03: hook đã được wire vào AdminGate (src/auth/AdminGate.jsx) để gate 4
+// SettingsPanel; vào ResultPanel để show cost columns khi admin. Password
+// hardcoded cũ đã được xoá khỏi src/.
 
 import { useState, useEffect, useCallback } from 'react';
 import {

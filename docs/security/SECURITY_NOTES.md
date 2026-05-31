@@ -76,12 +76,37 @@ Sau `git status`, các file sau **không xuất hiện** nhưng vẫn tồn tạ
 
 ## 4. Việc cần làm ở task sau (KHÔNG làm ở TASK-0002.6)
 
-| Task tương lai | Việc |
-|---|---|
-| (sớm) Init Apps Script auth lại | Đổi password thật trên deployed Apps Script (vì password cũ đã lộ trong build cũ + file legacy). Cập nhật `google-apps-script.js` local. |
-| TASK-0006 (admin UI plan) | Chuyển auth qua Supabase / backend role-check. Bỏ hẳn `TEMP_ADMIN_PASSWORD_PLACEHOLDER` khỏi `src/`. |
-| (tùy chọn) | Wire password qua `import.meta.env.VITE_ADMIN_PASSWORD` (đọc từ `.env.local`) làm giải pháp trung gian trước khi có Supabase. |
-| (cleanup) | Xoá file legacy `tinh gia ep nhu ... .html`, `Tinh-gia-decal ... .xlsx` nếu xác nhận không cần. |
+| Task tương lai | Việc | Trạng thái |
+|---|---|---|
+| P2-01 (Supabase Auth foundation) | Singleton Supabase client + `useAuth` + `LoginPage`. | ✅ DONE (commit `9d12821`, tag `v2.0-supabase-auth-foundation`) |
+| P2-02 (Admin role model) | Bảng `user_roles` + `useUserRole` + RLS. | ✅ DONE (commit `05eb7bd`, tag `v2.1-admin-role-model`) |
+| **P2-03 (Wire auth + remove placeholder)** | **Thay hardcoded placeholder bằng `<AdminGate>` + Supabase auth/role. Xoá hết placeholder khỏi `src/`. Wire `VITE_ADMIN_PASSWORD` env var cho Apps Script call.** | ✅ **DONE (task này)** |
+| P2-04 (sớm) Rotate Apps Script | Đổi password thật trên deployed Apps Script (vì password cũ đã lộ trong build cũ + file legacy). Cập nhật `google-apps-script.js` local + `VITE_ADMIN_PASSWORD` trong `.env.local`. | ⏸ Pending |
+| P2-05..09 (Database & history) | Migrate config sang Supabase Database (bỏ hẳn Apps Script + `VITE_ADMIN_PASSWORD`). | ⏸ Pending |
+| (cleanup) | Xoá file legacy `tinh gia ep nhu ... .html`, `Tinh-gia-decal ... .xlsx` nếu xác nhận không cần. | ⏸ Pending |
+
+## 4bis. Cập nhật sau P2-03 (2026-05-31)
+
+### Đã làm
+
+- ✅ **Xoá hoàn toàn** chuỗi placeholder cũ khỏi `src/` (kể cả trong comments). `grep` trả 0 hit.
+- ✅ **Tạo `src/auth/AdminGate.jsx`** — wrapper component check Supabase Auth + role admin trước khi render Settings.
+- ✅ **Wire `<AdminGate>` vào 4 tab Settings** ở `src/App.jsx` (smallprint, large-print, decal, uvdtf).
+- ✅ **Xoá password gate cũ** khỏi 4 SettingsPanel — gồm state `password/isAuthenticated/errorMsg/showPassword`, hàm `handlePasswordCheck`, và toàn bộ early-return block password input.
+- ✅ **Thay admin reveal trong `ResultPanel.jsx`** (smallprint) — bỏ `ADMIN_PASSWORD` constant + inline password input; giờ `isAdmin` đến từ `useUserRole(useAuth().user)` (cùng session login).
+- ✅ **Apps Script password** đọc từ env `VITE_ADMIN_PASSWORD` thay vì hardcoded sanitized placeholder.
+
+### Hậu quả tích cực
+
+- Frontend không còn chứa bất kỳ chuỗi password nào.
+- Chỉ user login Supabase với role `admin` mới truy cập được Settings.
+- Staff/khách vẫn dùng được tab tính giá public (không bị gate).
+- Apps Script password được cấu hình qua `.env.local` (gitignored), không lộ trong git.
+
+### Còn lại sau P2-03
+
+- ⚠️ **Apps Script password thật vẫn cần rotate** (đã lộ trong build cũ trước-TASK-0002.6 + còn trong file legacy `google-apps-script.js` ngoài git). Đó là task P2-04.
+- ⚠️ **Cần Supabase project + bảng `user_roles`** setup phía bạn (manual SQL trong [docs/database/supabase-user-roles.sql](../database/supabase-user-roles.sql)) thì auth mới hoạt động end-to-end. Nếu thiếu env Supabase: AdminGate render `<LoginPage />` báo "Supabase chưa cấu hình" khi user submit → không crash.
 
 ## 5. Quy tắc bắt buộc trước khi push lên remote lần đầu
 

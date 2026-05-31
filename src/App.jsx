@@ -17,6 +17,16 @@ import { calculateCustomerQuote } from './utils/customerQuote';
 import { calculateLargePrint } from './utils/largePrintCalculator';
 import { calculateStickersPerSheet, calculateSheetsPerPrintSheet, generateSinglePriceTable, generateSheetPriceTable } from './utils/decalCalculator';
 import { calculateUvDtf } from './utils/uvdtfCalculator';
+import AdminGate from './auth/AdminGate';
+
+// P2-03: Apps Script cloud save password.
+// Trước P2-03: hardcoded sanitized placeholder (không match password thật →
+// cloud save luôn bị Apps Script reject).
+// Sau P2-03: đọc từ env VITE_ADMIN_PASSWORD. Nếu env trống → cloud save vẫn fail
+// nhưng local save (localStorage) qua saveXxxConfig vẫn OK trong từng SettingsPanel.
+// P2-04 sẽ rotate password Apps Script. P2-05+ sẽ thay Apps Script bằng Supabase
+// database → bỏ hẳn password này.
+const APPS_SCRIPT_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
 
 function HomePage({ onSelect }) {
     return (
@@ -168,7 +178,9 @@ function SmallPrintModule({ onBack }) {
                 </div>
             )}
             {activeTab === 'settings' && (
-                <SettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('printConfig', newConfig, 'TEMP_ADMIN_PASSWORD_PLACEHOLDER'); }} onCancel={() => setActiveTab('main')} />
+                <AdminGate>
+                    <SettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('printConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                </AdminGate>
             )}
         </div>
     );
@@ -242,7 +254,9 @@ function LargePrintModule({ onBack }) {
                 </div>
             )}
             {activeTab === 'settings' && (
-                <LPSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('largePrintConfig', newConfig, 'TEMP_ADMIN_PASSWORD_PLACEHOLDER'); }} onCancel={() => setActiveTab('main')} />
+                <AdminGate>
+                    <LPSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('largePrintConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                </AdminGate>
             )}
         </div>
     );
@@ -333,7 +347,9 @@ function DecalModule({ onBack }) {
                 </div>
             )}
             {activeTab === 'settings' && (
-                <DecalSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('decalConfig', newConfig, 'TEMP_ADMIN_PASSWORD_PLACEHOLDER'); }} onCancel={() => setActiveTab('main')} />
+                <AdminGate>
+                    <DecalSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('decalConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                </AdminGate>
             )}
         </div>
     );
@@ -394,7 +410,9 @@ function UvdtfModule({ onBack }) {
                 </div>
             )}
             {activeTab === 'settings' && (
-                <UvdtfSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('uvdtfConfig', newConfig, 'TEMP_ADMIN_PASSWORD_PLACEHOLDER'); }} onCancel={() => setActiveTab('main')} />
+                <AdminGate>
+                    <UvdtfSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('uvdtfConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                </AdminGate>
             )}
         </div>
     );

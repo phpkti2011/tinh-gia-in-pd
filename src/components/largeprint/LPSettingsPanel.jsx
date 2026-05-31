@@ -35,22 +35,8 @@ const tdCls = "px-3 py-2";
 const numCls = "bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-28 focus:outline-none focus:border-blue-500";
 
 export default function LPSettingsPanel({ config, onSave, onCancel }) {
-    const [password, setPassword] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [errorMsg, setErrorMsg] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
+    // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
     const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
-
-    const handlePasswordCheck = (e) => {
-        if (e.key === 'Enter' || e.type === 'click') {
-            if (password === 'TEMP_ADMIN_PASSWORD_PLACEHOLDER') {
-                setIsAuthenticated(true);
-                setErrorMsg('');
-            } else {
-                setErrorMsg('Mật khẩu không đúng!');
-            }
-        }
-    };
 
     const handleSave = () => {
         try {
@@ -130,40 +116,6 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
     const updateDieCut = (field, val) => updateConfig(c => { c.FINISHING_PRICES.dieCutting[field] = val; });
 
     // ========== RENDER ==========
-    if (!isAuthenticated) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-                <div className="bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-md">
-                    <h2 className="text-xl font-bold text-cyan-400 mb-4">Cài đặt In Khổ Lớn</h2>
-                    <label className={labelCls}>Nhập mật khẩu quản trị:</label>
-                    <div className="relative mb-3">
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            onKeyDown={handlePasswordCheck}
-                            className={inputClsPr}
-                            placeholder="Mật khẩu..."
-                            autoFocus
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(p => !p)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm px-2"
-                        >
-                            {showPassword ? 'Ẩn' : 'Hiện'}
-                        </button>
-                    </div>
-                    {errorMsg && <p className="text-red-400 text-sm mb-3">{errorMsg}</p>}
-                    <div className="flex gap-3">
-                        <button onClick={handlePasswordCheck} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Xác nhận</button>
-                        <button onClick={onCancel} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium">Hủy</button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     const mat = localConfig.MATERIAL_TYPES;
     const lam = localConfig.LAMINATION_TYPES;
     const formex = localConfig.FORMEX_OPTIONS;

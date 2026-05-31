@@ -3,9 +3,10 @@
 > Ngày: 2026-05-31 (cập nhật khi P2-02 hoàn thành)
 > Tiến độ Phase 2:
 > - ✅ **P2-01 done** — Supabase client + auth service + useAuth + LoginPage (tag `v2.0-supabase-auth-foundation`).
-> - ✅ **P2-02 done** — user_roles schema + useUserRole hook (xem [phase-2-admin-role-model.md](phase-2-admin-role-model.md)).
-> - 🔴 **P2-03 pending** — wire role admin vào 4 SettingsPanel + xoá `TEMP_ADMIN_PASSWORD_PLACEHOLDER`.
-> - ⏸ P2-04..09 — rotate password Apps Script, database config, history, rollback.
+> - ✅ **P2-02 done** — user_roles schema + useUserRole hook (tag `v2.1-admin-role-model`).
+> - ✅ **P2-03 done** — `<AdminGate>` wrap 4 SettingsPanel, password placeholder cũ ĐÃ XOÁ KHỎI `src/`. ResultPanel admin reveal giờ dựa vào Supabase role. Apps Script password đọc từ env `VITE_ADMIN_PASSWORD`.
+> - ⏸ P2-04 — rotate password Apps Script (đã lộ trong git history trước-TASK-0002.6).
+> - ⏸ P2-05..09 — Supabase database config, history, rollback.
 
 ## 1. Mục tiêu auth (Phase 2 — group Auth & Admin)
 

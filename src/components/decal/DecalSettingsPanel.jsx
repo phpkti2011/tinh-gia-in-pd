@@ -24,23 +24,8 @@ function NumInput({ configValue, onCommit, className, step }) {
 }
 
 export default function DecalSettingsPanel({ config, onSave, onCancel }) {
-    const [password, setPassword] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [errorMsg, setErrorMsg] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-
+    // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
     const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
-
-    const handlePasswordCheck = (e) => {
-        if (e.key === 'Enter' || e.type === 'click') {
-            if (password === 'TEMP_ADMIN_PASSWORD_PLACEHOLDER') {
-                setIsAuthenticated(true);
-                setErrorMsg('');
-            } else {
-                setErrorMsg('Mật khẩu không đúng!');
-            }
-        }
-    };
 
     const handleSave = () => {
         try {
@@ -81,37 +66,6 @@ export default function DecalSettingsPanel({ config, onSave, onCancel }) {
 
     const fi = (path, configValue, step, cls) =>
         <NumInput configValue={configValue} step={step} className={cls || inputClsPr} onCommit={(val) => updateNestedField(path, val)}/>;
-
-    if (!isAuthenticated) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 w-full max-w-md text-center">
-                    <h2 className="text-2xl font-bold text-white mb-6">Xac Thuc Quan Tri Vien</h2>
-                    <div className="relative mb-4">
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyUp={handlePasswordCheck}
-                            placeholder="Nhap mat khau..."
-                            className="w-full bg-gray-900 border border-gray-600 rounded px-4 py-3 pr-12 text-white focus:outline-none focus:border-blue-500 text-center text-lg tracking-widest"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(v => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                            tabIndex={-1}
-                        >
-                            {showPassword ? '\u{1F648}' : '\u{1F441}'}
-                        </button>
-                    </div>
-                    {errorMsg && <p className="text-red-500 mb-4">{errorMsg}</p>}
-                    <button onClick={handlePasswordCheck} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200">Xac Nhan</button>
-                    <button onClick={onCancel} className="mt-4 text-gray-400 hover:text-white underline">Quay Lai</button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
