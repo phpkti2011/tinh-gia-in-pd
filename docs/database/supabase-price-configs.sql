@@ -215,6 +215,101 @@ create policy "price_change_logs_admin_insert"
 -- KHONG co policy UPDATE/DELETE.
 
 -- ============================================================================
+-- 7bis. RPC function save_price_config(p_module, p_data, p_schema_version, p_note)
+--       Transactional save: insert version + upsert config + insert log.
+--       Goi tu frontend qua supabase.rpc('save_price_config', {...}).
+--       Added in P2-05.2.
+-- ============================================================================
+
+create or replace function public.save_price_config(
+    p_module         text,
+    p_data           jsonb,
+    p_schema_version text,
+    p_note           text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_current_version integer;
+    v_new_version     integer;
+    v_action          text;
+    v_user_id         uuid;
+begin
+    -- 1. Auth check: chi admin (re-use is_admin() helper)
+    if not public.is_admin() then
+        raise exception 'forbidden: admin role required to save price config'
+            using errcode = '42501';  -- insufficient_privilege
+    end if;
+
+    v_user_id := auth.uid();
+
+    -- 2. Validate module enum (CHECK constraint cua bang cung enforce, day la safety net)
+    if p_module not in ('decal','small-print','large-print','uvdtf') then
+        raise exception 'invalid module: %', p_module
+            using errcode = '22023';  -- invalid_parameter_value
+    end if;
+
+    -- 3. Lookup current version (null neu chua co)
+    select current_version into v_current_version
+    from public.price_configs
+    where module = p_module
+    for update;  -- lock row de tranh race condition multi admin
+
+    if v_current_version is null then
+        v_new_version := 1;
+        v_action      := 'create';
+    else
+        v_new_version := v_current_version + 1;
+        v_action      := 'update';
+    end if;
+
+    -- 4. Insert version snapshot (UNIQUE(module, version) chong duplicate)
+    insert into public.price_config_versions (
+        module, version, schema_version, data, note, created_by
+    ) values (
+        p_module, v_new_version, p_schema_version, p_data, p_note, v_user_id
+    );
+
+    -- 5. Upsert current config (PK = module via UNIQUE)
+    insert into public.price_configs (
+        module, current_version, schema_version, data, updated_by
+    ) values (
+        p_module, v_new_version, p_schema_version, p_data, v_user_id
+    )
+    on conflict (module) do update set
+        current_version = excluded.current_version,
+        schema_version  = excluded.schema_version,
+        data            = excluded.data,
+        updated_by      = excluded.updated_by;
+        -- updated_at auto-set boi trigger trg_price_configs_touch
+
+    -- 6. Audit log
+    insert into public.price_change_logs (
+        module, action, old_version, new_version, note, changed_by
+    ) values (
+        p_module, v_action, v_current_version, v_new_version, p_note, v_user_id
+    );
+
+    return jsonb_build_object(
+        'ok',          true,
+        'module',      p_module,
+        'new_version', v_new_version,
+        'action',      v_action
+    );
+end;
+$$;
+
+comment on function public.save_price_config(text, jsonb, text, text) is
+    'Transactional save price config: insert version snapshot + upsert current + audit log. Security definer + is_admin() check de bypass RLS an toan.';
+
+-- Grant execute: chi authenticated (admin check trong function body)
+revoke all on function public.save_price_config(text, jsonb, text, text) from public;
+grant execute on function public.save_price_config(text, jsonb, text, text) to authenticated;
+
+-- ============================================================================
 -- 8. Verify (chay sau khi setup xong)
 -- ============================================================================
 -- select count(*) from public.price_configs;          -- expect: 0 (chua seed)
@@ -226,10 +321,33 @@ create policy "price_change_logs_admin_insert"
 --   - Login user khong phai admin → INSERT price_configs phai bi tu choi.
 --   - Anon (logout) → SELECT price_configs van OK (de calculator chay).
 --   - Anon → SELECT price_config_versions / price_change_logs phai bi tu choi.
+--
+-- Test RPC save_price_config (login admin):
+--   select public.save_price_config(
+--       'decal'::text,
+--       '{"test": 1}'::jsonb,
+--       '1.0.0'::text,
+--       'test save'::text
+--   );
+--   -- Expect: {"ok": true, "module": "decal", "new_version": 1, "action": "create"}
+--
+--   -- Goi lai voi data khac:
+--   select public.save_price_config('decal', '{"test": 2}'::jsonb, '1.0.0', 'test 2');
+--   -- Expect: {"ok": true, "module": "decal", "new_version": 2, "action": "update"}
+--
+--   -- Verify:
+--   select * from public.price_configs;          -- 1 row, current_version = 2
+--   select * from public.price_config_versions order by version;  -- 2 rows
+--   select * from public.price_change_logs;      -- 2 rows (create + update)
+--
+-- Test khi user khong phai admin goi RPC:
+--   select public.save_price_config('decal', '{}'::jsonb, '1.0.0', null);
+--   -- Expect: ERROR — forbidden (errcode 42501)
 
 -- ============================================================================
 -- 9. Rollback (neu can xoa hoan toan — DESTRUCTIVE)
 -- ============================================================================
+-- drop function if exists public.save_price_config(text, jsonb, text, text);
 -- drop trigger if exists trg_price_configs_touch on public.price_configs;
 -- drop table if exists public.price_change_logs;
 -- drop table if exists public.price_config_versions;

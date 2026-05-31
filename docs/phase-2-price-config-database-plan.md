@@ -9,14 +9,14 @@
 Migrate cloud sync config từ Google Apps Script sang Supabase Database, kèm version history + audit log. Long-term: bỏ hẳn Apps Script + `VITE_ADMIN_PASSWORD`, dùng Supabase JWT làm auth duy nhất.
 
 P2-05 sẽ chia thành nhiều sub-task:
-| Sub-task | Mục tiêu |
-|---|---|
-| **P2-05.1** (task này) | Schema + RLS + docs. CHƯA wire app. |
-| P2-05.2 | Adapter `src/lib/priceConfigStore.js` đọc/ghi qua Supabase client. |
-| P2-05.3 | `configStorage.js` đọc cloud từ Supabase (vẫn giữ Apps Script làm fallback). |
-| P2-05.4 | `configStorage.js` save lên Supabase + tạo version + log. Bỏ Apps Script khỏi save path. |
-| P2-05.5 | UI history/rollback cho admin (xem version cũ, rollback). |
-| P2-05.6 | Cleanup: remove Apps Script code + `VITE_ADMIN_PASSWORD` env + `cloudSync.js` legacy. |
+| Sub-task | Mục tiêu | Trạng thái |
+|---|---|---|
+| **P2-05.1** | Schema + RLS + docs. CHƯA wire app. | ✅ DONE |
+| **P2-05.2** | Adapter `src/lib/priceConfigStore.js` + RPC `save_price_config()`. CHƯA wire vào UI. | ✅ DONE |
+| P2-05.3 | `configStorage.js` đọc cloud từ Supabase (vẫn giữ Apps Script làm fallback). | ⏸ |
+| P2-05.4 | `configStorage.js` save lên Supabase + tạo version + log. Bỏ Apps Script khỏi save path. | ⏸ |
+| P2-05.5 | UI history/rollback cho admin (xem version cũ, rollback). | ⏸ |
+| P2-05.6 | Cleanup: remove Apps Script code + `VITE_ADMIN_PASSWORD` env + `cloudSync.js` legacy. | ⏸ |
 
 ## 2. Tại sao chuyển từ Apps Script sang Supabase
 
@@ -207,17 +207,46 @@ Lưu ý: **Supabase JS client chưa support multi-statement transaction nguyên 
 
 ## 10. Task tiếp theo
 
-### P2-05.2: Supabase price config adapter
+### ✅ P2-05.2: Supabase price config adapter — DONE
 
-Code phía mình:
-- `src/lib/priceConfigStore.js`:
-  - `loadConfigFromSupabase(module)` → query price_configs.
-  - `saveConfigToSupabase(module, data, schemaVersion, note)` → transactional INSERT version + UPSERT config + INSERT log (qua Postgres function `rpc('save_price_config', {...})` recommend).
-  - `loadVersionHistory(module, limit)` → query versions.
-  - `loadChangeLog(module, limit)` → query logs.
-- Handle null Supabase gracefully (giống `roleService.js` từ P2-02).
-- Test smoke: 6-8 tests verify function exists + handle null Supabase.
+- ✅ `src/lib/priceConfigStore.js` — 5 export functions:
+  - `isPriceConfigStoreAvailable()` → boolean
+  - `loadConfigFromSupabase(module)` → `{data, current_version, schema_version, updated_at}|null`
+  - `saveConfigToSupabase(module, data, schemaVersion, note)` → `{ok, error, newVersion}` (gọi RPC)
+  - `loadVersionHistory(module, limit=20)` → array
+  - `loadChangeLog(module, limit=20)` → array
+- ✅ Postgres function `public.save_price_config(p_module, p_data, p_schema_version, p_note)` trong SQL file — transactional + is_admin() check + grant authenticated.
+- ✅ Tất cả handle null Supabase gracefully (null/[]/ok=false, không throw).
+- ✅ ~25 smoke tests trong `tests/lib/priceConfigStore.test.js`.
+- ❌ **CHƯA wire** vào `configStorage.js` / SettingsPanel — đó là P2-05.3/04.
 
-### P2-05.3..06
+### ⏸ P2-05.3: Wire READ từ Supabase
 
-Xem mục 1 trong file này.
+- Modify `configStorage.js` 4 hàm `load{Print,Decal,LargePrint,Uvdtf}Config()`:
+  ```js
+  // Pseudo:
+  const supaConfig = await loadConfigFromSupabase('xxx');
+  if (supaConfig?.data) return supaConfig.data;
+  // Fallback Apps Script (giữ tạm) → localStorage → defaultConfig.
+  ```
+- Apps Script vẫn là fallback tạm thời (chưa xoá ở P2-05.3).
+
+### ⏸ P2-05.4: Wire SAVE qua Supabase
+
+- Modify `configStorage.js` 4 hàm `save{Print,Decal,LargePrint,Uvdtf}Config()`:
+  - Sau khi validate schema + save localStorage → gọi `saveConfigToSupabase(...)`.
+  - Bỏ `saveConfigToCloud()` Apps Script (P2-05.6 xoá hẳn code).
+- App.jsx có thể xoá `APPS_SCRIPT_PASSWORD` const + 4 truyền vào (chỉ giữ load fallback).
+
+### ⏸ P2-05.5: UI history/rollback
+
+- Tab "Lịch sử" trong SettingsPanel — hiển thị `loadVersionHistory()` + `loadChangeLog()`.
+- Nút "Rollback về v N" — gọi `saveConfigToSupabase()` với data của version cũ → tự động thành version mới.
+
+### ⏸ P2-05.6: Remove Apps Script
+
+- Xoá `src/utils/cloudSync.js` (saveCloudConfig, fetchCloudConfig).
+- Xoá `import.meta.env.VITE_ADMIN_PASSWORD` khỏi App.jsx.
+- Xoá `VITE_ADMIN_PASSWORD` khỏi `.env.example`.
+- Cleanup `loadConfigFromCloud`/`saveConfigToCloud` trong `configStorage.js`.
+- Update docs/security/SECURITY_NOTES.md: mục R1-R4 đóng (không còn Apps Script password).
