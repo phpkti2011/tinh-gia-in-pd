@@ -25,12 +25,11 @@ function createLocalStorageMock() {
 }
 globalThis.localStorage = createLocalStorageMock();
 
+// P2-05.6: bỏ dynamic import cloudSync.js (file đã xoá).
 const { loadLargePrintConfig, saveLargePrintConfig, saveConfigToCloud } =
     await import('../../src/utils/configStorage.js');
 const { LARGE_PRINT_DEFAULT_CONFIG } =
     await import('../../src/modules/large-print/config/index.js');
-const { setAppsScriptUrl } =
-    await import('../../src/utils/cloudSync.js');
 
 describe('TASK-0017: validateLargePrintConfig wired vào configStorage', () => {
     let warnSpy, errorSpy;
@@ -125,12 +124,11 @@ describe('TASK-0017: validateLargePrintConfig wired vào configStorage', () => {
 
     // ─────────────────────────────────────────────────────────────────────
     describe('saveConfigToCloud (async, largePrintConfig branch)', () => {
-        beforeEach(() => {
-            setAppsScriptUrl(''); // tắt cloud
-        });
+        // P2-05.6: Apps Script đã xoá → không cần setAppsScriptUrl('') để tắt cloud.
+        // saveConfigToCloud chỉ còn 2 args.
 
         it('largePrintConfig invalid → {local:false, cloud:false, error}', async () => {
-            const r = await saveConfigToCloud('largePrintConfig', { foo: 'bar' }, 'pw');
+            const r = await saveConfigToCloud('largePrintConfig', { foo: 'bar' });
             expect(r.local).toBe(false);
             expect(r.cloud).toBe(false);
             expect(r.error).toMatch(/invalid/i);

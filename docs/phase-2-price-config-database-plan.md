@@ -15,8 +15,8 @@ P2-05 sẽ chia thành nhiều sub-task:
 | **P2-05.2** | Adapter `src/lib/priceConfigStore.js` + RPC `save_price_config()`. CHƯA wire vào UI. | ✅ DONE |
 | **P2-05.3** | `configStorage.loadConfigFromCloud()` ưu tiên Supabase → Apps Script fallback → localStorage → default. | ✅ DONE |
 | **P2-05.4** | `configStorage.saveConfigToCloud()` save 100% qua Supabase RPC. Apps Script KHÔNG còn ở save path. App.jsx bỏ `APPS_SCRIPT_PASSWORD`. | ✅ DONE |
-| P2-05.5 | UI history/rollback cho admin (xem version cũ, rollback). | ⏸ |
-| P2-05.6 | Cleanup: remove Apps Script code + `VITE_ADMIN_PASSWORD` env + `cloudSync.js` legacy. | ⏸ |
+| P2-05.5 | UI history/rollback cho admin (xem version cũ, rollback). | ⏸ (optional) |
+| **P2-05.6** | Cleanup: remove Apps Script code + `VITE_ADMIN_PASSWORD` env + `cloudSync.js` legacy. App 100% Supabase. | ✅ DONE |
 
 ## 2. Tại sao chuyển từ Apps Script sang Supabase
 
@@ -290,10 +290,22 @@ Tests: 17 integration tests trong `tests/lib/configStorage.supabase-save.test.js
 - Tab "Lịch sử" trong SettingsPanel — hiển thị `loadVersionHistory()` + `loadChangeLog()`.
 - Nút "Rollback về v N" — gọi `saveConfigToSupabase()` với data của version cũ → tự động thành version mới.
 
-### ⏸ P2-05.6: Remove Apps Script
+### ✅ P2-05.6: Remove Apps Script — DONE
 
-- Xoá `src/utils/cloudSync.js` (saveCloudConfig, fetchCloudConfig).
-- Xoá `import.meta.env.VITE_ADMIN_PASSWORD` khỏi App.jsx.
-- Xoá `VITE_ADMIN_PASSWORD` khỏi `.env.example`.
-- Cleanup `loadConfigFromCloud`/`saveConfigToCloud` trong `configStorage.js`.
-- Update docs/security/SECURITY_NOTES.md: mục R1-R4 đóng (không còn Apps Script password).
+- ✅ Xoá `src/utils/cloudSync.js` hoàn toàn.
+- ✅ Xoá `src/components/CloudSetup.jsx` (dead code — không nơi nào import).
+- ✅ Extract `restoreInfinity()` → `src/utils/restoreInfinity.js` (helper riêng cho cả Supabase data + localStorage).
+- ✅ Xoá Apps Script block khỏi `loadConfigFromCloud()`. Priority order mới: Supabase → localStorage → default.
+- ✅ Xoá `_password` param khỏi `saveConfigToCloud(moduleName, config)` (chỉ 2 args).
+- ✅ App.jsx — không còn reference `APPS_SCRIPT_PASSWORD` / `VITE_ADMIN_PASSWORD` (chỉ comment lịch sử).
+- ✅ Xoá `VITE_ADMIN_PASSWORD` + `VITE_APPS_SCRIPT_URL` khỏi `.env.example`.
+- ✅ Update 4 golden config storage tests + 2 supabase tests: bỏ cloudSync mock + `setAppsScriptUrl` calls.
+- ✅ Tests: 439 passed (giảm 1 vs P2-05.4 — net -3 Apps Script test + 2 P2-05.6 sig test).
+- ✅ Update docs/security/SECURITY_NOTES.md: thêm mục 4cinque đánh dấu Apps Script runtime removed.
+- ✅ Update docs/security/apps-script-password-rotation.md: thêm header note "guide chỉ còn áp dụng cho legacy/decommission".
+
+App state sau P2-05.6:
+- Cloud source duy nhất: **Supabase** (RPC + RLS + Auth JWT).
+- Fallback: localStorage → default config.
+- Backward compat: nếu Supabase env thiếu → app vẫn chạy với localStorage/default, KHÔNG crash.
+- Đóng rủi ro R3/R4 (Apps Script password endpoint còn nhận password cũ → app không gọi nữa). R5 (git history) vẫn cần manual rotation/decommission Apps Script endpoint phía Google nếu muốn full closure.

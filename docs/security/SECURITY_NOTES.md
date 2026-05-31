@@ -161,6 +161,41 @@ git grep -in '<OLD_PWD_SUBSTRING>'   # phải trả về 0 hits
 
 2. Cho repo PRIVATE (chưa public): có thể trì hoãn rewrite history; tập trung rotate password thật trước.
 
+## 4cinque. Cập nhật sau P2-05.6 (2026-05-31)
+
+### Đã làm trong P2-05.6
+
+Apps Script cloud sync **đã được REMOVE hoàn toàn** khỏi runtime của app:
+
+| File | Trạng thái |
+|---|---|
+| `src/utils/cloudSync.js` | ❌ **Deleted** |
+| `src/components/CloudSetup.jsx` | ❌ **Deleted** (dead code — không nơi nào import) |
+| `src/utils/configStorage.js` | ✅ Bỏ tất cả import từ cloudSync; bỏ Apps Script block trong `loadConfigFromCloud`; bỏ `_password` param khỏi `saveConfigToCloud` |
+| `src/utils/restoreInfinity.js` | ✅ **Created** (extract helper từ cloudSync) |
+| `src/App.jsx` | ✅ Comment cập nhật — không còn dùng `VITE_ADMIN_PASSWORD` |
+| `.env.example` | ✅ Bỏ `VITE_ADMIN_PASSWORD` + `VITE_APPS_SCRIPT_URL` (chỉ còn note giải thích đã removed) |
+
+### Hậu quả tích cực (đóng rủi ro)
+
+- ✅ **Frontend app KHÔNG còn POST tới Apps Script endpoint** trong bất kỳ flow nào (save hay read).
+- ✅ **Bundle không còn import supabase-js + Apps Script wrapper** — bundle thuần Supabase.
+- ✅ **`.env.local` / Vercel Environment Variables KHÔNG cần `VITE_ADMIN_PASSWORD` nữa** — admin có thể xoá khỏi config.
+- ✅ **Rủi ro R3** (file legacy `google-apps-script.js` còn chứa password) — vẫn tồn tại trên đĩa nhưng KHÔNG còn ảnh hưởng app runtime.
+- ✅ **Rủi ro R4** (Vercel env chưa update) — không còn ý nghĩa vì app không đọc env này nữa.
+
+### Còn lại sau P2-05.6
+
+- ⚠️ **Apps Script endpoint deployed phía Google vẫn alive** — nếu ai đó biết URL + password cũ có thể vẫn POST thẳng (bypass app). Mitigation:
+  - **Khuyến nghị**: Decommission Apps Script project hoàn toàn (Dashboard → Project Settings → Disable). Hoặc ít nhất rotate password để endpoint cũ chết.
+  - URL endpoint cũ trong git history (commit `98bfad8` và trước) — không thay đổi được trừ khi rewrite history.
+- ⚠️ **R5 (git history leak)** vẫn còn — chỉ đóng bằng `git filter-repo --replace-text` (destructive, mất tag hash).
+
+### Liên kết
+
+- [docs/security/apps-script-password-rotation.md](apps-script-password-rotation.md) — guide rotation giờ chỉ áp dụng cho **legacy decommission** (nếu muốn deactivate endpoint cũ).
+- [docs/phase-2-price-config-database-plan.md](../phase-2-price-config-database-plan.md) — P2-05 roadmap đã đóng (5/6 done; P2-05.5 UI history optional).
+
 ## 5. Quy tắc bắt buộc trước khi push lên remote lần đầu
 
 > Trong các lệnh dưới, thay `<OLD_ADMIN_PASSWORD>` bằng chuỗi password cũ. Chuỗi này **không lưu trong repo** — hãy giữ trong password manager riêng và copy-paste khi chạy lệnh.

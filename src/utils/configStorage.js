@@ -2,17 +2,19 @@ import { DEFAULT_CONFIG } from '../config/defaultConfig';
 import { LARGE_PRINT_DEFAULT_CONFIG } from '../config/largePrintConfig';
 import { DECAL_DEFAULT_CONFIG } from '../config/decalConfig';
 import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
-import { fetchCloudConfig, isCloudEnabled, restoreInfinity } from './cloudSync';
+import { restoreInfinity } from './restoreInfinity.js';
 import { validateDecalConfig, DECAL_CONFIG_SCHEMA_VERSION } from '../modules/decal/config/index.js';
 import { validateSmallPrintConfig, SMALL_PRINT_CONFIG_SCHEMA_VERSION } from '../modules/small-print/config/index.js';
 import { validateUvDtfConfig, UVDTF_CONFIG_SCHEMA_VERSION } from '../modules/uvdtf/config/index.js';
 import { validateLargePrintConfig, LARGE_PRINT_CONFIG_SCHEMA_VERSION } from '../modules/large-print/config/index.js';
 import { loadConfigFromSupabase, saveConfigToSupabase } from '../lib/priceConfigStore.js';
 
-// LƯU Ý: P2-05.4 đã xoá `saveCloudConfig` khỏi save path (không gọi Apps Script
-// khi admin lưu). `saveCloudConfig` vẫn còn export trong cloudSync.js — chỉ
-// được dùng nếu caller bên ngoài cần. Read fallback `fetchCloudConfig` vẫn giữ
-// đến P2-05.6.
+// P2-05.6: Apps Script đã được REMOVE hoàn toàn:
+//   - src/utils/cloudSync.js: deleted.
+//   - fetchCloudConfig / saveCloudConfig / isCloudEnabled: gone.
+//   - Read fallback Apps Script trong loadConfigFromCloud: gone.
+//   - VITE_ADMIN_PASSWORD env var: gone khỏi .env.example.
+// Cloud source duy nhất bây giờ là Supabase database (priceConfigStore).
 
 // TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
 // isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
@@ -95,32 +97,33 @@ function isValidConfig(moduleName, data) {
         && otherKeys.every(k => data[k] != null);
 }
 
-// Async: load config ưu tiên Supabase → Apps Script cloud → localStorage → default.
-// P2-05.3: thêm Supabase block ở đầu. Apps Script vẫn còn làm fallback đến P2-05.6.
-// Nếu Supabase chưa cấu hình env / chưa có row / data invalid → fallback xuống Apps Script.
+// Async: load config ưu tiên Supabase → localStorage → default.
+// P2-05.6: Apps Script fallback đã được REMOVE. Cloud source duy nhất là Supabase.
+// Nếu Supabase chưa cấu hình env / chưa có row / data invalid → fallback xuống
+// localStorage → default.
 export async function loadConfigFromCloud(moduleName) {
     const mod = MODULE_MAP[moduleName];
     if (!mod) return null;
     const defaultCfg = JSON.parse(JSON.stringify(mod.default));
 
-    // P2-05.3: Thử Supabase trước (priority cao nhất).
+    // P2-05.3 (giữ): Thử Supabase trước (cloud source duy nhất sau P2-05.6).
     // Adapter handle null Supabase gracefully → trả null, không throw.
-    // restoreInfinity() khôi phục Infinity từ null trong jsonb (giống Apps Script
-    // + localStorage path) — vì jsonb serialization làm mất Infinity giống JSON.
+    // restoreInfinity() khôi phục Infinity từ null trong jsonb (jsonb
+    // serialization làm mất Infinity giống JSON).
     if (mod.supabaseKey) {
         try {
             const supaResult = await loadConfigFromSupabase(mod.supabaseKey);
             const supaData = supaResult?.data ? restoreInfinity(supaResult.data) : null;
             if (isValidConfig(moduleName, supaData)) {
-                // Deep schema check (cùng pattern với cloud + localStorage block bên dưới)
+                // Deep schema check (cùng pattern với localStorage block bên dưới)
                 if (moduleName === 'decalConfig' && !deepValidateDecal(supaData, 'supabase')) {
-                    // skip — fallback Apps Script
+                    // skip — fallback localStorage
                 } else if (moduleName === 'printConfig' && !deepValidatePrint(supaData, 'supabase')) {
-                    // skip — fallback Apps Script
+                    // skip — fallback localStorage
                 } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(supaData, 'supabase')) {
-                    // skip — fallback Apps Script
+                    // skip — fallback localStorage
                 } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(supaData, 'supabase')) {
-                    // skip — fallback Apps Script
+                    // skip — fallback localStorage
                 } else {
                     localStorage.setItem(mod.key, JSON.stringify(supaData));
                     return supaData;
@@ -128,31 +131,6 @@ export async function loadConfigFromCloud(moduleName) {
             }
         } catch (e) {
             console.warn(`[ConfigStorage] Supabase load failed for ${moduleName}:`, e.message);
-        }
-    }
-
-    // Fallback: Apps Script cloud (giữ đến P2-05.6 khi remove Apps Script hoàn toàn)
-    if (isCloudEnabled()) {
-        try {
-            const cloudData = await fetchCloudConfig(moduleName);
-            if (isValidConfig(moduleName, cloudData)) {
-                // TASK-0005.5 / TASK-0010 / TASK-0013 / TASK-0017:
-                // deep schema check cho decal + print + uvdtf + large-print
-                if (moduleName === 'decalConfig' && !deepValidateDecal(cloudData, 'cloud')) {
-                    // skip — fallback
-                } else if (moduleName === 'printConfig' && !deepValidatePrint(cloudData, 'cloud')) {
-                    // skip — fallback
-                } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(cloudData, 'cloud')) {
-                    // skip — fallback
-                } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(cloudData, 'cloud')) {
-                    // skip — fallback
-                } else {
-                    localStorage.setItem(mod.key, JSON.stringify(cloudData));
-                    return cloudData;
-                }
-            }
-        } catch (e) {
-            console.warn(`[ConfigStorage] Cloud load failed for ${moduleName}:`, e.message);
         }
     }
 
@@ -184,22 +162,17 @@ export async function loadConfigFromCloud(moduleName) {
 }
 
 // Async: save config vào localStorage + Supabase cloud.
-// P2-05.4: Đã chuyển save path từ Apps Script sang Supabase. Apps Script
-// `saveCloudConfig` KHÔNG còn được gọi trong save path (nhưng vẫn giữ
-// `fetchCloudConfig` ở read fallback đến P2-05.6).
+// P2-05.4 wire Supabase save. P2-05.6 xoá `_password` arg legacy (Apps Script).
 //
-// Param `_password` (legacy, không dùng): giữ tham số thứ 3 để backward compat
-// với caller cũ truyền password Apps Script. Sẽ xoá hoàn toàn ở P2-05.6.
-//
-// Return shape (P2-05.4):
+// Return shape:
 //   {
 //     local:       boolean,           — đã ghi localStorage chưa
 //     cloud:       boolean,           — đã ghi Supabase chưa
 //     error:       null | string,     — message nếu fail
-//     provider:    'supabase',        — provider cloud
+//     provider:    'supabase',        — provider cloud (chỉ Supabase sau P2-05.6)
 //     newVersion:  number | null      — version mới do RPC trả (nếu cloud thành công)
 //   }
-export async function saveConfigToCloud(moduleName, config, _password) {
+export async function saveConfigToCloud(moduleName, config) {
     const mod = MODULE_MAP[moduleName];
     if (!mod) {
         return { local: false, cloud: false, error: `Unknown module: ${moduleName}`, provider: 'supabase', newVersion: null };

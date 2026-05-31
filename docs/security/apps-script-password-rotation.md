@@ -1,8 +1,18 @@
-# Apps Script password rotation guide (P2-04)
+# Apps Script password rotation guide (P2-04 — LEGACY)
 
-> Ngày: 2026-05-31
-> Trạng thái: 🟡 Code path ready — chờ rotate phía Google Apps Script (manual)
-> Phụ thuộc: [P2-03 admin role wired](../phase-2-supabase-auth-plan.md)
+> ⚠️ **LEGACY NOTE (sau P2-05.6)**: Apps Script cloud sync **đã được REMOVE** khỏi
+> runtime của app. Guide này chỉ còn áp dụng nếu bạn muốn:
+> - **Decommission Apps Script endpoint** đang deployed phía Google (vì password cũ
+>   trong git history còn cho phép POST trực tiếp tới endpoint nếu nó còn alive).
+> - **Khuyến nghị**: Disable hoặc xoá Apps Script project hoàn toàn để đóng rủi ro
+>   bypass-app. Xem [SECURITY_NOTES.md mục 4cinque](SECURITY_NOTES.md).
+>
+> Các bước rotate `.env.local` / Vercel **KHÔNG còn ý nghĩa** vì app không đọc
+> `VITE_ADMIN_PASSWORD` nữa (đã bỏ ở P2-05.6).
+
+> Ngày tạo: 2026-05-31 (P2-04)
+> Trạng thái: 🟢 Code path đã removed (P2-05.6) — guide còn cho decommission
+> Phụ thuộc: [P2-03 admin role wired](../phase-2-supabase-auth-plan.md), [P2-05.6 remove Apps Script](../phase-2-price-config-database-plan.md)
 
 ## 1. Tại sao phải rotate
 

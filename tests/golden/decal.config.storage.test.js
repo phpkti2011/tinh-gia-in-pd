@@ -7,10 +7,10 @@
 //   - Roundtrip: save valid → load → identical
 //   - Không ảnh hưởng module khác (printConfig, …)
 //
-// MOCK localStorage: vì cloudSync.js đọc localStorage ở module-load time
-// (line `let APPS_SCRIPT_URL = localStorage.getItem(...)`), phải set
-// globalThis.localStorage TRƯỚC khi import. Static `import` bị hoisted lên
-// trên cùng nên dùng dynamic `import()` (await) sau khi gán mock.
+// MOCK localStorage: P2-05.6 đã xoá cloudSync.js, nhưng configStorage vẫn
+// đọc localStorage. Phải set globalThis.localStorage TRƯỚC khi import.
+// Static `import` bị hoisted lên trên cùng nên dùng dynamic `import()`
+// (await) sau khi gán mock.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -28,16 +28,15 @@ function createLocalStorageMock() {
     };
 }
 
-// 1) Set mock localStorage TRƯỚC mọi dynamic import của configStorage / cloudSync
+// 1) Set mock localStorage TRƯỚC mọi dynamic import của configStorage
 globalThis.localStorage = createLocalStorageMock();
 
 // 2) Top-level await dynamic import — chạy sau khi globalThis.localStorage đã có
+// P2-05.6: bỏ dynamic import cloudSync.js (file đã xoá).
 const { loadDecalConfig, saveDecalConfig, saveConfigToCloud } =
     await import('../../src/utils/configStorage.js');
 const { DECAL_DEFAULT_CONFIG } =
     await import('../../src/modules/decal/config/index.js');
-const { setAppsScriptUrl } =
-    await import('../../src/utils/cloudSync.js');
 
 describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
     let warnSpy, errorSpy;
@@ -137,12 +136,11 @@ describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
 
     // ─────────────────────────────────────────────────────────────────────
     describe('saveConfigToCloud (async, decal branch)', () => {
-        beforeEach(() => {
-            setAppsScriptUrl(''); // Tắt cloud để không gọi fetch
-        });
+        // P2-05.6: Apps Script đã xoá → không cần setAppsScriptUrl('') để tắt cloud.
+        // saveConfigToCloud chỉ còn 2 args (moduleName, config).
 
         it('decalConfig invalid → {local:false, cloud:false, error}, KHÔNG ghi localStorage', async () => {
-            const r = await saveConfigToCloud('decalConfig', { foo: 'bar' }, 'pw');
+            const r = await saveConfigToCloud('decalConfig', { foo: 'bar' });
             expect(r.local).toBe(false);
             expect(r.cloud).toBe(false);
             expect(r.error).toMatch(/invalid/i);

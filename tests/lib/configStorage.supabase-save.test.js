@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 //
-// Test cho P2-05.4 — wire SAVE config qua Supabase.
+// Test cho P2-05.4 + P2-05.6 — wire SAVE config qua Supabase.
 //
-// Mock priceConfigStore.saveConfigToSupabase + cloudSync.saveCloudConfig để:
-//   - Verify save path đi qua Supabase (KHÔNG gọi Apps Script).
-//   - Verify mapping moduleName → supabaseKey + schemaVersion đúng.
-//   - Verify return shape mới {local, cloud, error, provider, newVersion}.
-//   - Verify fallback an toàn khi Supabase fail / invalid config.
+// P2-05.6: cloudSync.js đã bị xoá. Chỉ mock priceConfigStore.
+//
+// Verify:
+//   - Save path đi qua Supabase only.
+//   - Mapping moduleName → supabaseKey + schemaVersion đúng.
+//   - Return shape {local, cloud, error, provider, newVersion}.
+//   - Fallback an toàn khi Supabase fail / invalid config.
 
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 
@@ -17,24 +19,13 @@ beforeAll(() => {
 // Mock factories — vi.mock hoisted
 const mockSaveSupabase = vi.fn();
 const mockLoadSupabase = vi.fn();
-const mockSaveCloud = vi.fn();
-const mockFetchCloud = vi.fn();
-const mockIsCloudEnabled = vi.fn(() => false);
 
 vi.mock('../../src/lib/priceConfigStore.js', () => ({
     loadConfigFromSupabase: (...args) => mockLoadSupabase(...args),
     saveConfigToSupabase: (...args) => mockSaveSupabase(...args),
 }));
 
-vi.mock('../../src/utils/cloudSync', async (importOriginal) => {
-    const actual = await importOriginal();
-    return {
-        ...actual,
-        saveCloudConfig: (...args) => mockSaveCloud(...args),
-        fetchCloudConfig: (...args) => mockFetchCloud(...args),
-        isCloudEnabled: () => mockIsCloudEnabled(),
-    };
-});
+// P2-05.6: KHÔNG mock cloudSync — file đã bị xoá khỏi src/.
 
 import { saveConfigToCloud } from '../../src/utils/configStorage.js';
 import { DECAL_DEFAULT_CONFIG } from '../../src/config/decalConfig.js';
@@ -56,9 +47,6 @@ const INVALID = { someRandomKey: 1 };
 beforeEach(() => {
     mockSaveSupabase.mockReset();
     mockLoadSupabase.mockReset();
-    mockSaveCloud.mockReset();
-    mockFetchCloud.mockReset();
-    mockIsCloudEnabled.mockReset();
     if (typeof localStorage !== 'undefined') localStorage.clear();
 });
 
@@ -113,32 +101,14 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         });
     });
 
-    describe('Apps Script KHÔNG còn được gọi trong save path', () => {
-        it('Save thành công → saveCloudConfig (Apps Script) KHÔNG được gọi', async () => {
-            mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
-            mockIsCloudEnabled.mockReturnValue(true);  // ngay cả khi cloud enabled
+    describe('P2-05.6: cloudSync.js removed — chữ ký saveConfigToCloud chỉ 2 args', () => {
+        it('saveConfigToCloud.length === 2 (param thứ 3 _password đã xoá)', () => {
+            expect(saveConfigToCloud.length).toBe(2);
+        });
 
+        it('Save thành công gọi Supabase với đúng 4 RPC args', async () => {
+            mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveCloud).not.toHaveBeenCalled();
-        });
-
-        it('Save fail Supabase → vẫn KHÔNG fallback Apps Script', async () => {
-            mockSaveSupabase.mockResolvedValue({
-                ok: false,
-                error: new Error('RLS denied'),
-                newVersion: null,
-            });
-            mockIsCloudEnabled.mockReturnValue(true);
-
-            const result = await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveCloud).not.toHaveBeenCalled();
-            expect(result.cloud).toBe(false);
-        });
-
-        it('Tham số _password legacy bị ignore', async () => {
-            mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
-            await saveConfigToCloud('decalConfig', VALID_DECAL, 'some-password-string');
-            // saveSupabase nhận đúng args (không có password):
             expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.0.0', null);
         });
     });

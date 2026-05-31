@@ -19,11 +19,12 @@ import { calculateStickersPerSheet, calculateSheetsPerPrintSheet, generateSingle
 import { calculateUvDtf } from './utils/uvdtfCalculator';
 import AdminGate from './auth/AdminGate';
 
-// P2-05.4: Save path đã chuyển từ Apps Script sang Supabase database
-// (qua saveConfigToSupabase + RPC save_price_config). Không cần password arg
-// nữa — Supabase Auth JWT + RLS admin check thay thế.
-// APPS_SCRIPT_PASSWORD const đã được xoá. VITE_ADMIN_PASSWORD env var vẫn còn
-// trong .env.example đến P2-05.6 (đợi remove Apps Script read fallback xong).
+// P2-05.6: Apps Script cloud sync ĐÃ ĐƯỢC REMOVE hoàn toàn:
+//   - src/utils/cloudSync.js: deleted.
+//   - VITE_ADMIN_PASSWORD env var: removed khỏi .env.example.
+//   - APPS_SCRIPT_PASSWORD const + 4 args: gone từ App.jsx (P2-05.4).
+// Cloud source duy nhất: Supabase (qua configStorage → priceConfigStore →
+// Supabase RPC + Auth JWT + RLS admin check).
 
 function HomePage({ onSelect }) {
     return (
