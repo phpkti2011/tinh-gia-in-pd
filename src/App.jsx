@@ -19,14 +19,11 @@ import { calculateStickersPerSheet, calculateSheetsPerPrintSheet, generateSingle
 import { calculateUvDtf } from './utils/uvdtfCalculator';
 import AdminGate from './auth/AdminGate';
 
-// P2-03: Apps Script cloud save password.
-// Trước P2-03: hardcoded sanitized placeholder (không match password thật →
-// cloud save luôn bị Apps Script reject).
-// Sau P2-03: đọc từ env VITE_ADMIN_PASSWORD. Nếu env trống → cloud save vẫn fail
-// nhưng local save (localStorage) qua saveXxxConfig vẫn OK trong từng SettingsPanel.
-// P2-04 sẽ rotate password Apps Script. P2-05+ sẽ thay Apps Script bằng Supabase
-// database → bỏ hẳn password này.
-const APPS_SCRIPT_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
+// P2-05.4: Save path đã chuyển từ Apps Script sang Supabase database
+// (qua saveConfigToSupabase + RPC save_price_config). Không cần password arg
+// nữa — Supabase Auth JWT + RLS admin check thay thế.
+// APPS_SCRIPT_PASSWORD const đã được xoá. VITE_ADMIN_PASSWORD env var vẫn còn
+// trong .env.example đến P2-05.6 (đợi remove Apps Script read fallback xong).
 
 function HomePage({ onSelect }) {
     return (
@@ -179,7 +176,7 @@ function SmallPrintModule({ onBack }) {
             )}
             {activeTab === 'settings' && (
                 <AdminGate>
-                    <SettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('printConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                    <SettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('printConfig', newConfig); }} onCancel={() => setActiveTab('main')} />
                 </AdminGate>
             )}
         </div>
@@ -255,7 +252,7 @@ function LargePrintModule({ onBack }) {
             )}
             {activeTab === 'settings' && (
                 <AdminGate>
-                    <LPSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('largePrintConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                    <LPSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('largePrintConfig', newConfig); }} onCancel={() => setActiveTab('main')} />
                 </AdminGate>
             )}
         </div>
@@ -348,7 +345,7 @@ function DecalModule({ onBack }) {
             )}
             {activeTab === 'settings' && (
                 <AdminGate>
-                    <DecalSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('decalConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                    <DecalSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('decalConfig', newConfig); }} onCancel={() => setActiveTab('main')} />
                 </AdminGate>
             )}
         </div>
@@ -411,7 +408,7 @@ function UvdtfModule({ onBack }) {
             )}
             {activeTab === 'settings' && (
                 <AdminGate>
-                    <UvdtfSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('uvdtfConfig', newConfig, APPS_SCRIPT_PASSWORD); }} onCancel={() => setActiveTab('main')} />
+                    <UvdtfSettingsPanel config={config} onSave={(newConfig) => { setConfig(newConfig); setActiveTab('main'); saveConfigToCloud('uvdtfConfig', newConfig); }} onCancel={() => setActiveTab('main')} />
                 </AdminGate>
             )}
         </div>

@@ -14,7 +14,7 @@ P2-05 sẽ chia thành nhiều sub-task:
 | **P2-05.1** | Schema + RLS + docs. CHƯA wire app. | ✅ DONE |
 | **P2-05.2** | Adapter `src/lib/priceConfigStore.js` + RPC `save_price_config()`. CHƯA wire vào UI. | ✅ DONE |
 | **P2-05.3** | `configStorage.loadConfigFromCloud()` ưu tiên Supabase → Apps Script fallback → localStorage → default. | ✅ DONE |
-| P2-05.4 | `configStorage.js` save lên Supabase + tạo version + log. Bỏ Apps Script khỏi save path. | ⏸ |
+| **P2-05.4** | `configStorage.saveConfigToCloud()` save 100% qua Supabase RPC. Apps Script KHÔNG còn ở save path. App.jsx bỏ `APPS_SCRIPT_PASSWORD`. | ✅ DONE |
 | P2-05.5 | UI history/rollback cho admin (xem version cũ, rollback). | ⏸ |
 | P2-05.6 | Cleanup: remove Apps Script code + `VITE_ADMIN_PASSWORD` env + `cloudSync.js` legacy. | ⏸ |
 
@@ -249,12 +249,41 @@ Tests: 7 integration tests trong `tests/lib/configStorage.supabase-read.test.js`
 - Supabase null / invalid / error → fallback Apps Script.
 - Tất cả fail → default.
 
-### ⏸ P2-05.4: Wire SAVE qua Supabase
+### ✅ P2-05.4: Wire SAVE qua Supabase — DONE
 
-- Modify `configStorage.js` 4 hàm `save{Print,Decal,LargePrint,Uvdtf}Config()`:
-  - Sau khi validate schema + save localStorage → gọi `saveConfigToSupabase(...)`.
-  - Bỏ `saveConfigToCloud()` Apps Script (P2-05.6 xoá hẳn code).
-- App.jsx có thể xoá `APPS_SCRIPT_PASSWORD` const + 4 truyền vào (chỉ giữ load fallback).
+Modify `configStorage.saveConfigToCloud(moduleName, config, _password)`:
+- **Param `_password` giữ làm legacy** (ignore) — backward compat caller cũ; sẽ xoá ở P2-05.6.
+- Validate config qua deep schema (giữ pattern TASK-0005.5/10/13/17).
+- Save `localStorage` (admin không mất data khi cloud fail).
+- Gọi `saveConfigToSupabase(supabaseKey, config, schemaVersion, null)` thay vì `saveCloudConfig` Apps Script.
+- `MODULE_MAP` thêm `schemaVersion` field map sang `XXX_CONFIG_SCHEMA_VERSION` từ `src/modules/<module>/config/version.js`.
+- Return shape mới:
+  ```js
+  {
+    local: true | false,
+    cloud: true | false,
+    error: null | string,
+    provider: 'supabase',
+    newVersion: number | null
+  }
+  ```
+
+Modify `App.jsx`:
+- Bỏ `const APPS_SCRIPT_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || ''`.
+- Bỏ tham số thứ 3 trong 4 lần gọi `saveConfigToCloud(module, newConfig)` (chỉ 2 args).
+
+Apps Script:
+- `saveCloudConfig` vẫn export trong `cloudSync.js` (KHÔNG xoá ở P2-05.4 per spec) — chỉ không được caller nào gọi từ save path.
+- `fetchCloudConfig` vẫn ở read fallback (`loadConfigFromCloud`) đến P2-05.6.
+- `VITE_ADMIN_PASSWORD` env var vẫn còn trong `.env.example` đến P2-05.6.
+
+Tests: 17 integration tests trong `tests/lib/configStorage.supabase-save.test.js`:
+- 4 module mapping (printConfig → small-print + schema version, …).
+- 3 verify Apps Script KHÔNG còn gọi (save thành công / fail / legacy password ignored).
+- 2 save thành công (return shape + localStorage cache).
+- 3 Supabase fail handling (chưa cấu hình / throw / RLS denied).
+- 4 config invalid (mỗi module 1 test, không gọi Supabase, không cache rác).
+- 1 unknown module.
 
 ### ⏸ P2-05.5: UI history/rollback
 

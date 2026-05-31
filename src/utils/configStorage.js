@@ -2,12 +2,17 @@ import { DEFAULT_CONFIG } from '../config/defaultConfig';
 import { LARGE_PRINT_DEFAULT_CONFIG } from '../config/largePrintConfig';
 import { DECAL_DEFAULT_CONFIG } from '../config/decalConfig';
 import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
-import { fetchCloudConfig, saveCloudConfig, isCloudEnabled, restoreInfinity } from './cloudSync';
-import { validateDecalConfig } from '../modules/decal/config/index.js';
-import { validateSmallPrintConfig } from '../modules/small-print/config/index.js';
-import { validateUvDtfConfig } from '../modules/uvdtf/config/index.js';
-import { validateLargePrintConfig } from '../modules/large-print/config/index.js';
-import { loadConfigFromSupabase } from '../lib/priceConfigStore.js';
+import { fetchCloudConfig, isCloudEnabled, restoreInfinity } from './cloudSync';
+import { validateDecalConfig, DECAL_CONFIG_SCHEMA_VERSION } from '../modules/decal/config/index.js';
+import { validateSmallPrintConfig, SMALL_PRINT_CONFIG_SCHEMA_VERSION } from '../modules/small-print/config/index.js';
+import { validateUvDtfConfig, UVDTF_CONFIG_SCHEMA_VERSION } from '../modules/uvdtf/config/index.js';
+import { validateLargePrintConfig, LARGE_PRINT_CONFIG_SCHEMA_VERSION } from '../modules/large-print/config/index.js';
+import { loadConfigFromSupabase, saveConfigToSupabase } from '../lib/priceConfigStore.js';
+
+// LƯU Ý: P2-05.4 đã xoá `saveCloudConfig` khỏi save path (không gọi Apps Script
+// khi admin lưu). `saveCloudConfig` vẫn còn export trong cloudSync.js — chỉ
+// được dùng nếu caller bên ngoài cần. Read fallback `fetchCloudConfig` vẫn giữ
+// đến P2-05.6.
 
 // TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
 // isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
@@ -50,14 +55,15 @@ function deepValidateLargePrint(data, source) {
     return true;
 }
 
-// Module name → localStorage key → default config → Supabase module key mapping.
-// P2-05.3: supabaseKey thêm để map sang enum trong Supabase price_configs.module
+// Module name → localStorage key → default config → Supabase module key + schemaVersion.
+// P2-05.3: supabaseKey để map sang enum trong Supabase price_configs.module
 // (CHECK constraint trong docs/database/supabase-price-configs.sql).
+// P2-05.4: schemaVersion để truyền vào saveConfigToSupabase RPC.
 const MODULE_MAP = {
-    printConfig:      { key: 'printConfig',      default: DEFAULT_CONFIG,             supabaseKey: 'small-print' },
-    largePrintConfig: { key: 'largePrintConfig', default: LARGE_PRINT_DEFAULT_CONFIG, supabaseKey: 'large-print' },
-    decalConfig:      { key: 'decalConfig',      default: DECAL_DEFAULT_CONFIG,       supabaseKey: 'decal' },
-    uvdtfConfig:      { key: 'uvdtfConfig',      default: UVDTF_DEFAULT_CONFIG,       supabaseKey: 'uvdtf' },
+    printConfig:      { key: 'printConfig',      default: DEFAULT_CONFIG,             supabaseKey: 'small-print', schemaVersion: SMALL_PRINT_CONFIG_SCHEMA_VERSION },
+    largePrintConfig: { key: 'largePrintConfig', default: LARGE_PRINT_DEFAULT_CONFIG, supabaseKey: 'large-print', schemaVersion: LARGE_PRINT_CONFIG_SCHEMA_VERSION },
+    decalConfig:      { key: 'decalConfig',      default: DECAL_DEFAULT_CONFIG,       supabaseKey: 'decal',       schemaVersion: DECAL_CONFIG_SCHEMA_VERSION },
+    uvdtfConfig:      { key: 'uvdtfConfig',      default: UVDTF_DEFAULT_CONFIG,       supabaseKey: 'uvdtf',       schemaVersion: UVDTF_CONFIG_SCHEMA_VERSION },
 };
 
 // Kiểm tra config có đủ key thiết yếu và giá trị hợp lệ không (tránh dùng data rác)
@@ -177,47 +183,77 @@ export async function loadConfigFromCloud(moduleName) {
     return restoreInfinity(defaultCfg);
 }
 
-// Async: save config vào cả localStorage + cloud
-export async function saveConfigToCloud(moduleName, config, password) {
+// Async: save config vào localStorage + Supabase cloud.
+// P2-05.4: Đã chuyển save path từ Apps Script sang Supabase. Apps Script
+// `saveCloudConfig` KHÔNG còn được gọi trong save path (nhưng vẫn giữ
+// `fetchCloudConfig` ở read fallback đến P2-05.6).
+//
+// Param `_password` (legacy, không dùng): giữ tham số thứ 3 để backward compat
+// với caller cũ truyền password Apps Script. Sẽ xoá hoàn toàn ở P2-05.6.
+//
+// Return shape (P2-05.4):
+//   {
+//     local:       boolean,           — đã ghi localStorage chưa
+//     cloud:       boolean,           — đã ghi Supabase chưa
+//     error:       null | string,     — message nếu fail
+//     provider:    'supabase',        — provider cloud
+//     newVersion:  number | null      — version mới do RPC trả (nếu cloud thành công)
+//   }
+export async function saveConfigToCloud(moduleName, config, _password) {
     const mod = MODULE_MAP[moduleName];
-    if (!mod) return false;
+    if (!mod) {
+        return { local: false, cloud: false, error: `Unknown module: ${moduleName}`, provider: 'supabase', newVersion: null };
+    }
 
-    // TASK-0005.5 / TASK-0010: gate decal + print config bằng schema validation
-    // TRƯỚC khi ghi bất kỳ nơi nào (localStorage + cloud).
+    // 1. Validate config TRƯỚC khi ghi bất kỳ nơi nào (giữ pattern TASK-0005.5/0010/0013/0017)
     if (moduleName === 'decalConfig' && !deepValidateDecal(config, 'saveConfigToCloud')) {
         const v = validateDecalConfig(config);
-        return { local: false, cloud: false, error: `Decal config invalid: ${v.errors.join('; ')}` };
+        return { local: false, cloud: false, error: `Decal config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
     }
     if (moduleName === 'printConfig' && !deepValidatePrint(config, 'saveConfigToCloud')) {
         const v = validateSmallPrintConfig(config);
-        return { local: false, cloud: false, error: `Print config invalid: ${v.errors.join('; ')}` };
+        return { local: false, cloud: false, error: `Print config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
     }
     if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(config, 'saveConfigToCloud')) {
         const v = validateUvDtfConfig(config);
-        return { local: false, cloud: false, error: `UV DTF config invalid: ${v.errors.join('; ')}` };
+        return { local: false, cloud: false, error: `UV DTF config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
     }
     if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(config, 'saveConfigToCloud')) {
         const v = validateLargePrintConfig(config);
-        return { local: false, cloud: false, error: `Large print config invalid: ${v.errors.join('; ')}` };
+        return { local: false, cloud: false, error: `Large print config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
     }
 
-    // Luôn lưu localStorage
-    localStorage.setItem(mod.key, JSON.stringify(config));
+    // 2. Luôn lưu localStorage (admin không mất dữ liệu trên máy dù cloud fail)
+    try {
+        localStorage.setItem(mod.key, JSON.stringify(config));
+    } catch (e) {
+        // QuotaExceeded, private mode, …
+        return { local: false, cloud: false, error: `localStorage save failed: ${e.message}`, provider: 'supabase', newVersion: null };
+    }
 
-    // Lưu cloud nếu có
-    if (isCloudEnabled() && password) {
-        try {
-            const result = await saveCloudConfig(moduleName, config, password);
-            if (result.error) {
-                console.warn(`[ConfigStorage] Cloud save failed: ${result.error}`);
-                return { local: true, cloud: false, error: result.error };
-            }
-            return { local: true, cloud: true };
-        } catch (e) {
-            return { local: true, cloud: false, error: e.message };
+    // 3. Lưu Supabase qua RPC save_price_config (transactional version + log)
+    try {
+        const result = await saveConfigToSupabase(
+            mod.supabaseKey,
+            config,
+            mod.schemaVersion,
+            null  // note — UI có thể truyền sau ở Phase 3
+        );
+        if (!result.ok) {
+            const errMsg = result.error?.message || String(result.error) || 'Unknown Supabase save error';
+            console.warn(`[ConfigStorage] Supabase save failed for ${moduleName}: ${errMsg}`);
+            return { local: true, cloud: false, error: errMsg, provider: 'supabase', newVersion: null };
         }
+        return {
+            local: true,
+            cloud: true,
+            error: null,
+            provider: 'supabase',
+            newVersion: result.newVersion,
+        };
+    } catch (e) {
+        return { local: true, cloud: false, error: e.message, provider: 'supabase', newVersion: null };
     }
-    return { local: true, cloud: false };
 }
 
 function isObject(item) {
