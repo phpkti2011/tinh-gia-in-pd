@@ -1,0 +1,52 @@
+name: CI
+
+# P3-CI: chạy tests + build mỗi lần push main hoặc mở PR.
+# Bảo vệ regression sau Phase 1 (pricing engine) + Phase 2 (Supabase Auth + DB).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    name: Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Nếu 1 Node version fail, vẫn chạy version còn lại để dễ debug.
+      fail-fast: false
+      matrix:
+        node-version:
+          - '20.11.1'   # required — khớp môi trường dev hiện tại
+          - '22.x'      # optional — kiểm tra tương thích newer LTS (jsdom@25 hỗ trợ tốt hơn)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      # `npm ci` (clean install): lockfile-strict, nhanh hơn `npm install`, không sửa
+      # package-lock.json. Nếu lock mismatch package.json → fail (báo trước khi
+      # vào CI matrix tốn thời gian).
+      - name: Install dependencies
+        run: npm ci
+
+      # CI KHÔNG có .env.local → import.meta.env.VITE_SUPABASE_URL/KEY = undefined.
+      # Code đã handle gracefully (P2-01 supabaseClient warn + null; adapter trả
+      # null/[]/ok=false; configStorage fallback localStorage/default). Tests dùng
+      # mock + per-file jsdom env → không cần Supabase project thật.
+      - name: Run tests
+        run: npm test
+
+      # Production build verify. Vite không cần env Supabase để build (env chỉ
+      # đọc tại runtime trong browser). Nếu sau này cần env build-time, phải
+      # thêm secrets vào repo Settings + reference qua ${{ secrets.XXX }}.
+      - name: Build
+        run: npm run build
