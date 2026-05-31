@@ -1,8 +1,18 @@
 import React, { useMemo } from 'react';
 
+// P3-LINT.2: wrapper guard pattern.
+// Trước: LayoutVisualization có `if (!layout) return null` rồi gọi useMemo →
+// vi phạm rules-of-hooks (hooks must be called same order every render).
+// Sau: outer wrapper guard, inner content component chỉ render khi guards
+// pass → useMemo trong inner luôn được gọi same order. Behavior identical.
 function LayoutVisualization({ result, params }) {
-    const { layout, sheetW, sheetH, mode, sheetsPerPrintSheet } = result;
+    const { layout, sheetW, sheetH } = result;
     if (!layout || !sheetW || !sheetH || layout.count <= 0) return null;
+    return <LayoutVisualizationContent result={result} params={params} />;
+}
+
+function LayoutVisualizationContent({ result, params }) {
+    const { layout, sheetW, sheetH, mode, sheetsPerPrintSheet } = result;
 
     const { count, cols, rows, type, orientation, itemW, itemH, printableW, printableH,
             cols_full, cols_staggered, pattern } = layout;

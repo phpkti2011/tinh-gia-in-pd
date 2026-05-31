@@ -1,0 +1,21 @@
+node_modules
+dist
+coverage
+.vercel
+package-lock.json
+
+# Docs giữ nguyên format hiện tại — không format hàng loạt
+docs
+
+# SQL files — Prettier không xử lý SQL native
+*.sql
+
+# Legacy / gitignored files (nếu còn trên disk dev)
+google-apps-script.js
+*.html
+
+# Markdown trong root cũng giữ nguyên
+*.md
+
+# Config files Prettier sẽ format theo defaults nếu không loại bỏ
+# (commented để có thể bỏ pass sau khi audit)

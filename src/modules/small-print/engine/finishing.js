@@ -70,18 +70,21 @@ export function calculateDieCuttingCosts(params, printSheetCount, isDecal, confi
                   if (!cfg.bag) break;
                  moldCost = (productW * productH) > cfg.bag.threshold_area ? cfg.bag.large_price : cfg.bag.small_price;
                 break;
-            case 'tag':
-                  if (!cfg.tag) break;
-                 const spacing = 0.4; // 4mm
-                 const pressW = 32.2;
-                 const numAcross = (productW + spacing > 0) ? Math.floor((pressW + spacing) / (productW + spacing)) : 0;
-                 const numDown = 3;
-                 const numOnMold = numAcross * numDown;
-                 moldCost = productW * productH * numOnMold * cfg.tag.price_per_cm2;
-                 if (tagHasHole) {
-                     moldCost += cfg.tag.hole_price * numOnMold;
-                 }
+            case 'tag': {
+                // P3-LINT.1: wrap với {} để tránh no-case-declarations error.
+                // const trong case không có braces leak ra ngoài → ESLint best practice.
+                if (!cfg.tag) break;
+                const spacing = 0.4; // 4mm
+                const pressW = 32.2;
+                const numAcross = (productW + spacing > 0) ? Math.floor((pressW + spacing) / (productW + spacing)) : 0;
+                const numDown = 3;
+                const numOnMold = numAcross * numDown;
+                moldCost = productW * productH * numOnMold * cfg.tag.price_per_cm2;
+                if (tagHasHole) {
+                    moldCost += cfg.tag.hole_price * numOnMold;
+                }
                 break;
+            }
         }
 
         const laborCosts = calculateFinishingCost(printSheetCount, 'labor', config.DIE_CUTTING_LABOR_CONFIG);
