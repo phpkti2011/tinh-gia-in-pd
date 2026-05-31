@@ -5,7 +5,7 @@
 > - ✅ **P2-01 done** — Supabase client + auth service + useAuth + LoginPage (tag `v2.0-supabase-auth-foundation`).
 > - ✅ **P2-02 done** — user_roles schema + useUserRole hook (tag `v2.1-admin-role-model`).
 > - ✅ **P2-03 done** — `<AdminGate>` wrap 4 SettingsPanel, password placeholder cũ ĐÃ XOÁ KHỎI `src/`. ResultPanel admin reveal giờ dựa vào Supabase role. Apps Script password đọc từ env `VITE_ADMIN_PASSWORD`.
-> - ⏸ P2-04 — rotate password Apps Script (đã lộ trong git history trước-TASK-0002.6).
+> - 🟡 **P2-04 code-side done** — rotation guide ready ([apps-script-password-rotation.md](security/apps-script-password-rotation.md)). Chờ rotate phía Apps Script (manual).
 > - ⏸ P2-05..09 — Supabase database config, history, rollback.
 
 ## 1. Mục tiêu auth (Phase 2 — group Auth & Admin)

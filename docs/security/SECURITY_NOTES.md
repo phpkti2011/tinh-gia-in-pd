@@ -81,7 +81,7 @@ Sau `git status`, các file sau **không xuất hiện** nhưng vẫn tồn tạ
 | P2-01 (Supabase Auth foundation) | Singleton Supabase client + `useAuth` + `LoginPage`. | ✅ DONE (commit `9d12821`, tag `v2.0-supabase-auth-foundation`) |
 | P2-02 (Admin role model) | Bảng `user_roles` + `useUserRole` + RLS. | ✅ DONE (commit `05eb7bd`, tag `v2.1-admin-role-model`) |
 | **P2-03 (Wire auth + remove placeholder)** | **Thay hardcoded placeholder bằng `<AdminGate>` + Supabase auth/role. Xoá hết placeholder khỏi `src/`. Wire `VITE_ADMIN_PASSWORD` env var cho Apps Script call.** | ✅ **DONE (task này)** |
-| P2-04 (sớm) Rotate Apps Script | Đổi password thật trên deployed Apps Script (vì password cũ đã lộ trong build cũ + file legacy). Cập nhật `google-apps-script.js` local + `VITE_ADMIN_PASSWORD` trong `.env.local`. | ⏸ Pending |
+| P2-04 (sớm) Rotate Apps Script | Đổi password thật trên deployed Apps Script (vì password cũ đã lộ trong build cũ + file legacy). Cập nhật `google-apps-script.js` local + `VITE_ADMIN_PASSWORD` trong `.env.local`. | 🟡 **Code path + guide DONE** (P2-04 task), **chờ rotate phía Apps Script** (manual — xem [apps-script-password-rotation.md](apps-script-password-rotation.md)) |
 | P2-05..09 (Database & history) | Migrate config sang Supabase Database (bỏ hẳn Apps Script + `VITE_ADMIN_PASSWORD`). | ⏸ Pending |
 | (cleanup) | Xoá file legacy `tinh gia ep nhu ... .html`, `Tinh-gia-decal ... .xlsx` nếu xác nhận không cần. | ⏸ Pending |
 
@@ -107,6 +107,27 @@ Sau `git status`, các file sau **không xuất hiện** nhưng vẫn tồn tạ
 
 - ⚠️ **Apps Script password thật vẫn cần rotate** (đã lộ trong build cũ trước-TASK-0002.6 + còn trong file legacy `google-apps-script.js` ngoài git). Đó là task P2-04.
 - ⚠️ **Cần Supabase project + bảng `user_roles`** setup phía bạn (manual SQL trong [docs/database/supabase-user-roles.sql](../database/supabase-user-roles.sql)) thì auth mới hoạt động end-to-end. Nếu thiếu env Supabase: AdminGate render `<LoginPage />` báo "Supabase chưa cấu hình" khi user submit → không crash.
+
+## 4ter. Cập nhật sau P2-04 (2026-05-31)
+
+### Đã làm trong P2-04 (code-side)
+
+- ✅ **Verify**: code đã đọc Apps Script password từ env `VITE_ADMIN_PASSWORD` (wired ở P2-03), không hardcode. `src/utils/configStorage.js:175` skip cloud save khi password trống → local save vẫn OK.
+- ✅ **Quyết định giữ tên env `VITE_ADMIN_PASSWORD`** (không rename sang `VITE_APPS_SCRIPT_PASSWORD` để không phá `.env.local` của dev hiện tại). Rename không cần thiết vì P2-05+ sẽ bỏ hẳn env này.
+- ✅ **Tạo [docs/security/apps-script-password-rotation.md](apps-script-password-rotation.md)** — guide 8 bước rotate (manual phía Apps Script + 3 nơi update: Script Properties, `.env.local`, Vercel).
+- ✅ **Cập nhật `.env.example`** — thêm warning rõ về quy trình rotate + nguyên tắc không commit password thật.
+- ✅ **KHÔNG ghi password cũ hoặc mới vào docs** — dùng placeholder `<OLD_APPS_SCRIPT_PASSWORD>` / `<NEW_APPS_SCRIPT_PASSWORD>` xuyên suốt.
+
+### Chờ làm phía bạn (manual, ngoài code)
+
+- 🟡 **Sinh password mới** (≥20 ký tự, password manager).
+- 🟡 **Update Apps Script** (Script Properties hoặc literal trong code) + Deploy New Version.
+- 🟡 **Update file legacy local `google-apps-script.js`** (ngoài git, để tránh redeploy nhầm bản cũ).
+- 🟡 **Update `.env.local`** trên máy admin + dev.
+- 🟡 **Update Vercel Environment Variables** (nếu deploy production).
+- 🟡 **Test end-to-end** + verify password cũ KHÔNG còn work.
+
+Sau khi xong các bước trên, append note vào file này (mục 4ter) đánh dấu "✅ Rotated YYYY-MM-DD" — **KHÔNG ghi password mới**.
 
 ## 5. Quy tắc bắt buộc trước khi push lên remote lần đầu
 
