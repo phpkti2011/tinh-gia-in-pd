@@ -48,13 +48,11 @@ export async function getUserRole(userId) {
             .eq('user_id', userId)
             .maybeSingle(); // null nếu không có row, không throw
         if (error) {
-            // eslint-disable-next-line no-console
             console.warn('[roleService] getUserRole error:', error.message);
             return null;
         }
         return data?.role ?? null;
     } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[roleService] getUserRole threw:', e?.message);
         return null;
     }

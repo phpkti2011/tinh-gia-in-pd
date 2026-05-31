@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { saveDecalConfig } from '../../utils/configStorage';
 
 function NumInput({ configValue, onCommit, className, step }) {

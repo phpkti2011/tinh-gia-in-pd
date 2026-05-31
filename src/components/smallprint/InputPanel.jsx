@@ -1,5 +1,4 @@
-import React from 'react';
-
+// React 18+ auto JSX transform — không cần import React.
 export default function InputPanel({ config, params, onChange, isAutoCalculating }) {
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -15,7 +14,6 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
     const selectedPaper = paperData[params.paperType];
     const model = selectedPaper ? selectedPaper.pricingModel : '';
     const isArtPaper = model === 'custom';
-    const isDecalType = selectedPaper && selectedPaper.name.toLowerCase().includes('decal');
     const isPerSheet = model === 'per_sheet';
     const isSqm = model === 'sqm';
 

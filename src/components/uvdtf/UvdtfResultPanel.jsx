@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 const fmt = (v) => v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—';
 
@@ -10,7 +10,6 @@ function MeterVisualization({ result, config }) {
 
     // finalItemW/H đang ở đơn vị CM (đã bao gồm padding)
     const printableWidthCM = config.printableWidthCM;
-    const gapCM = 0.2; // 2mm gap
 
     // Kích thước nội dung thực tế (cm)
     const contentW = itemsAcross * finalItemW; // không cần +gap vì finalItemW đã bao gồm padding
@@ -92,7 +91,7 @@ function MeterVisualization({ result, config }) {
     );
 }
 
-export default function UvdtfResultPanel({ result, params, config, isCalculating }) {
+export default function UvdtfResultPanel({ result, params: _params, config, isCalculating }) {
     if (!result) {
         return (
             <div className="h-full min-h-[400px]">

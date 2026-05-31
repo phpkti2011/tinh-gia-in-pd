@@ -1,7 +1,7 @@
-# ESLint + Prettier setup (P3-LINT.1 + P3-LINT.2)
+# ESLint + Prettier setup (P3-LINT.1 + P3-LINT.2 + P3-LINT.3)
 
-> Ngày: 2026-05-31 (P3-LINT.2 update: fix DecalResultPanel useMemo + enable lint CI)
-> Trạng thái: 🟢 **Lint enforced trong CI** (0 errors, 83 warnings technical debt acceptable). Prettier `format:check` vẫn chưa enforce (100 files chưa auto-format).
+> Ngày: 2026-06-01 (P3-LINT.3 update: reduce warnings 83→1, 99% reduction)
+> Trạng thái: 🟢 **Lint enforced trong CI** (0 errors, **1 warning** technical debt acceptable — react-hooks/exhaustive-deps phức tạp). Prettier `format:check` vẫn chưa enforce (100 files chưa auto-format).
 > Tiền đề: [P3-CI](ci-pipeline-setup.md) (`v3.1-ci-pipeline`)
 
 ## 1. Mục tiêu
@@ -86,16 +86,19 @@ function LayoutVisualizationContent({ result, params }) {
 
 P3-LINT.1 đã fix 5 errors `no-case-declarations` ở `finishing.js` (wrap `case 'tag'` với `{}`).
 
-### Warnings: 82 (không fail lint)
+### ✅ Warnings: 1 còn lại (sau P3-LINT.3 — giảm từ 83)
 
-Phân loại:
-- ~15 unused `React` import (React 18 JSX transform — không cần import nữa, có thể safe-remove dần)
-- ~10 unused vars/args trong source legacy
-- ~9 unused `eslint-disable-next-line no-console` directives (tôi thêm ở Phase 2 — rule `no-console` không enabled nên directive thừa)
-- ~5 unused functions/components (LargePrintModule, DecalModule, … định nghĩa nhưng không export)
-- ~3 missing dep useMemo/useEffect
+**Journey 83 → 1 (99% reduction):**
+| Bước | Method | Trước | Sau |
+|---|---|---|---|
+| 0 | Baseline (P3-LINT.1) | 82 | — |
+| 1 | Add `react/jsx-uses-vars: error` | 83 | **45** (-38 false positive — components dùng trong JSX bị mark unused) |
+| 2 | Remove 11 unused `React` imports (Group A) | 45 | **34** (-11) |
+| 3 | Remove 12 unused `eslint-disable-next-line no-console` directives (Group B) | 34 | **26** (-8) |
+| 4 | Safe unused vars/args (Group C — catch `_e`, prop `_`, xoá dead vars) | 26 | **1** (-25) |
 
-Tất cả là **technical debt cũ** — không phá tests, không phá runtime.
+**Còn lại 1 warning:**
+- `src/components/decal/DecalResultPanel.jsx:99` — `react-hooks/exhaustive-deps` — useMemo missing 9 deps (cols, cols_full, cols_staggered, count, itemH, itemW, pattern, rows, type). **SKIP per P3-LINT.3 spec** ("warning liên quan hook deps hoặc logic phức tạp, chỉ ghi nhận, không tự sửa"). Acceptable — không phá runtime.
 
 ### Errors đã fix trong task này (5)
 
@@ -150,13 +153,18 @@ Lỗi không auto-fixable → đọc message ESLint + fix manual. **KHÔNG dùng
 3. ✅ Add step `npm run lint` vào `.github/workflows/ci.yml` (giữa `npm ci` và `npm test`).
 4. ⏸ Test bằng push commit + verify CI step lint pass — chờ user push lên GitHub.
 
-### P3-LINT.3 — Reduce warnings (optional, gradual)
+### ✅ P3-LINT.3 — Reduce warnings — DONE (83 → 1)
 
-1. Remove unused `React` imports (~15 file, safe — React 18 auto JSX).
-2. Remove unused `eslint-disable-next-line no-console` directives (~9 dòng).
-3. Audit + fix unused vars / missing deps case-by-case.
-
-Mục tiêu: warnings < 20.
+Đã làm:
+1. ✅ Add `react/jsx-uses-vars: 'error'` vào eslint config (fix 38 false positives).
+2. ✅ Remove 11 unused `React` imports (Group A).
+3. ✅ Remove 12 unused `eslint-disable-next-line no-console` directives (Group B).
+4. ✅ Group C safe fixes:
+   - `catch (e) {}` → `catch {}` (3 vị trí: App.jsx + configStorage.js + priceConfigStore.js).
+   - Function props/args unused → prefix `_` (LPResultPanel.onChange, ResultPanel.finishingCustomerPrices/dieCuttingCustomerPrice, SheetVisualizer.productsPerSheet, UvdtfResultPanel.params, options.js `[_key, printer]`).
+   - Dead local vars → delete (useUserRole `mounted` flag, DecalResultPanel `sheetsPerPrintSheet` destructure, LPResultPanel 3 vars, InputPanel `isDecalType`, SheetVisualizer `containerH` ×2 destructure, UvdtfResultPanel `gapCM`, quote.js `pressW`).
+5. ✅ Special case: `adminGate.test.jsx` AdminGate import → keep + add directive (vi.mock hoisting làm ESLint không nhận JSX usage).
+6. ⏸ 1 warning còn lại (hook deps DecalResultPanel:99) — phức tạp, SKIP per spec.
 
 ### P3-FMT — Auto-format toàn repo (separate task)
 

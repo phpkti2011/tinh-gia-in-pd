@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 // P3-LINT.2: wrapper guard pattern.
 // Trước: LayoutVisualization có `if (!layout) return null` rồi gọi useMemo →
@@ -143,7 +143,7 @@ function LayoutVisualizationContent({ result, params }) {
 
 // Sơ đồ cho chế độ Tờ Sticker — vẽ tờ sticker (A4) trên tờ in lớn, bên trong mỗi tờ có mock sticker nhỏ
 function SheetLayoutVisualization({ result, params }) {
-    const { layout, sheetW, sheetH, sheetsPerPrintSheet } = result;
+    const { layout, sheetW, sheetH } = result;
     if (!layout || !sheetW || !sheetH || layout.count <= 0) return null;
 
     const { count, orientation, itemW, itemH, printableW, printableH } = layout;
@@ -265,7 +265,7 @@ function PriceTable({ priceTable }) {
 
     const groups = [];
     let cur = null;
-    priceTable.forEach((row, idx) => {
+    priceTable.forEach((row) => {
         if (!cur || cur.quantity !== row.quantity) {
             cur = { quantity: row.quantity, rows: [row] };
             groups.push(cur);

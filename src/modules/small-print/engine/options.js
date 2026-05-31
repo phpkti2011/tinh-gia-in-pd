@@ -52,7 +52,7 @@ export function calculateDecalOptions(params, selectedPaper, productWithBleedW, 
     const decalWidths = [32.2, 33.0];
     const pricePerSqm = selectedPaper.pricePerSqm;
     const printersToUse = Object.entries(config.PRINTER_CONFIG)
-                                .filter(([key, printer]) => printer.name === 'C2060')
+                                .filter(([_key, printer]) => printer.name === 'C2060')
                                 .reduce((obj, [key, printer]) => { obj[key] = printer; return obj; }, {});
 
     for (const printerKey in printersToUse) {
@@ -93,7 +93,7 @@ export function calculatePerSheetOptions(params, selectedPaper, productWithBleed
     const pressH = selectedPaper.sheetSize.h;
     const paperCostPerSheet = selectedPaper.sheetPrice;
      const printersToUse = Object.entries(config.PRINTER_CONFIG)
-                                 .filter(([key, printer]) => printer.name === 'C2060')
+                                 .filter(([_key, printer]) => printer.name === 'C2060')
                                  .reduce((obj, [key, printer]) => { obj[key] = printer; return obj; }, {});
 
     for (const printerKey in printersToUse) {

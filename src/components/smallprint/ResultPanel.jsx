@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { getPrintableArea, getProfitMargin, calculatePrintContentSurcharge } from '../../utils/calculator';
 import { LargeSheetVisualizer, PrintSheetVisualizer } from './SheetVisualizer';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
 
-export default function ResultPanel({ results, quote, params, config, isCalculating, errorMsg, finishingCustomerPrices, dieCuttingCustomerPrice, holePunchingCost, creasingCost, mountingCost, moldCost, laborCost, variableDataCost, foilResult, onChange }) {
+export default function ResultPanel({ results, quote, params, config, isCalculating, errorMsg, finishingCustomerPrices: _finishingCustomerPrices, dieCuttingCustomerPrice: _dieCuttingCustomerPrice, holePunchingCost, creasingCost, mountingCost, moldCost, laborCost, variableDataCost, foilResult, onChange }) {
     // P2-03: Admin reveal (giá vốn / giá tối thiểu) giờ dựa vào Supabase role.
     // Trước: hardcoded ADMIN_PASSWORD + inline input. Sau: tự động hiện khi user
     // đã login admin (qua AdminGate ở tab Settings). Không có login inline trên

@@ -65,6 +65,10 @@ export default [
             'react/jsx-key': 'error',
             // Cho phép unescaped entities trong JSX (nhiều chỗ đã dùng)
             'react/no-unescaped-entities': 'off',
+            // P3-LINT.3: bật để no-unused-vars KHÔNG mark component dùng trong
+            // JSX là "unused" (false positive). Vd: `<HomePage />` trong JSX
+            // sẽ marked HomePage là used.
+            'react/jsx-uses-vars': 'error',
 
             // Hook rules — của-of-hooks là invariant
             'react-hooks/rules-of-hooks': 'error',

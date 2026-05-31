@@ -12,7 +12,6 @@ export async function getCurrentSession() {
         const { data } = await supabase.auth.getSession();
         return data?.session ?? null;
     } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[Auth] getCurrentSession failed:', e?.message);
         return null;
     }

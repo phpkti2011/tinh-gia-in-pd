@@ -44,16 +44,13 @@ export function useUserRole(user) {
     }, [user?.id]);
 
     useEffect(() => {
-        let mounted = true;
         fetchRole().catch(() => {
             // Errors đã được handle trong fetchRole (set state).
             // Catch ở đây chỉ để tránh unhandled promise warning.
         });
-        // Cleanup: nếu unmount trước khi fetch xong, state update sẽ bị React skip
-        // (setState trên unmounted component chỉ là no-op + warn trong dev mode).
-        // mounted flag không strictly cần thiết vì state updates đều an toàn,
-        // nhưng giữ pattern để rõ ý.
-        return () => { mounted = false; };
+        // P3-LINT.3: bỏ `mounted` flag — useEffect setState sau unmount là safe
+        // no-op trong React 18 (chỉ warn nhẹ trong dev). Nếu cần strict-cleanup
+        // sau này, dùng AbortController.
     }, [fetchRole]);
 
     return {

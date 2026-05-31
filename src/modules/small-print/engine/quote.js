@@ -9,7 +9,6 @@ import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pri
 export function calculateCustomerQuote(bestOption, params, finishingCustomerPrices, dieCuttingCustomerPrice, foilResult, config) {
     const { productQuantity: totalQuantity, printSides, laminationType, printContents, variableData } = params;
 
-    const pressW = bestOption.cutSheetW;
     const pressH = bestOption.cutSheetH;
 
     const A4_REFERENCE_HEIGHT = 21.2;

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import React from 'react';
+// React 18+ auto JSX transform — không cần import React.
 
 beforeAll(() => {
     // Silence supabaseClient warn về missing env (gọi gián tiếp qua useAuth/useUserRole)
@@ -26,7 +26,11 @@ vi.mock('../../src/auth/useUserRole.js', () => ({
     useUserRole: (user) => mockUseUserRole(user),
 }));
 
+// eslint-disable-next-line no-unused-vars
 import AdminGate from '../../src/auth/AdminGate.jsx';
+// AdminGate dùng trong JSX <AdminGate>...</AdminGate> ở các describe blocks bên dưới —
+// jsx-uses-vars không nhận diện vì vi.mock được hoisted lên top, ESLint phân tích
+// trước khi đi qua các describe. Disable directive này là cần thiết.
 
 afterEach(() => {
     cleanup();

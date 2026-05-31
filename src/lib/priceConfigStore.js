@@ -36,13 +36,11 @@ export async function loadConfigFromSupabase(module) {
             .eq('module', module)
             .maybeSingle();
         if (error) {
-            // eslint-disable-next-line no-console
             console.warn('[priceConfigStore] loadConfigFromSupabase error:', error.message);
             return null;
         }
         return data ?? null;
     } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[priceConfigStore] loadConfigFromSupabase threw:', e?.message);
         return null;
     }
@@ -76,7 +74,6 @@ export async function saveConfigToSupabase(module, data, schemaVersion, note = n
             p_note: note,
         });
         if (error) {
-            // eslint-disable-next-line no-console
             console.warn('[priceConfigStore] saveConfigToSupabase RPC error:', error.message);
             return { ok: false, error, newVersion: null };
         }
@@ -87,7 +84,6 @@ export async function saveConfigToSupabase(module, data, schemaVersion, note = n
             newVersion: rpcResult?.new_version ?? null,
         };
     } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[priceConfigStore] saveConfigToSupabase threw:', e?.message);
         return { ok: false, error: e, newVersion: null };
     }
@@ -111,13 +107,11 @@ export async function loadVersionHistory(module, limit = 20) {
             .order('created_at', { ascending: false })
             .limit(limit);
         if (error) {
-            // eslint-disable-next-line no-console
             console.warn('[priceConfigStore] loadVersionHistory error:', error.message);
             return [];
         }
         return data || [];
     } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[priceConfigStore] loadVersionHistory threw:', e?.message);
         return [];
     }
@@ -141,13 +135,11 @@ export async function loadChangeLog(module, limit = 20) {
             .order('created_at', { ascending: false })
             .limit(limit);
         if (error) {
-            // eslint-disable-next-line no-console
             console.warn('[priceConfigStore] loadChangeLog error:', error.message);
             return [];
         }
         return data || [];
     } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('[priceConfigStore] loadChangeLog threw:', e?.message);
         return [];
     }

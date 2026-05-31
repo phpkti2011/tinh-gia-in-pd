@@ -20,7 +20,6 @@ let _supabase = null;
 if (!url || !anonKey) {
     // Dev warning — không throw để app vẫn chạy được (cho dev không setup Supabase).
     // Production: env vars phải set qua Vercel/CI; nếu thiếu, auth sẽ silently disabled.
-    // eslint-disable-next-line no-console
     console.warn(
         '[Supabase] VITE_SUPABASE_URL hoặc VITE_SUPABASE_ANON_KEY thiếu trong env. ' +
         'Auth sẽ KHÔNG hoạt động — set chúng trong .env.local (xem .env.example).'

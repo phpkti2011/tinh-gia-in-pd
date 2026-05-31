@@ -466,7 +466,7 @@ class ErrorBoundary extends React.Component {
             window.history.replaceState({}, '', window.location.pathname);
             window.location.reload();
         }
-    } catch (e) {}
+    } catch {}
 })();
 
 function App() {

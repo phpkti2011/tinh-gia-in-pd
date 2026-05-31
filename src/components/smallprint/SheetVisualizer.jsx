@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 // Tooltip helper component
 const Tooltip = ({ children, text }) => (
@@ -28,9 +28,9 @@ export function LargeSheetVisualizer({ largeW, largeH, cutW, cutH, layouts = [],
         }
     }
 
-    const { scale, containerH } = useMemo(() => {
+    const { scale } = useMemo(() => {
         if (!largeW || !largeH) return { scale: 1, containerH: 300 };
-        const maxW = 500; 
+        const maxW = 500;
         const maxH = 400;
         const scaleW = maxW / largeW;
         const scaleH = maxH / largeH;
@@ -86,7 +86,7 @@ export function LargeSheetVisualizer({ largeW, largeH, cutW, cutH, layouts = [],
     );
 }
 
-export function PrintSheetVisualizer({ printW, printH, printableArea, prodW, prodH, productsPerSheet, spacing }) {
+export function PrintSheetVisualizer({ printW, printH, printableArea, prodW, prodH, productsPerSheet: _productsPerSheet, spacing }) {
     
     let rects = [];
     const itemW_s = prodW + spacing; 
@@ -115,9 +115,9 @@ export function PrintSheetVisualizer({ printW, printH, printableArea, prodW, pro
         cols = 0; rows = 0;
     }
 
-    const { scale, containerH } = useMemo(() => {
+    const { scale } = useMemo(() => {
         if (!printW || !printH) return { scale: 1, containerH: 300 };
-        const maxW = 500; 
+        const maxW = 500;
         const maxH = 400;
         const scaleW = maxW / printW;
         const scaleH = maxH / printH;

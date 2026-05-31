@@ -155,7 +155,7 @@ export async function loadConfigFromCloud(moduleName) {
                 }
             }
         }
-    } catch (e) {}
+    } catch {}
 
     // Cuối cùng dùng default (deep clone, rồi khôi phục Infinity)
     return restoreInfinity(defaultCfg);

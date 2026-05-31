@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const ITEM_COLORS = ['bg-blue-600', 'bg-green-600', 'bg-pink-600', 'bg-orange-600', 'bg-purple-600', 'bg-red-600', 'bg-indigo-600', 'bg-teal-600'];
 const ITEM_COLORS_ALT = ['bg-blue-700', 'bg-green-700', 'bg-pink-700', 'bg-orange-700', 'bg-purple-700', 'bg-red-700', 'bg-indigo-700', 'bg-teal-700'];
 
-export default function LPResultPanel({ result, params, config, isCalculating, onChange }) {
+export default function LPResultPanel({ result, params, config, isCalculating, onChange: _onChange }) {
     const [showStickyBar, setShowStickyBar] = useState(false);
     const priceSectionRef = useRef(null);
 
@@ -32,9 +32,9 @@ export default function LPResultPanel({ result, params, config, isCalculating, o
 
     const {
         totalCost, rollWidth, itemDetails, totalPanels,
-        formexCost, standeeCost, standeeName,
-        finishingCost, finishingDesc, printedArea, unprintedArea,
-        materialChoice, laminationChoice,
+        formexCost, standeeCost,
+        finishingCost, printedArea, unprintedArea,
+        laminationChoice,
     } = result;
 
     const cm = (m) => (m * 100).toFixed(1);

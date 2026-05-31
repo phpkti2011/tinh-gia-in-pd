@@ -1,5 +1,4 @@
-import React from 'react';
-
+// React 18+ auto JSX transform — không cần import React.
 export default function LPInputPanel({ config, params, onChange }) {
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
