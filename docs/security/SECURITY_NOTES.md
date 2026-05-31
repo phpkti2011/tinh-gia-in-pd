@@ -196,6 +196,27 @@ Apps Script cloud sync **đã được REMOVE hoàn toàn** khỏi runtime của
 - [docs/security/apps-script-password-rotation.md](apps-script-password-rotation.md) — guide rotation giờ chỉ áp dụng cho **legacy decommission** (nếu muốn deactivate endpoint cũ).
 - [docs/phase-2-price-config-database-plan.md](../phase-2-price-config-database-plan.md) — P2-05 roadmap đã đóng (5/6 done; P2-05.5 UI history optional).
 
+## 5. Phase 2 SEALED (P2-06, 2026-05-31)
+
+**Phase 2 đã chính thức ĐÓNG** tại tag `v3.0-phase-2-complete`. Tổng kết đầy đủ: [phase-2-supabase-database-completion.md](../phase-2-supabase-database-completion.md).
+
+### Code-side security state (current tree)
+- ✅ **0 password literal** trong `src/` + `docs/` + `.env.example`. Verify dùng substring riêng (placeholder `<OLD_PWD_SUBSTRING>` — lấy từ password manager, KHÔNG paste vào docs để tránh re-leak).
+- ✅ **0 Apps Script runtime** trong `src/` (cloudSync.js deleted, không còn URL hardcoded, không còn `VITE_ADMIN_PASSWORD` đọc bởi code).
+- ✅ **Supabase Auth + RLS + admin role** enforce 4 SettingsPanel + cloud DB write.
+- ✅ **AdminGate** wrapper bảo vệ Settings, public calculator không bị gate.
+
+### Việc còn cần làm thủ công phía bạn (ngoài code)
+
+⚠️ **Apps Script endpoint deploy phía Google vẫn alive** (nếu chưa decommission):
+- Bất kỳ ai biết URL + password cũ trong git history (commits trước-TASK-0002.6) đều có thể POST thẳng tới endpoint cũ → ghi đè Google Sheet config cũ (bypass app).
+- **Khuyến nghị**: Google Apps Script Dashboard → Project Settings → Disable hoặc Delete deployment.
+- Sau khi decommission xong → append note "✅ Apps Script decommissioned YYYY-MM-DD" vào mục này (KHÔNG ghi URL/password).
+
+⚠️ **Git history** vẫn chứa literal password + URL Apps Script (chưa rewrite):
+- Acceptable nếu repo private.
+- Nếu định push public: chạy `git filter-repo --replace-text` (destructive — mất hash 16 tag, cần re-tag toàn bộ).
+
 ## 5. Quy tắc bắt buộc trước khi push lên remote lần đầu
 
 > Trong các lệnh dưới, thay `<OLD_ADMIN_PASSWORD>` bằng chuỗi password cũ. Chuỗi này **không lưu trong repo** — hãy giữ trong password manager riêng và copy-paste khi chạy lệnh.
