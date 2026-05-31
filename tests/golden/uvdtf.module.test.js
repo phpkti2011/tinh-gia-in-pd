@@ -40,7 +40,11 @@ describe('TASK-0012: uvdtf module path + compat shim', () => {
     });
 
     it('null cases: invalid input vẫn return null qua module mới', () => {
-        expect(newPath.calculateUvDtf({ widthMM: 0, heightMM: 90, quantity: 10 }, UVDTF_DEFAULT_CONFIG)).toBeNull();
-        expect(newPath.calculateUvDtf({ widthMM: 50, heightMM: 90, quantity: 0 }, UVDTF_DEFAULT_CONFIG)).toBeNull();
+        expect(
+            newPath.calculateUvDtf({ widthMM: 0, heightMM: 90, quantity: 10 }, UVDTF_DEFAULT_CONFIG)
+        ).toBeNull();
+        expect(
+            newPath.calculateUvDtf({ widthMM: 50, heightMM: 90, quantity: 0 }, UVDTF_DEFAULT_CONFIG)
+        ).toBeNull();
     });
 });

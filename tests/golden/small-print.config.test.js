@@ -90,7 +90,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             delete cfg.PRINTER_CONFIG;
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('PRINTER_CONFIG'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('PRINTER_CONFIG'))).toBe(true);
         });
 
         it('thiếu LAMINATION_CONFIG → fail', () => {
@@ -98,7 +98,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             delete cfg.LAMINATION_CONFIG;
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('LAMINATION_CONFIG'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('LAMINATION_CONFIG'))).toBe(true);
         });
 
         it('thiếu HOLE_PUNCHING_CONFIG → fail', () => {
@@ -129,7 +129,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             const cfg = { ...DEFAULT_CONFIG, PAPER_STOCK_DATA: [] };
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('rỗng'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('rỗng'))).toBe(true);
         });
 
         it('thiếu CUSTOMER_PRICE_TIERS → fail', () => {
@@ -145,7 +145,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             cfg.LAMINATION_CONFIG.WIDTH = '32';
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('LAMINATION_CONFIG.WIDTH'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('LAMINATION_CONFIG.WIDTH'))).toBe(true);
         });
 
         it('PROFIT_MARGIN_TIERS[0].margin sai kiểu → fail', () => {
@@ -153,7 +153,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             cfg.PROFIT_MARGIN_TIERS[0].margin = '0.75';
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('PROFIT_MARGIN_TIERS[0].margin'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('PROFIT_MARGIN_TIERS[0].margin'))).toBe(true);
         });
 
         it('CUSTOMER_PRICE_TIERS[0].print sai kiểu → fail', () => {
@@ -161,7 +161,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             cfg.CUSTOMER_PRICE_TIERS[0].print = 'free';
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('CUSTOMER_PRICE_TIERS[0].print'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('CUSTOMER_PRICE_TIERS[0].print'))).toBe(true);
         });
 
         it('CUSTOMER_PRICE_TIERS[0].type sai value → fail', () => {
@@ -169,7 +169,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             cfg.CUSTOMER_PRICE_TIERS[0].type = 'unknown';
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('CUSTOMER_PRICE_TIERS[0].type'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('CUSTOMER_PRICE_TIERS[0].type'))).toBe(true);
         });
 
         it('PRINTER_CONFIG.C2060.maxW sai kiểu → fail', () => {
@@ -177,7 +177,7 @@ describe('TASK-0010: small-print config schema + version', () => {
             cfg.PRINTER_CONFIG.C2060.maxW = '33';
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('maxW'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('maxW'))).toBe(true);
         });
 
         it('PAPER_STOCK_DATA[0].pricingModel sai value → fail', () => {
@@ -185,14 +185,14 @@ describe('TASK-0010: small-print config schema + version', () => {
             cfg.PAPER_STOCK_DATA[0].pricingModel = 'unknown';
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('pricingModel'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('pricingModel'))).toBe(true);
         });
 
         it('ART_PAPER_SURCHARGE sai kiểu → fail', () => {
             const cfg = { ...DEFAULT_CONFIG, ART_PAPER_SURCHARGE: '80000' };
             const r = validateSmallPrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('ART_PAPER_SURCHARGE'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('ART_PAPER_SURCHARGE'))).toBe(true);
         });
     });
 

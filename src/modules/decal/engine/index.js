@@ -7,17 +7,8 @@
 // Excel reference gap (xem docs/pricing-rules/decal-reference-cases.md)
 // KHÔNG fix ở task này — sẽ làm ở task riêng sau.
 
-export {
-    calculateStickersPerSheet,
-    calculateSheetsPerPrintSheet,
-} from './layout.js';
+export { calculateStickersPerSheet, calculateSheetsPerPrintSheet } from './layout.js';
 
-export {
-    calculateSingleStickerPrice,
-    calculateSheetPrice,
-} from './pricing.js';
+export { calculateSingleStickerPrice, calculateSheetPrice } from './pricing.js';
 
-export {
-    generateSinglePriceTable,
-    generateSheetPriceTable,
-} from './priceTables.js';
+export { generateSinglePriceTable, generateSheetPriceTable } from './priceTables.js';

@@ -31,6 +31,4 @@ export {
     calculateDecalOptions,
 } from './options.js';
 
-export {
-    calculateCustomerQuote,
-} from './quote.js';
+export { calculateCustomerQuote } from './quote.js';

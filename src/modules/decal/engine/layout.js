@@ -14,9 +14,16 @@ function getPrintableArea(sheetW, sheetH, config) {
     const mShort = config.marginShortSide;
     const mLong = config.marginLongSide;
     let pw, ph;
-    if (sheetW < sheetH) { pw = sheetW - mShort; ph = sheetH - mLong; }
-    else if (sheetH < sheetW) { pw = sheetW - mLong; ph = sheetH - mShort; }
-    else { pw = sheetW - mShort; ph = sheetH - mLong; }
+    if (sheetW < sheetH) {
+        pw = sheetW - mShort;
+        ph = sheetH - mLong;
+    } else if (sheetH < sheetW) {
+        pw = sheetW - mLong;
+        ph = sheetH - mShort;
+    } else {
+        pw = sheetW - mShort;
+        ph = sheetH - mLong;
+    }
     return { w: Math.max(0, pw), h: Math.max(0, ph) };
 }
 
@@ -33,7 +40,7 @@ function calculateHexagonalLayout(diameter, areaW, areaH, gap) {
     const d = diameter + gap;
     const r = d / 2;
     if (diameter > areaW || diameter > areaH) return { count: 0 };
-    const vertSpacing = d * Math.sqrt(3) / 2;
+    const vertSpacing = (d * Math.sqrt(3)) / 2;
     if (vertSpacing === 0) return { count: 0 };
     const cols_full = Math.floor((areaW + gap) / d);
     const cols_staggered = Math.floor((areaW - r + gap) / d);
@@ -42,9 +49,28 @@ function calculateHexagonalLayout(diameter, areaW, areaH, gap) {
     if (rows > 0) count1 = Math.ceil(rows / 2) * cols_full + Math.floor(rows / 2) * cols_staggered;
     let count2 = 0;
     if (rows > 0) count2 = Math.floor(rows / 2) * cols_full + Math.ceil(rows / 2) * cols_staggered;
-    const best = count1 >= count2
-        ? { type: 'hexagonal', count: count1, rows, cols_full, cols_staggered, pattern: 'full_first', itemW: diameter, itemH: diameter }
-        : { type: 'hexagonal', count: count2, rows, cols_full, cols_staggered, pattern: 'staggered_first', itemW: diameter, itemH: diameter };
+    const best =
+        count1 >= count2
+            ? {
+                  type: 'hexagonal',
+                  count: count1,
+                  rows,
+                  cols_full,
+                  cols_staggered,
+                  pattern: 'full_first',
+                  itemW: diameter,
+                  itemH: diameter,
+              }
+            : {
+                  type: 'hexagonal',
+                  count: count2,
+                  rows,
+                  cols_full,
+                  cols_staggered,
+                  pattern: 'staggered_first',
+                  itemW: diameter,
+                  itemH: diameter,
+              };
     return best;
 }
 

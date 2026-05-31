@@ -1,11 +1,17 @@
 import { useMemo } from 'react';
 
-const fmt = (v) => v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—';
+const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 
 function MeterVisualization({ result, config }) {
     const {
-        finalItemW, finalItemH, itemsAcross, itemsPerMeter, rowsPerMeter,
-        originalW, originalH, rotated,
+        finalItemW,
+        finalItemH,
+        itemsAcross,
+        itemsPerMeter,
+        rowsPerMeter,
+        originalW,
+        originalH,
+        rotated,
     } = result;
 
     // finalItemW/H đang ở đơn vị CM (đã bao gồm padding)
@@ -39,17 +45,28 @@ function MeterVisualization({ result, config }) {
                 const y = r * finalItemH * scale;
                 const fontSize = Math.max(8, Math.min(12, sw / 7));
                 rects.push(
-                    <div key={idx} style={{
-                        position: 'absolute', left: x + 1, top: y + 1,
-                        width: Math.max(sw, 4), height: Math.max(sh, 4),
-                        background: '#3b82f6',
-                        border: '1px solid #60a5fa',
-                        borderRadius: '2px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        overflow: 'hidden',
-                    }}>
+                    <div
+                        key={idx}
+                        style={{
+                            position: 'absolute',
+                            left: x + 1,
+                            top: y + 1,
+                            width: Math.max(sw, 4),
+                            height: Math.max(sh, 4),
+                            background: '#3b82f6',
+                            border: '1px solid #60a5fa',
+                            borderRadius: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                        }}
+                    >
                         {sw > 30 && sh > 16 && (
-                            <span className="text-white font-medium" style={{ fontSize, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                            <span
+                                className="text-white font-medium"
+                                style={{ fontSize, lineHeight: 1, whiteSpace: 'nowrap' }}
+                            >
                                 {(originalW / 10).toFixed(1)}x{(originalH / 10).toFixed(1)}cm
                             </span>
                         )}
@@ -58,7 +75,18 @@ function MeterVisualization({ result, config }) {
             }
         }
         return rects;
-    }, [sw, sh, scale, finalItemW, finalItemH, itemsAcross, rowsPerMeter, itemsPerMeter, originalW, originalH]);
+    }, [
+        sw,
+        sh,
+        scale,
+        finalItemW,
+        finalItemH,
+        itemsAcross,
+        rowsPerMeter,
+        itemsPerMeter,
+        originalW,
+        originalH,
+    ]);
 
     // Phần thừa bên phải
     const wasteW = sheetW - contentW;
@@ -67,24 +95,35 @@ function MeterVisualization({ result, config }) {
     return (
         <div className="flex flex-col items-center">
             <p className="text-sm text-gray-300 mb-2">
-                Số lượng sản phẩm trên 1 mét tới mô phỏng: <span className="text-yellow-400 font-bold">{itemsPerMeter}</span> sản phẩm
+                Số lượng sản phẩm trên 1 mét tới mô phỏng:{' '}
+                <span className="text-yellow-400 font-bold">{itemsPerMeter}</span> sản phẩm
             </p>
-            <div className="relative border-2 border-gray-400 rounded select-none overflow-hidden"
-                style={{ width: visW, height: visH, background: '#e5e7eb' }}>
+            <div
+                className="relative border-2 border-gray-400 rounded select-none overflow-hidden"
+                style={{ width: visW, height: visH, background: '#e5e7eb' }}
+            >
                 {items}
                 {/* Vùng thừa */}
                 {wasteWpx > 2 && (
-                    <div style={{
-                        position: 'absolute', right: 0, top: 0, width: wasteWpx, height: '100%',
-                        background: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156,163,175,0.3) 4px, rgba(156,163,175,0.3) 8px)',
-                        borderLeft: '1px dashed #9ca3af',
-                    }} />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            width: wasteWpx,
+                            height: '100%',
+                            background:
+                                'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156,163,175,0.3) 4px, rgba(156,163,175,0.3) 8px)',
+                            borderLeft: '1px dashed #9ca3af',
+                        }}
+                    />
                 )}
             </div>
             <p className="text-xs text-gray-500 mt-2">
                 KT tem: {(originalW / 10).toFixed(1)} × {(originalH / 10).toFixed(1)} cm
                 {rotated && ' · Đã xoay'}
-                {' · '}{itemsAcross} cột × {rowsPerMeter} hàng
+                {' · '}
+                {itemsAcross} cột × {rowsPerMeter} hàng
                 {' · '}Khổ in: {printableWidthCM} cm
             </p>
         </div>
@@ -105,13 +144,26 @@ export default function UvdtfResultPanel({ result, params: _params, config, isCa
     }
 
     const {
-        totalLengthCM, totalMeters, pricePerMeter, billableMeters,
-        totalPrice, rotated, finalItemW, finalItemH, itemsAcross,
-        itemsPerMeter, rowsPerMeter, originalW, originalH,
+        totalLengthCM,
+        totalMeters,
+        pricePerMeter,
+        billableMeters,
+        totalPrice,
+        rotated,
+        finalItemW,
+        finalItemH,
+        itemsAcross,
+        itemsPerMeter,
+        rowsPerMeter,
+        originalW,
+        originalH,
     } = result;
 
     return (
-        <div className="transition-opacity duration-300" style={{ opacity: isCalculating ? 0.5 : 1 }}>
+        <div
+            className="transition-opacity duration-300"
+            style={{ opacity: isCalculating ? 0.5 : 1 }}
+        >
             {/* Price box */}
             <div className="bg-gray-800 p-4 rounded-lg border-2 border-dashed border-yellow-500 mb-4">
                 <div className="text-center mb-3">
@@ -129,7 +181,9 @@ export default function UvdtfResultPanel({ result, params: _params, config, isCa
                     </div>
                     <div>
                         <p className="text-gray-500 text-xs">Cách xếp</p>
-                        <p className="text-gray-200 font-semibold">{rotated ? 'Xoay' : 'Không xoay'}</p>
+                        <p className="text-gray-200 font-semibold">
+                            {rotated ? 'Xoay' : 'Không xoay'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -142,7 +196,9 @@ export default function UvdtfResultPanel({ result, params: _params, config, isCa
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-400">Kích thước gốc</span>
-                        <span className="text-gray-200">{originalW} × {originalH} mm</span>
+                        <span className="text-gray-200">
+                            {originalW} × {originalH} mm
+                        </span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-400">Kích thước xếp</span>
@@ -157,11 +213,15 @@ export default function UvdtfResultPanel({ result, params: _params, config, isCa
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-400">Sản phẩm / mét tới</span>
-                        <span className="text-gray-200">{itemsPerMeter} ({itemsAcross} cột × {rowsPerMeter} hàng)</span>
+                        <span className="text-gray-200">
+                            {itemsPerMeter} ({itemsAcross} cột × {rowsPerMeter} hàng)
+                        </span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-400">Tổng chiều dài thực</span>
-                        <span className="text-gray-200">{totalLengthCM} cm ({totalMeters} m)</span>
+                        <span className="text-gray-200">
+                            {totalLengthCM} cm ({totalMeters} m)
+                        </span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-400">Mét tới tính tiền</span>

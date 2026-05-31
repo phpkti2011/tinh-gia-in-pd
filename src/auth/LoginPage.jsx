@@ -27,9 +27,7 @@ export default function LoginPage({ onSuccess }) {
                 onSubmit={handleSubmit}
                 className="bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 w-full max-w-md"
             >
-                <h2 className="text-2xl font-bold text-white mb-6 text-center">
-                    Đăng nhập Admin
-                </h2>
+                <h2 className="text-2xl font-bold text-white mb-6 text-center">Đăng nhập Admin</h2>
 
                 <div className="mb-4">
                     <label className="block text-gray-400 text-sm mb-1">Email</label>
@@ -63,9 +61,7 @@ export default function LoginPage({ onSuccess }) {
                     </button>
                 </div>
 
-                {error && (
-                    <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
-                )}
+                {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
 
                 <button
                     type="submit"

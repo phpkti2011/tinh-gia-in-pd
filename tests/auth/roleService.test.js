@@ -10,12 +10,7 @@ beforeAll(() => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
-import {
-    isAdminRole,
-    isValidRole,
-    getUserRole,
-    VALID_ROLES,
-} from '../../src/auth/roleService.js';
+import { isAdminRole, isValidRole, getUserRole, VALID_ROLES } from '../../src/auth/roleService.js';
 
 describe('P2-02: roleService', () => {
     describe('VALID_ROLES', () => {
@@ -40,7 +35,8 @@ describe('P2-02: roleService', () => {
         it("'admin' → true", () => expect(isValidRole('admin')).toBe(true));
         it("'staff' → true", () => expect(isValidRole('staff')).toBe(true));
         it("'viewer' → true", () => expect(isValidRole('viewer')).toBe(true));
-        it("'superadmin' → false (không thuộc enum)", () => expect(isValidRole('superadmin')).toBe(false));
+        it("'superadmin' → false (không thuộc enum)", () =>
+            expect(isValidRole('superadmin')).toBe(false));
         it("'' → false", () => expect(isValidRole('')).toBe(false));
         it('null → false', () => expect(isValidRole(null)).toBe(false));
         it('123 → false', () => expect(isValidRole(123)).toBe(false));

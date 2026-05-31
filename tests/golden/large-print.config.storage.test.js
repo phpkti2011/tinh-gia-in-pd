@@ -16,11 +16,21 @@ function createLocalStorageMock() {
         getItem(key) {
             return Object.prototype.hasOwnProperty.call(this._data, key) ? this._data[key] : null;
         },
-        setItem(key, value) { this._data[key] = String(value); },
-        removeItem(key) { delete this._data[key]; },
-        clear() { this._data = {}; },
-        get length() { return Object.keys(this._data).length; },
-        key(i) { return Object.keys(this._data)[i] ?? null; },
+        setItem(key, value) {
+            this._data[key] = String(value);
+        },
+        removeItem(key) {
+            delete this._data[key];
+        },
+        clear() {
+            this._data = {};
+        },
+        get length() {
+            return Object.keys(this._data).length;
+        },
+        key(i) {
+            return Object.keys(this._data)[i] ?? null;
+        },
     };
 }
 globalThis.localStorage = createLocalStorageMock();
@@ -118,7 +128,7 @@ describe('TASK-0017: validateLargePrintConfig wired vào configStorage', () => {
             // Infinity restored từ null sau JSON roundtrip
             const lastTier = loaded.FORMEX_DISCOUNT_TIERS[loaded.FORMEX_DISCOUNT_TIERS.length - 1];
             expect(lastTier.maxArea).toBe(Infinity);
-            expect(lastTier.discount).toBe(0.20);
+            expect(lastTier.discount).toBe(0.2);
         });
     });
 

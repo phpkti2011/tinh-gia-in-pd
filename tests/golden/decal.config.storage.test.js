@@ -20,11 +20,21 @@ function createLocalStorageMock() {
         getItem(key) {
             return Object.prototype.hasOwnProperty.call(this._data, key) ? this._data[key] : null;
         },
-        setItem(key, value) { this._data[key] = String(value); },
-        removeItem(key) { delete this._data[key]; },
-        clear() { this._data = {}; },
-        get length() { return Object.keys(this._data).length; },
-        key(i) { return Object.keys(this._data)[i] ?? null; },
+        setItem(key, value) {
+            this._data[key] = String(value);
+        },
+        removeItem(key) {
+            delete this._data[key];
+        },
+        clear() {
+            this._data = {};
+        },
+        get length() {
+            return Object.keys(this._data).length;
+        },
+        key(i) {
+            return Object.keys(this._data)[i] ?? null;
+        },
     };
 }
 
@@ -35,8 +45,7 @@ globalThis.localStorage = createLocalStorageMock();
 // P2-05.6: bỏ dynamic import cloudSync.js (file đã xoá).
 const { loadDecalConfig, saveDecalConfig, saveConfigToCloud } =
     await import('../../src/utils/configStorage.js');
-const { DECAL_DEFAULT_CONFIG } =
-    await import('../../src/modules/decal/config/index.js');
+const { DECAL_DEFAULT_CONFIG } = await import('../../src/modules/decal/config/index.js');
 
 describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
     let warnSpy, errorSpy;
@@ -101,13 +110,16 @@ describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
         });
 
         it('config thiếu key thiết yếu (shallow) → fallback default + warn', () => {
-            localStorage.setItem('decalConfig', JSON.stringify({
-                progressiveTiers: [{ upTo: 1, price: 100 }],
-                decalCosts: { 'Decal giấy': 0 },
-                // không có basePrintWidth → shallow fail
-            }));
+            localStorage.setItem(
+                'decalConfig',
+                JSON.stringify({
+                    progressiveTiers: [{ upTo: 1, price: 100 }],
+                    decalCosts: { 'Decal giấy': 0 },
+                    // không có basePrintWidth → shallow fail
+                })
+            );
             const cfg = loadDecalConfig();
-            expect(cfg.basePrintWidth).toBe(330);  // = default
+            expect(cfg.basePrintWidth).toBe(330); // = default
             expect(warnSpy).toHaveBeenCalled();
         });
 
@@ -126,7 +138,9 @@ describe('TASK-0005.5: validateDecalConfig wired vào configStorage', () => {
             const loaded = loadDecalConfig();
             expect(loaded.basePrintWidth).toBe(DECAL_DEFAULT_CONFIG.basePrintWidth);
             expect(loaded.laminationCost).toBe(DECAL_DEFAULT_CONFIG.laminationCost);
-            expect(loaded.progressiveTiers.length).toBe(DECAL_DEFAULT_CONFIG.progressiveTiers.length);
+            expect(loaded.progressiveTiers.length).toBe(
+                DECAL_DEFAULT_CONFIG.progressiveTiers.length
+            );
             // Infinity được restore từ null khi đọc lại
             const lastTier = loaded.progressiveTiers[loaded.progressiveTiers.length - 1];
             expect(lastTier.upTo).toBe(Infinity);

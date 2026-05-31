@@ -20,7 +20,8 @@
 
 export function calculateUvDtf(params, config) {
     const { widthMM, heightMM, quantity } = params;
-    if (!widthMM || !heightMM || !quantity || widthMM <= 0 || heightMM <= 0 || quantity <= 0) return null;
+    if (!widthMM || !heightMM || !quantity || widthMM <= 0 || heightMM <= 0 || quantity <= 0)
+        return null;
 
     const printableW = config.printableWidthCM;
     const pad = config.paddingCM;
@@ -41,15 +42,26 @@ export function calculateUvDtf(params, config) {
 
     let totalLengthCM, rotated, finalItemW, finalItemH, itemsAcross;
     if (lengthUp <= lengthRot) {
-        totalLengthCM = lengthUp; rotated = false; finalItemW = itemWcm; finalItemH = itemHcm; itemsAcross = acrossUp;
+        totalLengthCM = lengthUp;
+        rotated = false;
+        finalItemW = itemWcm;
+        finalItemH = itemHcm;
+        itemsAcross = acrossUp;
     } else {
-        totalLengthCM = lengthRot; rotated = true; finalItemW = itemHcm; finalItemH = itemWcm; itemsAcross = acrossRot;
+        totalLengthCM = lengthRot;
+        rotated = true;
+        finalItemW = itemHcm;
+        finalItemH = itemWcm;
+        itemsAcross = acrossRot;
     }
 
     const totalMeters = totalLengthCM / 100;
     let pricePerMeter = config.priceTiers[config.priceTiers.length - 1].price;
     for (const tier of config.priceTiers) {
-        if (totalMeters <= tier.maxMeters) { pricePerMeter = tier.price; break; }
+        if (totalMeters <= tier.maxMeters) {
+            pricePerMeter = tier.price;
+            break;
+        }
     }
 
     const billableMeters = Math.max(config.minBillableMeters, totalMeters);

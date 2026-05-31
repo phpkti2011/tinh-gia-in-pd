@@ -21,12 +21,19 @@ import { calculateFormexCost, calculateFinishingCost } from './finishing.js';
 
 export function calculateLargePrint(params, config) {
     const { materialTypeKey, laminationTypeKey, formexTypeKey } = params;
-    const items = params.items || [{ width: params.width, height: params.height, quantity: parseInt(params.quantity, 10) || 1 }];
+    const items = params.items || [
+        {
+            width: params.width,
+            height: params.height,
+            quantity: parseInt(params.quantity, 10) || 1,
+        },
+    ];
 
     // Tính tổng diện tích tất cả tấm (cho formex, finishing)
     let grandTotalArea = 0;
     for (const item of items) {
-        const w = item.width / 100, h = item.height / 100;
+        const w = item.width / 100,
+            h = item.height / 100;
         grandTotalArea += w * h * (item.quantity || 1);
     }
 
@@ -34,10 +41,14 @@ export function calculateLargePrint(params, config) {
     const finishing = calculateFinishingCost(grandTotalArea, params, config);
 
     // Standee
-    let standeeCost = 0, standeeName = '';
+    let standeeCost = 0,
+        standeeName = '';
     if (params.standeeKey && params.standeeKey !== 'none' && config.STANDEE_OPTIONS) {
-        const standee = config.STANDEE_OPTIONS.find(s => s.key === params.standeeKey);
-        if (standee) { standeeCost = standee.price; standeeName = standee.name; }
+        const standee = config.STANDEE_OPTIONS.find((s) => s.key === params.standeeKey);
+        if (standee) {
+            standeeCost = standee.price;
+            standeeName = standee.name;
+        }
     }
 
     const materialType = config.MATERIAL_TYPES[materialTypeKey];
@@ -52,10 +63,14 @@ export function calculateLargePrint(params, config) {
         let allFit = true;
 
         for (const item of items) {
-            const wM = item.width / 100, hM = item.height / 100;
+            const wM = item.width / 100,
+                hM = item.height / 100;
             const qty = item.quantity || 1;
             const optimized = optimizeItemOnRoll(wM, hM, rollOption, laminationTypeKey, config);
-            if (!optimized) { allFit = false; break; }
+            if (!optimized) {
+                allFit = false;
+                break;
+            }
 
             const itemTotal = optimized.totalCost * qty;
             rollTotalCost += itemTotal;
@@ -93,7 +108,9 @@ export function calculateLargePrint(params, config) {
     if (!bestRollResult) return null;
 
     // Tính tổng diện tích
-    let totalPrintedArea = 0, totalUnprintedArea = 0, totalPanels = 0;
+    let totalPrintedArea = 0,
+        totalUnprintedArea = 0,
+        totalPanels = 0;
     for (const d of bestRollResult.itemDetails) {
         totalPrintedArea += d.printedArea * d.quantity;
         totalUnprintedArea += d.unprintedArea * d.quantity;
@@ -112,7 +129,11 @@ export function calculateLargePrint(params, config) {
         finishingDesc: finishing.desc,
         printedArea: totalPrintedArea,
         unprintedArea: totalUnprintedArea,
-        materialChoice: { width: bestRollResult.rollWidth, printPrice: bestRollResult.rollPrintPrice, materialPrice: bestRollResult.rollMaterialPrice },
+        materialChoice: {
+            width: bestRollResult.rollWidth,
+            printPrice: bestRollResult.rollPrintPrice,
+            materialPrice: bestRollResult.rollMaterialPrice,
+        },
         laminationChoice: bestRollResult.itemDetails[0]?.laminationChoice || null,
     };
 }

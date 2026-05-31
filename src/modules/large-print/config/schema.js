@@ -14,10 +14,7 @@ const REQUIRED_OBJECT_GROUPS = [
     'FINISHING_PRICES',
 ];
 
-const REQUIRED_NONEMPTY_ARRAYS = [
-    'FORMEX_DISCOUNT_TIERS',
-    'STANDEE_OPTIONS',
-];
+const REQUIRED_NONEMPTY_ARRAYS = ['FORMEX_DISCOUNT_TIERS', 'STANDEE_OPTIONS'];
 
 const REQUIRED_NUMBERS = [
     'MIN_PRINT_PRICE',
@@ -32,15 +29,22 @@ function isPlainObject(v) {
 
 function validateMaterialOption(opt, materialKey, i, errors) {
     const prefix = `MATERIAL_TYPES['${materialKey}'].options[${i}]`;
-    if (!isPlainObject(opt)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(opt)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof opt.width !== 'number') errors.push(`${prefix}.width: phải là number`);
     if (typeof opt.printPrice !== 'number') errors.push(`${prefix}.printPrice: phải là number`);
-    if (typeof opt.materialPrice !== 'number') errors.push(`${prefix}.materialPrice: phải là number`);
+    if (typeof opt.materialPrice !== 'number')
+        errors.push(`${prefix}.materialPrice: phải là number`);
 }
 
 function validateMaterialType(material, key, errors) {
     const prefix = `MATERIAL_TYPES['${key}']`;
-    if (!isPlainObject(material)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(material)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof material.name !== 'string') errors.push(`${prefix}.name: phải là string`);
     if (!Array.isArray(material.options) || material.options.length === 0) {
         errors.push(`${prefix}.options: phải là array non-empty`);
@@ -51,14 +55,20 @@ function validateMaterialType(material, key, errors) {
 
 function validateLaminationOption(opt, lamKey, i, errors) {
     const prefix = `LAMINATION_TYPES['${lamKey}'].options[${i}]`;
-    if (!isPlainObject(opt)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(opt)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof opt.width !== 'number') errors.push(`${prefix}.width: phải là number`);
     if (typeof opt.price !== 'number') errors.push(`${prefix}.price: phải là number`);
 }
 
 function validateLaminationType(lam, key, errors) {
     const prefix = `LAMINATION_TYPES['${key}']`;
-    if (!isPlainObject(lam)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(lam)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof lam.name !== 'string') errors.push(`${prefix}.name: phải là string`);
     if (!Array.isArray(lam.options) || lam.options.length === 0) {
         errors.push(`${prefix}.options: phải là array non-empty`);
@@ -69,22 +79,32 @@ function validateLaminationType(lam, key, errors) {
 
 function validateFormexOption(opt, key, errors) {
     const prefix = `FORMEX_OPTIONS['${key}']`;
-    if (!isPlainObject(opt)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(opt)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof opt.name !== 'string') errors.push(`${prefix}.name: phải là string`);
     if (typeof opt.price !== 'number') errors.push(`${prefix}.price: phải là number`);
 }
 
 function validateFormexDiscountTier(tier, i, errors) {
     const prefix = `FORMEX_DISCOUNT_TIERS[${i}]`;
-    if (!isPlainObject(tier)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(tier)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof tier.minArea !== 'number') errors.push(`${prefix}.minArea: phải là number`);
-    if (typeof tier.maxArea !== 'number') errors.push(`${prefix}.maxArea: phải là number (cho phép Infinity)`);
+    if (typeof tier.maxArea !== 'number')
+        errors.push(`${prefix}.maxArea: phải là number (cho phép Infinity)`);
     if (typeof tier.discount !== 'number') errors.push(`${prefix}.discount: phải là number`);
 }
 
 function validateStandeeOption(s, i, errors) {
     const prefix = `STANDEE_OPTIONS[${i}]`;
-    if (!isPlainObject(s)) { errors.push(`${prefix}: phải là object`); return; }
+    if (!isPlainObject(s)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
     if (typeof s.key !== 'string') errors.push(`${prefix}.key: phải là string`);
     if (typeof s.name !== 'string') errors.push(`${prefix}.name: phải là string`);
     if (typeof s.price !== 'number') errors.push(`${prefix}.price: phải là number`);
@@ -92,13 +112,22 @@ function validateStandeeOption(s, i, errors) {
 
 function validateFinishingPrices(fp, errors) {
     if (!isPlainObject(fp)) return; // already reported as missing object
-    if (typeof fp.edgeTapingPricePerSqm !== 'number') errors.push('FINISHING_PRICES.edgeTapingPricePerSqm: phải là number');
-    if (typeof fp.grommetPricePerPiece !== 'number') errors.push('FINISHING_PRICES.grommetPricePerPiece: phải là number');
+    if (typeof fp.edgeTapingPricePerSqm !== 'number')
+        errors.push('FINISHING_PRICES.edgeTapingPricePerSqm: phải là number');
+    if (typeof fp.grommetPricePerPiece !== 'number')
+        errors.push('FINISHING_PRICES.grommetPricePerPiece: phải là number');
     if (!isPlainObject(fp.dieCutting)) {
         errors.push('FINISHING_PRICES.dieCutting: phải là object');
     } else {
-        for (const k of ['tier1LimitSqm', 'tier2LimitSqm', 'tier1PricePerSqm', 'tier2PricePerSqm', 'tier3PricePerSqm']) {
-            if (typeof fp.dieCutting[k] !== 'number') errors.push(`FINISHING_PRICES.dieCutting.${k}: phải là number`);
+        for (const k of [
+            'tier1LimitSqm',
+            'tier2LimitSqm',
+            'tier1PricePerSqm',
+            'tier2PricePerSqm',
+            'tier3PricePerSqm',
+        ]) {
+            if (typeof fp.dieCutting[k] !== 'number')
+                errors.push(`FINISHING_PRICES.dieCutting.${k}: phải là number`);
         }
     }
 }

@@ -302,10 +302,20 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             <span className="text-blue-400">3.</span> Số Sticker / Tờ
                         </h2>
                         <div className="relative">
-                            <input type="number" id="sheetStickerCount" name="sheetStickerCount" value={params.sheetStickerCount} onChange={handleChange} step="1" min="1" />
+                            <input
+                                type="number"
+                                id="sheetStickerCount"
+                                name="sheetStickerCount"
+                                value={params.sheetStickerCount}
+                                onChange={handleChange}
+                                step="1"
+                                min="1"
+                            />
                             <span className="unit">sticker</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Số sticker trên mỗi tờ (dùng tính phụ phí bế demi)</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Số sticker trên mỗi tờ (dùng tính phụ phí bế demi)
+                        </p>
                     </div>
 
                     <div className="input-group">

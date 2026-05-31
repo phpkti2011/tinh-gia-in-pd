@@ -28,12 +28,18 @@ export function calculateFinishingCost(totalArea, params, config) {
     let cost = 0;
     const parts = [];
     if (params.edgeTaping) {
-        const tapingCost = Math.max(totalArea * fp.edgeTapingPricePerSqm, config.MIN_EDGE_TAPING_PRICE || 0);
+        const tapingCost = Math.max(
+            totalArea * fp.edgeTapingPricePerSqm,
+            config.MIN_EDGE_TAPING_PRICE || 0
+        );
         cost += tapingCost;
         parts.push(`Dán biên: ${tapingCost.toLocaleString()}đ`);
     }
     if (params.grommetsCheck && params.grommetsCount > 0) {
-        const grommetCost = Math.max(params.grommetsCount * fp.grommetPricePerPiece, config.MIN_GROMMET_PRICE || 0);
+        const grommetCost = Math.max(
+            params.grommetsCount * fp.grommetPricePerPiece,
+            config.MIN_GROMMET_PRICE || 0
+        );
         cost += grommetCost;
         parts.push(`Đóng ${params.grommetsCount} khoen: ${grommetCost.toLocaleString()}đ`);
     }
@@ -41,8 +47,15 @@ export function calculateFinishingCost(totalArea, params, config) {
         const dc = fp.dieCutting;
         let dieCost = 0;
         if (totalArea <= dc.tier1LimitSqm) dieCost = totalArea * dc.tier1PricePerSqm;
-        else if (totalArea <= dc.tier2LimitSqm) dieCost = dc.tier1LimitSqm * dc.tier1PricePerSqm + (totalArea - dc.tier1LimitSqm) * dc.tier2PricePerSqm;
-        else dieCost = dc.tier1LimitSqm * dc.tier1PricePerSqm + (dc.tier2LimitSqm - dc.tier1LimitSqm) * dc.tier2PricePerSqm + (totalArea - dc.tier2LimitSqm) * dc.tier3PricePerSqm;
+        else if (totalArea <= dc.tier2LimitSqm)
+            dieCost =
+                dc.tier1LimitSqm * dc.tier1PricePerSqm +
+                (totalArea - dc.tier1LimitSqm) * dc.tier2PricePerSqm;
+        else
+            dieCost =
+                dc.tier1LimitSqm * dc.tier1PricePerSqm +
+                (dc.tier2LimitSqm - dc.tier1LimitSqm) * dc.tier2PricePerSqm +
+                (totalArea - dc.tier2LimitSqm) * dc.tier3PricePerSqm;
         cost += dieCost;
         parts.push(`Bế: ${dieCost.toLocaleString()}đ`);
     }

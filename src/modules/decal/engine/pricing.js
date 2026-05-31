@@ -17,7 +17,9 @@
 // Progressive pricing — each tier is priced independently
 // (NOT cumulative total; each range has its own per-sheet price).
 function calculateProgressivePrice(numSheets, config) {
-    let totalCost = 0, remaining = numSheets, prevLimit = 0;
+    let totalCost = 0,
+        remaining = numSheets,
+        prevLimit = 0;
     for (const tier of config.progressiveTiers) {
         if (remaining <= 0) break;
         const tierRange = tier.upTo - prevLimit;
@@ -64,7 +66,15 @@ function findTierPriceAt(sheetCount, config) {
 //   lam  = laminationCost × raw
 //   decalExtra = decalCost × ceil  (chưa có Excel ref cho Decal nhựa — fix sau)
 // Khi raw integer (ceil = raw): fractional adjustment = 0 → identical với old.
-export function calculateSingleStickerPrice(quantity, decalType, isLaminated, stickersPerSheet, sheetW, sheetH, config) {
+export function calculateSingleStickerPrice(
+    quantity,
+    decalType,
+    isLaminated,
+    stickersPerSheet,
+    sheetW,
+    sheetH,
+    config
+) {
     if (stickersPerSheet <= 0) return 0;
     const rawSheets = quantity / stickersPerSheet;
     const ceilSheets = Math.ceil(rawSheets);
@@ -86,7 +96,16 @@ export function calculateSingleStickerPrice(quantity, decalType, isLaminated, st
 }
 
 // Calculate price for sticker sheet mode
-export function calculateSheetPrice(quantity, decalType, isLaminated, sheetsPerPrintSheet, stickersOnSheet, sheetW, sheetH, config) {
+export function calculateSheetPrice(
+    quantity,
+    decalType,
+    isLaminated,
+    sheetsPerPrintSheet,
+    stickersOnSheet,
+    sheetW,
+    sheetH,
+    config
+) {
     if (sheetsPerPrintSheet <= 0) return 0;
     const numPrintSheets = Math.ceil(quantity / sheetsPerPrintSheet);
     const multiplier = getPriceMultiplier(sheetW, sheetH, config);

@@ -20,19 +20,30 @@ function NumInput({ configValue, onCommit, className, step }) {
         if (isNaN(parsed)) setLocalStr(String(configValue));
         else onCommit(parsed);
     };
-    return <input type="number" value={localStr} step={step} className={className} onChange={handleChange} onBlur={handleBlur}/>;
+    return (
+        <input
+            type="number"
+            value={localStr}
+            step={step}
+            className={className}
+            onChange={handleChange}
+            onBlur={handleBlur}
+        />
+    );
 }
 
-const inputCls = "w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500";
-const inputClsPr = inputCls + " pr-12";
-const labelCls = "text-gray-400 text-sm block mb-1";
-const btnCls = "px-3 py-1 rounded text-sm font-medium";
-const btnAdd = btnCls + " bg-green-600 hover:bg-green-700 text-white";
-const btnDel = btnCls + " bg-red-600 hover:bg-red-700 text-white";
-const sectionTitle = "text-cyan-400 font-bold text-lg mb-3 border-b border-gray-700 pb-1";
-const thCls = "px-3 py-2 text-left text-gray-400 text-xs uppercase";
-const tdCls = "px-3 py-2";
-const numCls = "bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-28 focus:outline-none focus:border-blue-500";
+const inputCls =
+    'w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500';
+const inputClsPr = inputCls + ' pr-12';
+const labelCls = 'text-gray-400 text-sm block mb-1';
+const btnCls = 'px-3 py-1 rounded text-sm font-medium';
+const btnAdd = btnCls + ' bg-green-600 hover:bg-green-700 text-white';
+const btnDel = btnCls + ' bg-red-600 hover:bg-red-700 text-white';
+const sectionTitle = 'text-cyan-400 font-bold text-lg mb-3 border-b border-gray-700 pb-1';
+const thCls = 'px-3 py-2 text-left text-gray-400 text-xs uppercase';
+const tdCls = 'px-3 py-2';
+const numCls =
+    'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-28 focus:outline-none focus:border-blue-500';
 
 export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
@@ -57,7 +68,7 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
     };
 
     const updateConfig = (updater) => {
-        setLocalConfig(prev => {
+        setLocalConfig((prev) => {
             const c = JSON.parse(JSON.stringify(prev));
             updater(c);
             return c;
@@ -65,9 +76,18 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
     };
 
     // --- priceTiers helpers ---
-    const updateTier = (idx, field, val) => updateConfig(c => { c.priceTiers[idx][field] = val; });
-    const addTier = () => updateConfig(c => { c.priceTiers.push({ maxMeters: Infinity, pricePerMeter: 0 }); });
-    const delTier = (idx) => updateConfig(c => { c.priceTiers.splice(idx, 1); });
+    const updateTier = (idx, field, val) =>
+        updateConfig((c) => {
+            c.priceTiers[idx][field] = val;
+        });
+    const addTier = () =>
+        updateConfig((c) => {
+            c.priceTiers.push({ maxMeters: Infinity, pricePerMeter: 0 });
+        });
+    const delTier = (idx) =>
+        updateConfig((c) => {
+            c.priceTiers.splice(idx, 1);
+        });
 
     // ========== RENDER ==========
     const tiers = localConfig.priceTiers || [];
@@ -79,14 +99,23 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
                     <h2 className="text-xl font-bold text-cyan-400">Cai dat UV DTF</h2>
                     <div className="flex gap-3">
-                        <button onClick={handleSave} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Luu</button>
-                        <button onClick={onCancel} className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium">Huy</button>
+                        <button
+                            onClick={handleSave}
+                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+                        >
+                            Luu
+                        </button>
+                        <button
+                            onClick={onCancel}
+                            className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
+                        >
+                            Huy
+                        </button>
                     </div>
                 </div>
 
                 {/* Scrollable body */}
                 <div className="overflow-y-auto px-6 py-4 space-y-8 flex-1">
-
                     {/* ===== THONG SO CHUNG ===== */}
                     <section>
                         <h3 className={sectionTitle}>Thong So Chung</h3>
@@ -97,9 +126,15 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                                     configValue={localConfig.materialWidthCM}
                                     step={0.1}
                                     className={inputClsPr}
-                                    onCommit={v => updateConfig(c => { c.materialWidthCM = v; })}
+                                    onCommit={(v) =>
+                                        updateConfig((c) => {
+                                            c.materialWidthCM = v;
+                                        })
+                                    }
                                 />
-                                <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                                <span className="absolute right-3 top-[32px] text-gray-500">
+                                    cm
+                                </span>
                             </div>
                             <div className="relative">
                                 <label className={labelCls}>Vung in</label>
@@ -107,9 +142,15 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                                     configValue={localConfig.printableWidthCM}
                                     step={0.1}
                                     className={inputClsPr}
-                                    onCommit={v => updateConfig(c => { c.printableWidthCM = v; })}
+                                    onCommit={(v) =>
+                                        updateConfig((c) => {
+                                            c.printableWidthCM = v;
+                                        })
+                                    }
                                 />
-                                <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                                <span className="absolute right-3 top-[32px] text-gray-500">
+                                    cm
+                                </span>
                             </div>
                             <div className="relative">
                                 <label className={labelCls}>Padding moi item</label>
@@ -117,9 +158,15 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                                     configValue={localConfig.paddingCM}
                                     step={0.1}
                                     className={inputClsPr}
-                                    onCommit={v => updateConfig(c => { c.paddingCM = v; })}
+                                    onCommit={(v) =>
+                                        updateConfig((c) => {
+                                            c.paddingCM = v;
+                                        })
+                                    }
                                 />
-                                <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                                <span className="absolute right-3 top-[32px] text-gray-500">
+                                    cm
+                                </span>
                             </div>
                             <div className="relative">
                                 <label className={labelCls}>Met toi toi thieu</label>
@@ -127,7 +174,11 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                                     configValue={localConfig.minBillableMeters}
                                     step={0.1}
                                     className={inputClsPr}
-                                    onCommit={v => updateConfig(c => { c.minBillableMeters = v; })}
+                                    onCommit={(v) =>
+                                        updateConfig((c) => {
+                                            c.minBillableMeters = v;
+                                        })
+                                    }
                                 />
                                 <span className="absolute right-3 top-[32px] text-gray-500">m</span>
                             </div>
@@ -137,8 +188,12 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                     {/* ===== BANG GIA THEO MET TOI ===== */}
                     <section>
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className={sectionTitle + " mb-0 border-0 pb-0"}>Bang Gia Theo Met Toi</h3>
-                            <button onClick={addTier} className={btnAdd}>+ Them bac</button>
+                            <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
+                                Bang Gia Theo Met Toi
+                            </h3>
+                            <button onClick={addTier} className={btnAdd}>
+                                + Them bac
+                            </button>
                         </div>
                         <table className="w-full text-sm">
                             <thead>
@@ -154,17 +209,22 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                                         <td className={tdCls}>
                                             <input
                                                 type="number"
-                                                value={tier.maxMeters === Infinity ? '' : tier.maxMeters}
+                                                value={
+                                                    tier.maxMeters === Infinity
+                                                        ? ''
+                                                        : tier.maxMeters
+                                                }
                                                 placeholder="(vo han)"
                                                 step={1}
                                                 className={numCls}
-                                                onChange={e => {
+                                                onChange={(e) => {
                                                     const val = e.target.value;
                                                     if (val === '' || val.trim() === '') {
                                                         updateTier(i, 'maxMeters', Infinity);
                                                     } else {
                                                         const parsed = parseFloat(val);
-                                                        if (!isNaN(parsed)) updateTier(i, 'maxMeters', parsed);
+                                                        if (!isNaN(parsed))
+                                                            updateTier(i, 'maxMeters', parsed);
                                                     }
                                                 }}
                                             />
@@ -174,24 +234,35 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                                                 configValue={tier.pricePerMeter}
                                                 step={1000}
                                                 className={numCls}
-                                                onCommit={v => updateTier(i, 'pricePerMeter', v)}
+                                                onCommit={(v) => updateTier(i, 'pricePerMeter', v)}
                                             />
                                         </td>
                                         <td className={tdCls}>
-                                            <button onClick={() => delTier(i)} className={btnDel}>Xoa</button>
+                                            <button onClick={() => delTier(i)} className={btnDel}>
+                                                Xoa
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </section>
-
                 </div>
 
                 {/* Footer */}
                 <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
-                    <button onClick={handleSave} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">Luu cai dat</button>
-                    <button onClick={onCancel} className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium">Huy</button>
+                    <button
+                        onClick={handleSave}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+                    >
+                        Luu cai dat
+                    </button>
+                    <button
+                        onClick={onCancel}
+                        className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
+                    >
+                        Huy
+                    </button>
                 </div>
             </div>
         </div>

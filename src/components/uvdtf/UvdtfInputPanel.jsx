@@ -71,7 +71,8 @@ export default function UvdtfInputPanel({ config, params, onChange }) {
             {config && (
                 <div className="input-group">
                     <p className="text-xs text-gray-400">
-                        Khổ vật liệu: {config.materialWidthCM}cm · Vùng in: {config.printableWidthCM}cm · Padding: {config.paddingCM * 10}mm
+                        Khổ vật liệu: {config.materialWidthCM}cm · Vùng in:{' '}
+                        {config.printableWidthCM}cm · Padding: {config.paddingCM * 10}mm
                     </p>
                 </div>
             )}

@@ -48,9 +48,16 @@ const config = LARGE_PRINT_DEFAULT_CONFIG;
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case A: PP có keo 100×100cm × 1, không cán/formex/finishing', () => {
     const params = {
-        width: 100, height: 100, quantity: 1,
-        materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'none',
-        edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+        width: 100,
+        height: 100,
+        quantity: 1,
+        materialTypeKey: 'pp_co_keo',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'none',
+        edgeTaping: false,
+        grommetsCheck: false,
+        grommetsCount: 0,
+        dieCutting: false,
         standeeKey: 'none',
     };
     const r = calculateLargePrint(params, config);
@@ -113,9 +120,16 @@ describe('Case A: PP có keo 100×100cm × 1, không cán/formex/finishing', () 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case B: Decal sữa 50×100cm + cán màng mờ', () => {
     const params = {
-        width: 50, height: 100, quantity: 1,
-        materialTypeKey: 'decal_sua', laminationTypeKey: 'mang_mo', formexTypeKey: 'none',
-        edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+        width: 50,
+        height: 100,
+        quantity: 1,
+        materialTypeKey: 'decal_sua',
+        laminationTypeKey: 'mang_mo',
+        formexTypeKey: 'none',
+        edgeTaping: false,
+        grommetsCheck: false,
+        grommetsCount: 0,
+        dieCutting: false,
         standeeKey: 'none',
     };
     const r = calculateLargePrint(params, config);
@@ -156,9 +170,16 @@ describe('Case B: Decal sữa 50×100cm + cán màng mờ', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case C: PP có keo 150×400cm + formex 5mm (tier discount 10%)', () => {
     const params = {
-        width: 150, height: 400, quantity: 1,
-        materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'formex_5mm',
-        edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+        width: 150,
+        height: 400,
+        quantity: 1,
+        materialTypeKey: 'pp_co_keo',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'formex_5mm',
+        edgeTaping: false,
+        grommetsCheck: false,
+        grommetsCount: 0,
+        dieCutting: false,
         standeeKey: 'none',
     };
     const r = calculateLargePrint(params, config);
@@ -199,9 +220,16 @@ describe('Case C: PP có keo 150×400cm + formex 5mm (tier discount 10%)', () =>
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case D: Hiflex 200×100cm + dán biên + 8 khoen', () => {
     const params = {
-        width: 200, height: 100, quantity: 1,
-        materialTypeKey: 'hiflex', laminationTypeKey: 'none', formexTypeKey: 'none',
-        edgeTaping: true, grommetsCheck: true, grommetsCount: 8, dieCutting: false,
+        width: 200,
+        height: 100,
+        quantity: 1,
+        materialTypeKey: 'hiflex',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'none',
+        edgeTaping: true,
+        grommetsCheck: true,
+        grommetsCount: 8,
+        dieCutting: false,
         standeeKey: 'none',
     };
     const r = calculateLargePrint(params, config);
@@ -238,9 +266,16 @@ describe('Case D: Hiflex 200×100cm + dán biên + 8 khoen', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case E: Hiflex 60×160cm + standee cuộn 60×160', () => {
     const params = {
-        width: 60, height: 160, quantity: 1,
-        materialTypeKey: 'hiflex', laminationTypeKey: 'none', formexTypeKey: 'none',
-        edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+        width: 60,
+        height: 160,
+        quantity: 1,
+        materialTypeKey: 'hiflex',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'none',
+        edgeTaping: false,
+        grommetsCheck: false,
+        grommetsCount: 0,
+        dieCutting: false,
         standeeKey: 'standee_cuon_60x160',
     };
     const r = calculateLargePrint(params, config);
@@ -283,8 +318,13 @@ describe('Case F: Multi-items mixed (Hiflex)', () => {
             { width: 50, height: 100, quantity: 2 },
             { width: 100, height: 200, quantity: 1 },
         ],
-        materialTypeKey: 'hiflex', laminationTypeKey: 'none', formexTypeKey: 'none',
-        edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+        materialTypeKey: 'hiflex',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'none',
+        edgeTaping: false,
+        grommetsCheck: false,
+        grommetsCount: 0,
+        dieCutting: false,
         standeeKey: 'none',
     };
     const r = calculateLargePrint(params, config);
@@ -323,9 +363,16 @@ describe('Case F: Multi-items mixed (Hiflex)', () => {
 describe('Case G: input invalid → return null', () => {
     it('materialTypeKey không tồn tại → null', () => {
         const params = {
-            width: 100, height: 100, quantity: 1,
-            materialTypeKey: 'unknown', laminationTypeKey: 'none', formexTypeKey: 'none',
-            edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+            width: 100,
+            height: 100,
+            quantity: 1,
+            materialTypeKey: 'unknown',
+            laminationTypeKey: 'none',
+            formexTypeKey: 'none',
+            edgeTaping: false,
+            grommetsCheck: false,
+            grommetsCount: 0,
+            dieCutting: false,
             standeeKey: 'none',
         };
         expect(calculateLargePrint(params, config)).toBeNull();
@@ -334,9 +381,16 @@ describe('Case G: input invalid → return null', () => {
     it('item quá lớn (4×4m, không roll PP nào fit) → null', () => {
         // PP rolls max = 1.52m, item 4m × 4m không fit cả 2 hướng
         const params = {
-            width: 400, height: 400, quantity: 1,
-            materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'none',
-            edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+            width: 400,
+            height: 400,
+            quantity: 1,
+            materialTypeKey: 'pp_co_keo',
+            laminationTypeKey: 'none',
+            formexTypeKey: 'none',
+            edgeTaping: false,
+            grommetsCheck: false,
+            grommetsCount: 0,
+            dieCutting: false,
             standeeKey: 'none',
         };
         expect(calculateLargePrint(params, config)).toBeNull();
@@ -348,20 +402,35 @@ describe('Case G: input invalid → return null', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case H: structural — output có đủ 13 trường public', () => {
     const params = {
-        width: 100, height: 100, quantity: 1,
-        materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'none',
-        edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+        width: 100,
+        height: 100,
+        quantity: 1,
+        materialTypeKey: 'pp_co_keo',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'none',
+        edgeTaping: false,
+        grommetsCheck: false,
+        grommetsCount: 0,
+        dieCutting: false,
         standeeKey: 'none',
     };
     const r = calculateLargePrint(params, config);
 
     it('có đủ 13 trường public top-level', () => {
         const expectedKeys = [
-            'totalCost', 'rollWidth', 'itemDetails', 'totalPanels',
-            'formexCost', 'standeeCost', 'standeeName',
-            'finishingCost', 'finishingDesc',
-            'printedArea', 'unprintedArea',
-            'materialChoice', 'laminationChoice',
+            'totalCost',
+            'rollWidth',
+            'itemDetails',
+            'totalPanels',
+            'formexCost',
+            'standeeCost',
+            'standeeName',
+            'finishingCost',
+            'finishingDesc',
+            'printedArea',
+            'unprintedArea',
+            'materialChoice',
+            'laminationChoice',
         ];
         for (const key of expectedKeys) {
             expect(r).toHaveProperty(key);
@@ -372,9 +441,17 @@ describe('Case H: structural — output có đủ 13 trường public', () => {
     it('itemDetails entry có đủ 11 trường', () => {
         const detail = r.itemDetails[0];
         const expectedKeys = [
-            'originalW', 'originalH', 'quantity', 'rotated',
-            'printWidth', 'printHeight', 'printedArea', 'unprintedArea',
-            'unitCost', 'totalCost', 'laminationChoice',
+            'originalW',
+            'originalH',
+            'quantity',
+            'rotated',
+            'printWidth',
+            'printHeight',
+            'printedArea',
+            'unprintedArea',
+            'unitCost',
+            'totalCost',
+            'laminationChoice',
         ];
         for (const key of expectedKeys) {
             expect(detail).toHaveProperty(key);

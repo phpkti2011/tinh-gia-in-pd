@@ -66,14 +66,19 @@ describe('E2E-1: processSheet — card visit 9.3×5.8 trên 32.2×21.2/C2060/65�
     const allResults = [];
 
     processSheet(
-        32.2, 21.2, largeSheet, printer, params,
-        9.3, 5.8,
+        32.2,
+        21.2,
+        largeSheet,
+        printer,
+        params,
+        9.3,
+        5.8,
         allResults,
-        4400,   // largeSheetPrice: C300 = 2.200.000/500
-        0,      // spacing
-        false,  // isDigitalCutting
+        4400, // largeSheetPrice: C300 = 2.200.000/500
+        0, // spacing
+        false, // isDigitalCutting
         config,
-        false   // isCustom
+        false // isCustom
     );
 
     it('push đúng 1 result vào allResults', () => {
@@ -148,26 +153,30 @@ describe('E2E-1: processSheet — card visit 9.3×5.8 trên 32.2×21.2/C2060/65�
 // ─────────────────────────────────────────────────────────────────────────────
 describe('E2E-2: calculatePaperOptions — 500 card visit C300 65×86', () => {
     const params = {
-        paperType: '3',  // index of C300
+        paperType: '3', // index of C300
         productQuantity: 500,
         printSides: 2,
         printColorMode: '4color',
         laminationType: 'none',
-        printContents: 1, variableData: 'no',
-        largeSheetSelector: '0',  // 65×86
-        customSheetW: 70, customSheetH: 100,
+        printContents: 1,
+        variableData: 'no',
+        largeSheetSelector: '0', // 65×86
+        customSheetW: 70,
+        customSheetH: 100,
         artPaperPrice: 0,
     };
-    const selectedPaper = config.PAPER_STOCK_DATA[3];  // C300 (pricingModel='ream')
+    const selectedPaper = config.PAPER_STOCK_DATA[3]; // C300 (pricingModel='ream')
     const allResults = [];
 
     calculatePaperOptions(
-        params, selectedPaper,
-        9.3, 5.8,  // productWithBleed
+        params,
+        selectedPaper,
+        9.3,
+        5.8, // productWithBleed
         allResults,
-        0,         // spacing
-        false,     // isDigitalCutting
-        config,
+        0, // spacing
+        false, // isDigitalCutting
+        config
     );
 
     it('engine populated allResults (≥ 20 entries)', () => {
@@ -175,15 +184,16 @@ describe('E2E-2: calculatePaperOptions — 500 card visit C300 65×86', () => {
     });
 
     it('validation: KHÔNG có result với cutSheetW > 33 (maxW của cả 2 printer)', () => {
-        const tooWide = allResults.filter(r => r.cutSheetW > 33);
+        const tooWide = allResults.filter((r) => r.cutSheetW > 33);
         expect(tooWide.length).toBe(0);
     });
 
     it('có C2060 + 32.2×21.2 với 10 con/tờ, 205đ/sp', () => {
-        const found = allResults.find(r =>
-            r.printer.name === 'C2060' &&
-            Math.abs(r.cutSheetW - 32.2) < 0.01 &&
-            Math.abs(r.cutSheetH - 21.2) < 0.01
+        const found = allResults.find(
+            (r) =>
+                r.printer.name === 'C2060' &&
+                Math.abs(r.cutSheetW - 32.2) < 0.01 &&
+                Math.abs(r.cutSheetH - 21.2) < 0.01
         );
         expect(found).toBeDefined();
         expect(found.productsPerSheet).toBe(10);
@@ -192,10 +202,11 @@ describe('E2E-2: calculatePaperOptions — 500 card visit C300 65×86', () => {
     });
 
     it('có C2060 + 32.2×33 với 15 con/tờ, ≈ 173.33đ/sp', () => {
-        const found = allResults.find(r =>
-            r.printer.name === 'C2060' &&
-            Math.abs(r.cutSheetW - 32.2) < 0.01 &&
-            Math.abs(r.cutSheetH - 33.0) < 0.01
+        const found = allResults.find(
+            (r) =>
+                r.printer.name === 'C2060' &&
+                Math.abs(r.cutSheetW - 32.2) < 0.01 &&
+                Math.abs(r.cutSheetH - 33.0) < 0.01
         );
         expect(found).toBeDefined();
         expect(found.productsPerSheet).toBe(15);
@@ -204,11 +215,17 @@ describe('E2E-2: calculatePaperOptions — 500 card visit C300 65×86', () => {
     });
 
     it('có C6085 + 32.2×21.2 (printPrice 650 < C2060 750) cost rẻ hơn', () => {
-        const c2060 = allResults.find(r =>
-            r.printer.name === 'C2060' && Math.abs(r.cutSheetW - 32.2) < 0.01 && Math.abs(r.cutSheetH - 21.2) < 0.01
+        const c2060 = allResults.find(
+            (r) =>
+                r.printer.name === 'C2060' &&
+                Math.abs(r.cutSheetW - 32.2) < 0.01 &&
+                Math.abs(r.cutSheetH - 21.2) < 0.01
         );
-        const c6085 = allResults.find(r =>
-            r.printer.name === 'C6085' && Math.abs(r.cutSheetW - 32.2) < 0.01 && Math.abs(r.cutSheetH - 21.2) < 0.01
+        const c6085 = allResults.find(
+            (r) =>
+                r.printer.name === 'C6085' &&
+                Math.abs(r.cutSheetW - 32.2) < 0.01 &&
+                Math.abs(r.cutSheetH - 21.2) < 0.01
         );
         expect(c2060).toBeDefined();
         expect(c6085).toBeDefined();
@@ -219,7 +236,9 @@ describe('E2E-2: calculatePaperOptions — 500 card visit C300 65×86', () => {
     });
 
     it('tất cả results có costPerProduct hữu hạn + productsPerSheet > 0', () => {
-        const allValid = allResults.every(r => isFinite(r.costPerProduct) && r.productsPerSheet > 0);
+        const allValid = allResults.every(
+            (r) => isFinite(r.costPerProduct) && r.productsPerSheet > 0
+        );
         expect(allValid).toBe(true);
     });
 });
@@ -255,16 +274,21 @@ describe('E2E-3: Full pipeline → customer quote (500 card visit C300 2 mặt)'
         printSides: 2,
         printColorMode: '4color',
         laminationType: 'none',
-        printContents: 1, variableData: 'no',
+        printContents: 1,
+        variableData: 'no',
         largeSheetSelector: '0',
-        customSheetW: 70, customSheetH: 100,
+        customSheetW: 70,
+        customSheetH: 100,
         artPaperPrice: 0,
-        holePunchingType: 'none',  // sẽ override ở test bug
+        holePunchingType: 'none', // sẽ override ở test bug
         creasingType: 'none',
         mountingType: 'none',
-        dieCuttingType: 'none', moldType: 'simple',
+        dieCuttingType: 'none',
+        moldType: 'simple',
         foilStamping: 'no',
-        foilCustomSize: false, foilW: 5, foilH: 5,
+        foilCustomSize: false,
+        foilW: 5,
+        foilH: 5,
         foilSpecialColor: false,
     };
     const selectedPaper = config.PAPER_STOCK_DATA[3];
@@ -272,26 +296,50 @@ describe('E2E-3: Full pipeline → customer quote (500 card visit C300 2 mặt)'
     calculatePaperOptions(params, selectedPaper, 9.3, 5.8, allResults, 0, false, config);
 
     // Pick specific result (C2060 + 32.2×21.2 — đã verify ở E2E-1)
-    const bestOption = allResults.find(r =>
-        r.printer.name === 'C2060' &&
-        Math.abs(r.cutSheetW - 32.2) < 0.01 &&
-        Math.abs(r.cutSheetH - 21.2) < 0.01
+    const bestOption = allResults.find(
+        (r) =>
+            r.printer.name === 'C2060' &&
+            Math.abs(r.cutSheetW - 32.2) < 0.01 &&
+            Math.abs(r.cutSheetH - 21.2) < 0.01
     );
 
     // Sub-case 3.1: KHÔNG finishing — tổng 300k
     describe('Sub 3.1: no finishing → tổng 300.000đ', () => {
         const finishingCustomerPrices = { holePunching: 0, creasing: 0, mounting: 0 };
         const dieCuttingCustomerPrice = { moldCost: 0, laborCustomerPrice: 0 };
-        const quote = calculateCustomerQuote(bestOption, params, finishingCustomerPrices, dieCuttingCustomerPrice, null, config);
+        const quote = calculateCustomerQuote(
+            bestOption,
+            params,
+            finishingCustomerPrices,
+            dieCuttingCustomerPrice,
+            null,
+            config
+        );
 
-        it('engine populated bestOption', () => { expect(bestOption).toBeDefined(); });
-        it('quote không lỗi', () => { expect(quote.error).toBeNull(); });
-        it('totalA4Pages = "100"', () => { expect(quote.totalA4Pages).toBe('100'); });
-        it('totalPrintCost = 300.000đ', () => { expect(quote.totalPrintCost).toBe(300000); });
-        it('totalLaminationCost = 0', () => { expect(quote.totalLaminationCost).toBe(0); });
-        it('totalPaperSurcharge = 0 (C300)', () => { expect(quote.totalPaperSurcharge).toBe(0); });
-        it('customerSurcharge = 0 (1 nội dung)', () => { expect(quote.customerSurcharge).toBe(0); });
-        it('TỔNG khách = 300.000đ', () => { expect(quote.totalCustomerCost).toBe(300000); });
+        it('engine populated bestOption', () => {
+            expect(bestOption).toBeDefined();
+        });
+        it('quote không lỗi', () => {
+            expect(quote.error).toBeNull();
+        });
+        it('totalA4Pages = "100"', () => {
+            expect(quote.totalA4Pages).toBe('100');
+        });
+        it('totalPrintCost = 300.000đ', () => {
+            expect(quote.totalPrintCost).toBe(300000);
+        });
+        it('totalLaminationCost = 0', () => {
+            expect(quote.totalLaminationCost).toBe(0);
+        });
+        it('totalPaperSurcharge = 0 (C300)', () => {
+            expect(quote.totalPaperSurcharge).toBe(0);
+        });
+        it('customerSurcharge = 0 (1 nội dung)', () => {
+            expect(quote.customerSurcharge).toBe(0);
+        });
+        it('TỔNG khách = 300.000đ', () => {
+            expect(quote.totalCustomerCost).toBe(300000);
+        });
     });
 
     // Sub-case 3.2: finishing cost apply ĐÚNG (sau TASK-0008.6 fix App.jsx)
@@ -315,14 +363,16 @@ describe('E2E-3: Full pipeline → customer quote (500 card visit C300 2 mặt)'
             // Sau fix, App.jsx truyền inner config → holePunchingCustomerPrice = 150k
             const finishingCustomerPrices = {
                 holePunching: innerResult.customerPrice,
-                creasing: 0, mounting: 0,
+                creasing: 0,
+                mounting: 0,
             };
             const quote = calculateCustomerQuote(
                 bestOption,
                 { ...params, holePunchingType: '1_vi_tri' },
                 finishingCustomerPrices,
                 { moldCost: 0, laborCustomerPrice: 0 },
-                null, config
+                null,
+                config
             );
             // 300k print (100 trang × 3.000) + 150k đục lỗ = 450k
             expect(quote.totalCustomerCost).toBe(450000);

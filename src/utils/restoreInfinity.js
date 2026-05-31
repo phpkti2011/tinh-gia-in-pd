@@ -10,14 +10,7 @@
 // vẫn cần cho cả Supabase data (jsonb cũng mất Infinity giống JSON) và
 // localStorage data.
 
-const INFINITY_KEYS = new Set([
-    'upTo',
-    'max',
-    'max_cost',
-    'max_qty',
-    'maxArea',
-    'maxMeters',
-]);
+const INFINITY_KEYS = new Set(['upTo', 'max', 'max_cost', 'max_qty', 'maxArea', 'maxMeters']);
 
 export function restoreInfinity(obj) {
     if (Array.isArray(obj)) return obj.map(restoreInfinity);

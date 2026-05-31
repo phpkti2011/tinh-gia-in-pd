@@ -51,9 +51,24 @@ describe('TASK-0004: module path mới + compatibility shim', () => {
     });
 
     it('[TASK-0006] behavior identical: Case C (19.500 tem) qua module mới = 7.810.450đ (Excel)', () => {
-        const layout = newPath.calculateStickersPerSheet(100, 70, 330, 330, 'rectangle', DECAL_DEFAULT_CONFIG);
-        const price = newPath.calculateSingleStickerPrice(19500, 'Decal giấy', true, layout.count, 330, 330, DECAL_DEFAULT_CONFIG);
+        const layout = newPath.calculateStickersPerSheet(
+            100,
+            70,
+            330,
+            330,
+            'rectangle',
+            DECAL_DEFAULT_CONFIG
+        );
+        const price = newPath.calculateSingleStickerPrice(
+            19500,
+            'Decal giấy',
+            true,
+            layout.count,
+            330,
+            330,
+            DECAL_DEFAULT_CONFIG
+        );
         expect(layout.count).toBe(8);
-        expect(price).toBe(7810450);  // Excel target — exact match
+        expect(price).toBe(7810450); // Excel target — exact match
     });
 });

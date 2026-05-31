@@ -81,14 +81,14 @@ describe('TASK-0005: decal config schema + version', () => {
             delete cfg.progressiveTiers;
             const r = validateDecalConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('progressiveTiers'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('progressiveTiers'))).toBe(true);
         });
 
         it('progressiveTiers rỗng → fail', () => {
             const cfg = { ...DECAL_DEFAULT_CONFIG, progressiveTiers: [] };
             const r = validateDecalConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('rỗng'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('rỗng'))).toBe(true);
         });
 
         it('price trong progressiveTier sai kiểu → fail', () => {
@@ -96,7 +96,7 @@ describe('TASK-0005: decal config schema + version', () => {
             cfg.progressiveTiers[0].price = 'abc';
             const r = validateDecalConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('progressiveTiers[0].price'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('progressiveTiers[0].price'))).toBe(true);
         });
 
         it('decalCosts có value sai kiểu → fail', () => {
@@ -104,7 +104,7 @@ describe('TASK-0005: decal config schema + version', () => {
             cfg.decalCosts['Decal giấy'] = 'free';
             const r = validateDecalConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes("decalCosts['Decal giấy']"))).toBe(true);
+            expect(r.errors.some((e) => e.includes("decalCosts['Decal giấy']"))).toBe(true);
         });
 
         it('thiếu laminationCost → fail', () => {
@@ -112,14 +112,14 @@ describe('TASK-0005: decal config schema + version', () => {
             delete cfg.laminationCost;
             const r = validateDecalConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('laminationCost'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('laminationCost'))).toBe(true);
         });
 
         it('basePrintWidth sai kiểu → fail', () => {
             const cfg = { ...DECAL_DEFAULT_CONFIG, basePrintWidth: '330' };
             const r = validateDecalConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('basePrintWidth'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('basePrintWidth'))).toBe(true);
         });
     });
 
@@ -130,8 +130,9 @@ describe('TASK-0005: decal config schema + version', () => {
             // So sánh shape chứ không so sánh reference
             expect(DECAL_DEFAULT_CONFIG.basePrintWidth).toBe(snapshot.basePrintWidth);
             expect(DECAL_DEFAULT_CONFIG.laminationCost).toBe(snapshot.laminationCost);
-            expect(DECAL_DEFAULT_CONFIG.progressiveTiers.length)
-                .toBe(snapshot.progressiveTiers.length);
+            expect(DECAL_DEFAULT_CONFIG.progressiveTiers.length).toBe(
+                snapshot.progressiveTiers.length
+            );
             expect(DECAL_DEFAULT_CONFIG.progressiveTiers[0]).toEqual(snapshot.progressiveTiers[0]);
         });
     });

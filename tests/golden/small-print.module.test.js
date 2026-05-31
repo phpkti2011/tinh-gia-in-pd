@@ -14,10 +14,21 @@ import { DEFAULT_CONFIG } from '../../src/config/defaultConfig.js';
 
 describe('TASK-0009: small-print module path + compat shims', () => {
     const calcFunctions = [
-        'getClicks', 'getPrintableArea', 'calculateImposition', 'calculateMaxCuttableSheetsLayout',
-        'getProfitMargin', 'calculateVariableDataCost', 'calculatePrintContentSurcharge', 'calculateFinishingCost',
-        'calculateLamination', 'calculateDieCuttingCosts', 'calculateFoilStamping',
-        'processSheet', 'calculatePaperOptions', 'calculatePerSheetOptions', 'calculateDecalOptions',
+        'getClicks',
+        'getPrintableArea',
+        'calculateImposition',
+        'calculateMaxCuttableSheetsLayout',
+        'getProfitMargin',
+        'calculateVariableDataCost',
+        'calculatePrintContentSurcharge',
+        'calculateFinishingCost',
+        'calculateLamination',
+        'calculateDieCuttingCosts',
+        'calculateFoilStamping',
+        'processSheet',
+        'calculatePaperOptions',
+        'calculatePerSheetOptions',
+        'calculateDecalOptions',
     ];
 
     it('module path mới export đủ 15 hàm từ calculator + 1 từ customerQuote = 16', () => {
@@ -49,16 +60,46 @@ describe('TASK-0009: small-print module path + compat shims', () => {
 
     it('Case E2E-1 (processSheet): card visit 9.3×5.8 trên 32.2×21.2/C2060 → 205đ/sp', () => {
         const params = {
-            productQuantity: 500, printSides: 2,
-            printColorMode: '4color', laminationType: 'none',
+            productQuantity: 500,
+            printSides: 2,
+            printColorMode: '4color',
+            laminationType: 'none',
         };
         const largeSheet = { w: 65, h: 86 };
         const printer = DEFAULT_CONFIG.PRINTER_CONFIG.C2060;
 
         const resNew = [];
-        newPath.processSheet(32.2, 21.2, largeSheet, printer, params, 9.3, 5.8, resNew, 4400, 0, false, DEFAULT_CONFIG, false);
+        newPath.processSheet(
+            32.2,
+            21.2,
+            largeSheet,
+            printer,
+            params,
+            9.3,
+            5.8,
+            resNew,
+            4400,
+            0,
+            false,
+            DEFAULT_CONFIG,
+            false
+        );
         const resOld = [];
-        oldCalc.processSheet(32.2, 21.2, largeSheet, printer, params, 9.3, 5.8, resOld, 4400, 0, false, DEFAULT_CONFIG, false);
+        oldCalc.processSheet(
+            32.2,
+            21.2,
+            largeSheet,
+            printer,
+            params,
+            9.3,
+            5.8,
+            resOld,
+            4400,
+            0,
+            false,
+            DEFAULT_CONFIG,
+            false
+        );
 
         expect(resNew.length).toBe(1);
         expect(resOld.length).toBe(1);
@@ -69,19 +110,40 @@ describe('TASK-0009: small-print module path + compat shims', () => {
 
     it('Case K (calculateCustomerQuote): 500 card visit C300 2 mặt → 300.000đ qua cả 2 path', () => {
         const bestOption = {
-            cutSheetW: 32.2, cutSheetH: 21.2, cutSheetSize: '32.2 x 21.2',
-            numCuttableSheets: 6, productsPerSheet: 10,
+            cutSheetW: 32.2,
+            cutSheetH: 21.2,
+            cutSheetSize: '32.2 x 21.2',
+            numCuttableSheets: 6,
+            productsPerSheet: 10,
         };
         const params = {
-            productQuantity: 500, printSides: 2, laminationType: 'none',
-            printContents: 1, variableData: 'no',
-            paperType: 3, artPaperPrice: 0,
+            productQuantity: 500,
+            printSides: 2,
+            laminationType: 'none',
+            printContents: 1,
+            variableData: 'no',
+            paperType: 3,
+            artPaperPrice: 0,
         };
         const finishingCustomerPrices = { holePunching: 0, creasing: 0, mounting: 0 };
         const dieCuttingCustomerPrice = { moldCost: 0, laborCustomerPrice: 0 };
 
-        const qNew = newPath.calculateCustomerQuote(bestOption, params, finishingCustomerPrices, dieCuttingCustomerPrice, null, DEFAULT_CONFIG);
-        const qOld = oldQuote.calculateCustomerQuote(bestOption, params, finishingCustomerPrices, dieCuttingCustomerPrice, null, DEFAULT_CONFIG);
+        const qNew = newPath.calculateCustomerQuote(
+            bestOption,
+            params,
+            finishingCustomerPrices,
+            dieCuttingCustomerPrice,
+            null,
+            DEFAULT_CONFIG
+        );
+        const qOld = oldQuote.calculateCustomerQuote(
+            bestOption,
+            params,
+            finishingCustomerPrices,
+            dieCuttingCustomerPrice,
+            null,
+            DEFAULT_CONFIG
+        );
 
         expect(qNew.totalCustomerCost).toBe(300000);
         expect(qOld.totalCustomerCost).toBe(300000);

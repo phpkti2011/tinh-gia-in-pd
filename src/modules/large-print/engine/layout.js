@@ -17,7 +17,9 @@ export function calcItemOnRoll(printW, printH, rollOption, laminationTypeKey, co
     if (laminationTypeKey && laminationTypeKey !== 'none') {
         const lamType = config.LAMINATION_TYPES[laminationTypeKey];
         if (lamType) {
-            const validLam = lamType.options.filter(lo => lo.width >= printW).sort((a, b) => a.price - b.price);
+            const validLam = lamType.options
+                .filter((lo) => lo.width >= printW)
+                .sort((a, b) => a.price - b.price);
             if (validLam.length > 0) {
                 const lo = validLam[0];
                 totalCost += Math.max(printedArea * lo.price, config.MIN_LAMINATION_PRICE || 0);

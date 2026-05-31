@@ -58,7 +58,9 @@ export async function saveConfigToSupabase(module, data, schemaVersion, note = n
     if (!isSupabaseConfigured()) {
         return {
             ok: false,
-            error: new Error('Supabase chưa cấu hình. Đặt VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY trong .env.local.'),
+            error: new Error(
+                'Supabase chưa cấu hình. Đặt VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY trong .env.local.'
+            ),
             newVersion: null,
         };
     }

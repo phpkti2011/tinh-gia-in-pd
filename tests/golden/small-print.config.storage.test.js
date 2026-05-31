@@ -18,11 +18,21 @@ function createLocalStorageMock() {
         getItem(key) {
             return Object.prototype.hasOwnProperty.call(this._data, key) ? this._data[key] : null;
         },
-        setItem(key, value) { this._data[key] = String(value); },
-        removeItem(key) { delete this._data[key]; },
-        clear() { this._data = {}; },
-        get length() { return Object.keys(this._data).length; },
-        key(i) { return Object.keys(this._data)[i] ?? null; },
+        setItem(key, value) {
+            this._data[key] = String(value);
+        },
+        removeItem(key) {
+            delete this._data[key];
+        },
+        clear() {
+            this._data = {};
+        },
+        get length() {
+            return Object.keys(this._data).length;
+        },
+        key(i) {
+            return Object.keys(this._data)[i] ?? null;
+        },
     };
 }
 globalThis.localStorage = createLocalStorageMock();
@@ -30,8 +40,7 @@ globalThis.localStorage = createLocalStorageMock();
 // P2-05.6: bỏ dynamic import cloudSync.js (file đã xoá).
 const { loadConfig, saveConfig, saveConfigToCloud } =
     await import('../../src/utils/configStorage.js');
-const { DEFAULT_CONFIG } =
-    await import('../../src/modules/small-print/config/index.js');
+const { DEFAULT_CONFIG } = await import('../../src/modules/small-print/config/index.js');
 
 describe('TASK-0010: validateSmallPrintConfig wired vào configStorage', () => {
     let warnSpy, errorSpy;
@@ -98,7 +107,7 @@ describe('TASK-0010: validateSmallPrintConfig wired vào configStorage', () => {
             // PAPER_STOCK_DATA + PROFIT_MARGIN_TIERS + PRINTER_CONFIG required by isValidConfig
             localStorage.setItem('printConfig', JSON.stringify({ PAPER_STOCK_DATA: [] }));
             const cfg = loadConfig();
-            expect(cfg.LAMINATION_CONFIG.WIDTH).toBe(32);  // = default
+            expect(cfg.LAMINATION_CONFIG.WIDTH).toBe(32); // = default
             expect(warnSpy).toHaveBeenCalled();
         });
 
@@ -120,7 +129,9 @@ describe('TASK-0010: validateSmallPrintConfig wired vào configStorage', () => {
             expect(loaded.LAMINATION_CONFIG.WIDTH).toBe(DEFAULT_CONFIG.LAMINATION_CONFIG.WIDTH);
             expect(loaded.ART_PAPER_SURCHARGE).toBe(DEFAULT_CONFIG.ART_PAPER_SURCHARGE);
             expect(loaded.PAPER_STOCK_DATA.length).toBe(DEFAULT_CONFIG.PAPER_STOCK_DATA.length);
-            expect(loaded.PROFIT_MARGIN_TIERS.length).toBe(DEFAULT_CONFIG.PROFIT_MARGIN_TIERS.length);
+            expect(loaded.PROFIT_MARGIN_TIERS.length).toBe(
+                DEFAULT_CONFIG.PROFIT_MARGIN_TIERS.length
+            );
             // Infinity restored từ null
             const lastTier = loaded.PROFIT_MARGIN_TIERS[loaded.PROFIT_MARGIN_TIERS.length - 1];
             expect(lastTier.max_cost).toBe(Infinity);

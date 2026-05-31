@@ -24,7 +24,7 @@ export function getPrintableArea(w, h, printer, isDigitalCutting, config, isCust
         printableH -= cfg.digital_cut_margin_total;
         printableW -= cfg.digital_cut_margin_total;
     } else {
-         if (printer && printer.vkPoints.some(p => Math.abs(p - h) < 0.01)) {
+        if (printer && printer.vkPoints.some((p) => Math.abs(p - h) < 0.01)) {
             printableH -= cfg.vk_point_height_margin;
         } else {
             printableH -= cfg.non_vk_point_height_margin;
@@ -37,19 +37,19 @@ export function getPrintableArea(w, h, printer, isDigitalCutting, config, isCust
 // Imposition — xếp item trên vùng in, thử cả 2 hướng xoay
 export function calculateImposition(areaW, areaH, prodW, prodH, spacing) {
     if (areaW <= 0 || areaH <= 0 || prodW <= 0 || prodH <= 0) {
-         return { total: 0, layout: 'N/A', actualPrintW: 0, actualPrintH: 0 };
+        return { total: 0, layout: 'N/A', actualPrintW: 0, actualPrintH: 0 };
     }
     const itemW = prodW + spacing;
     const itemH = prodH + spacing;
 
     // Case 1: Normal orientation
-    const fitW1 = (areaW + spacing) < itemW ? 0 : Math.floor((areaW + spacing) / itemW);
-    const fitH1 = (areaH + spacing) < itemH ? 0 : Math.floor((areaH + spacing) / itemH);
+    const fitW1 = areaW + spacing < itemW ? 0 : Math.floor((areaW + spacing) / itemW);
+    const fitH1 = areaH + spacing < itemH ? 0 : Math.floor((areaH + spacing) / itemH);
     const total1 = fitW1 * fitH1;
 
     // Case 2: Rotated orientation
-    const fitW2 = (areaW + spacing) < itemH ? 0 : Math.floor((areaW + spacing) / itemH);
-    const fitH2 = (areaH + spacing) < itemW ? 0 : Math.floor((areaH + spacing) / itemW);
+    const fitW2 = areaW + spacing < itemH ? 0 : Math.floor((areaW + spacing) / itemH);
+    const fitH2 = areaH + spacing < itemW ? 0 : Math.floor((areaH + spacing) / itemW);
     const total2 = fitW2 * fitH2;
 
     if (total1 >= total2 && total1 > 0) {
@@ -57,7 +57,7 @@ export function calculateImposition(areaW, areaH, prodW, prodH, spacing) {
             total: total1,
             layout: `${fitH1}x${fitW1}`,
             actualPrintW: fitW1 * prodW + Math.max(0, fitW1 - 1) * spacing,
-            actualPrintH: fitH1 * prodH + Math.max(0, fitH1 - 1) * spacing
+            actualPrintH: fitH1 * prodH + Math.max(0, fitH1 - 1) * spacing,
         };
     } else if (total2 > 0) {
         return {
@@ -80,9 +80,9 @@ export function calculateMaxCuttableSheetsLayout(largeW, largeH, cutW, cutH) {
         if (itemW <= 0 || itemH <= 0 || itemW > L || itemH > W) return rects;
         const n_w = Math.floor(L / itemW);
         const n_h = Math.floor(W / itemH);
-        for(let i=0; i<n_w; i++) {
-            for(let j=0; j<n_h; j++) {
-                rects.push({x: i*itemW, y: j*itemH, w: itemW, h: itemH});
+        for (let i = 0; i < n_w; i++) {
+            for (let j = 0; j < n_h; j++) {
+                rects.push({ x: i * itemW, y: j * itemH, w: itemW, h: itemH });
             }
         }
         return rects;
@@ -107,7 +107,7 @@ export function calculateMaxCuttableSheetsLayout(largeW, largeH, cutW, cutH) {
             const sideRects1 = solveSimple(rem1_L, rem1_W, remW, remH);
             const sideRects2 = solveSimple(rem1_L, rem1_W, remH, remW);
             const bestSideRects = sideRects1.length >= sideRects2.length ? sideRects1 : sideRects2;
-            bestSideRects.forEach(r => rects.push({ ...r, x: r.x + rem1_startX }));
+            bestSideRects.forEach((r) => rects.push({ ...r, x: r.x + rem1_startX }));
         }
 
         const rem2_L = n_w_main * mainW;
@@ -116,8 +116,9 @@ export function calculateMaxCuttableSheetsLayout(largeW, largeH, cutW, cutH) {
         if (rem2_W > 0) {
             const bottomRects1 = solveSimple(rem2_L, rem2_W, remW, remH);
             const bottomRects2 = solveSimple(rem2_L, rem2_W, remH, remW);
-            const bestBottomRects = bottomRects1.length >= bottomRects2.length ? bottomRects1 : bottomRects2;
-            bestBottomRects.forEach(r => rects.push({ ...r, y: r.y + rem2_startY }));
+            const bestBottomRects =
+                bottomRects1.length >= bottomRects2.length ? bottomRects1 : bottomRects2;
+            bestBottomRects.forEach((r) => rects.push({ ...r, y: r.y + rem2_startY }));
         }
 
         return rects;
@@ -128,15 +129,25 @@ export function calculateMaxCuttableSheetsLayout(largeW, largeH, cutW, cutH) {
         solveSimple(largeW, largeH, cutH, cutW),
         solveMixed(largeW, largeH, cutW, cutH, cutH, cutW),
         solveMixed(largeW, largeH, cutH, cutW, cutW, cutH),
-        solveSimple(largeH, largeW, cutW, cutH).map(r => ({x: r.y, y: r.x, w: r.h, h: r.w})),
-        solveSimple(largeH, largeW, cutH, cutW).map(r => ({x: r.y, y: r.x, w: r.h, h: r.w})),
-        solveMixed(largeH, largeW, cutW, cutH, cutH, cutW).map(r => ({x: r.y, y: r.x, w: r.h, h: r.w})),
-        solveMixed(largeH, largeW, cutH, cutW, cutW, cutH).map(r => ({x: r.y, y: r.x, w: r.h, h: r.w}))
+        solveSimple(largeH, largeW, cutW, cutH).map((r) => ({ x: r.y, y: r.x, w: r.h, h: r.w })),
+        solveSimple(largeH, largeW, cutH, cutW).map((r) => ({ x: r.y, y: r.x, w: r.h, h: r.w })),
+        solveMixed(largeH, largeW, cutW, cutH, cutH, cutW).map((r) => ({
+            x: r.y,
+            y: r.x,
+            w: r.h,
+            h: r.w,
+        })),
+        solveMixed(largeH, largeW, cutH, cutW, cutW, cutH).map((r) => ({
+            x: r.y,
+            y: r.x,
+            w: r.h,
+            h: r.w,
+        })),
     ];
 
     let bestLayout = [];
-    for(const layout of layouts) {
-        if(layout.length > bestLayout.length) {
+    for (const layout of layouts) {
+        if (layout.length > bestLayout.length) {
             bestLayout = layout;
         }
     }

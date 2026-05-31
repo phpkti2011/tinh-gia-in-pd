@@ -1,7 +1,7 @@
-# ESLint + Prettier setup (P3-LINT.1 + P3-LINT.2 + P3-LINT.3)
+# ESLint + Prettier setup (P3-LINT.1 + P3-LINT.2 + P3-LINT.3 + P3-FMT)
 
-> Ngày: 2026-06-01 (P3-LINT.3 update: reduce warnings 83→1, 99% reduction)
-> Trạng thái: 🟢 **Lint enforced trong CI** (0 errors, **1 warning** technical debt acceptable — react-hooks/exhaustive-deps phức tạp). Prettier `format:check` vẫn chưa enforce (100 files chưa auto-format).
+> Ngày: 2026-06-01 (P3-FMT update: auto-format src + tests, format:check enforced trong CI)
+> Trạng thái: 🟢 **Lint + Format đều enforced trong CI** (0 errors, 1 warning có chủ ý; format:check pass với scope src/ + tests/).
 > Tiền đề: [P3-CI](ci-pipeline-setup.md) (`v3.1-ci-pipeline`)
 
 ## 1. Mục tiêu
@@ -117,17 +117,17 @@ P3-LINT.1 đã fix 5 errors `no-case-declarations` ở `finishing.js` (wrap `cas
 
 **KHÔNG chạy `prettier --write`** ở task này per spec yêu cầu.
 
-## 8. CI integration (sau P3-LINT.2)
+## 8. CI integration (sau P3-LINT.2 + P3-FMT)
 
-`.github/workflows/ci.yml` giờ chạy 4 steps theo thứ tự:
+`.github/workflows/ci.yml` giờ chạy 5 steps theo thứ tự:
 ```
-npm ci → npm run lint → npm test → npm run build
+npm ci → npm run lint → npm run format:check → npm test → npm run build
 ```
 
-- ✅ **`npm run lint` enforced** — exit 0 hiện tại (0 errors, 83 warnings OK).
-- ❌ **`npm run format:check` chưa enforce** — 100 files chưa auto-format theo Prettier. Sẽ add ở **P3-FMT** sau khi `prettier --write` toàn repo (task riêng, pre-announce vì diff lớn).
+- ✅ **`npm run lint` enforced** — exit 0 (0 errors, 1 warning có chủ ý).
+- ✅ **`npm run format:check` enforced** (P3-FMT) — exit 0 (94 files src/+tests đã `prettier --write` ở P3-FMT; ignore docs + configs + index.css + workflow yaml).
 
-Mỗi PR/push vào main giờ phải pass lint trước khi merge (sau khi setup branch protection phía GitHub Settings).
+Mỗi PR/push vào main giờ phải pass cả lint + format trước khi merge (sau khi setup branch protection phía GitHub Settings).
 
 ## 9. Cách xử lý khi lint fail
 
@@ -166,12 +166,27 @@ Lỗi không auto-fixable → đọc message ESLint + fix manual. **KHÔNG dùng
 5. ✅ Special case: `adminGate.test.jsx` AdminGate import → keep + add directive (vi.mock hoisting làm ESLint không nhận JSX usage).
 6. ⏸ 1 warning còn lại (hook deps DecalResultPanel:99) — phức tạp, SKIP per spec.
 
-### P3-FMT — Auto-format toàn repo (separate task)
+### ✅ P3-FMT — Auto-format src + tests — DONE
 
-1. `npx prettier --write src/ tests/` — format tất cả source + tests cùng lúc.
-2. Commit dạng "chore: prettier --write src + tests" — KHÔNG kèm code change khác (dễ review diff).
-3. Add `npm run format:check` vào CI.
-4. **Lưu ý**: 100+ files thay đổi → diff cực lớn. Phải pre-announce + freeze nhánh khác trước khi merge.
+Đã làm:
+1. ✅ `npx prettier --write "src/**/*.{js,jsx}" "tests/**/*.{js,jsx}"` — 94 files formatted (KHÔNG format docs/configs/CSS/yaml).
+2. ✅ Update `.prettierignore` — thêm 8 entries để scope format:check chỉ validate JS/JSX trong src/+tests/:
+   - `.github/workflows/*.yml`
+   - `.prettierrc`
+   - `eslint.config.js`
+   - `package.json`
+   - `postcss.config.js`
+   - `tailwind.config.js`
+   - `vite.config.js`
+   - `src/index.css`
+3. ✅ `npm run format:check` pass (exit 0, "All matched files use Prettier code style!").
+4. ✅ Add `npm run format:check` step vào `.github/workflows/ci.yml` (giữa lint và test).
+5. ✅ Re-run lint + test + build sau format → 0 regression.
+
+**Lưu ý cho future format:**
+- Nếu thay đổi config Prettier (`.prettierrc`) → re-run `prettier --write` để giữ tree sạch.
+- Format file mới sẽ tự pass `format:check` nếu dev dùng IDE plugin Prettier (recommended).
+- Khi cần format docs/configs/CSS riêng → gỡ ignore tương ứng + chạy `npx prettier --write <pattern>`.
 
 ### P3-LINT.4 — Stricter rules (optional, future)
 

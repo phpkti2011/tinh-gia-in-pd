@@ -22,7 +22,7 @@ if (!url || !anonKey) {
     // Production: env vars phải set qua Vercel/CI; nếu thiếu, auth sẽ silently disabled.
     console.warn(
         '[Supabase] VITE_SUPABASE_URL hoặc VITE_SUPABASE_ANON_KEY thiếu trong env. ' +
-        'Auth sẽ KHÔNG hoạt động — set chúng trong .env.local (xem .env.example).'
+            'Auth sẽ KHÔNG hoạt động — set chúng trong .env.local (xem .env.example).'
     );
 } else {
     _supabase = createClient(url, anonKey);

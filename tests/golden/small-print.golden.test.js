@@ -41,15 +41,25 @@ const config = DEFAULT_CONFIG;
 describe('Case A: getClicks (C2060 tier lookup)', () => {
     const printer = config.PRINTER_CONFIG.C2060;
 
-    it('h=21.2 (A4) → 1 click', () => { expect(getClicks(21.2, printer)).toBe(1); });
-    it('h=33 (boundary tier 1/2, vẫn ≤33) → 1 click', () => { expect(getClicks(33, printer)).toBe(1); });
-    it('h=48 (boundary tier 2/3, vẫn ≤48) → 2 click', () => { expect(getClicks(48, printer)).toBe(2); });
-    it('h=120 (max) → 5 click', () => { expect(getClicks(120, printer)).toBe(5); });
-    it('h=121 (vượt max) → Infinity', () => { expect(getClicks(121, printer)).toBe(Infinity); });
+    it('h=21.2 (A4) → 1 click', () => {
+        expect(getClicks(21.2, printer)).toBe(1);
+    });
+    it('h=33 (boundary tier 1/2, vẫn ≤33) → 1 click', () => {
+        expect(getClicks(33, printer)).toBe(1);
+    });
+    it('h=48 (boundary tier 2/3, vẫn ≤48) → 2 click', () => {
+        expect(getClicks(48, printer)).toBe(2);
+    });
+    it('h=120 (max) → 5 click', () => {
+        expect(getClicks(120, printer)).toBe(5);
+    });
+    it('h=121 (vượt max) → Infinity', () => {
+        expect(getClicks(121, printer)).toBe(Infinity);
+    });
 
     it('C6085 có boundary khác (maxH 35 vs 33)', () => {
         const c6085 = config.PRINTER_CONFIG.C6085;
-        expect(getClicks(34, c6085)).toBe(1);   // C6085: 34 ≤ 35
+        expect(getClicks(34, c6085)).toBe(1); // C6085: 34 ≤ 35
         expect(getClicks(34, printer)).toBe(2); // C2060: 34 > 33 → tier 2
     });
 });
@@ -64,18 +74,18 @@ describe('Case A: getClicks (C2060 tier lookup)', () => {
 //   custom_width_margin: 0.8, custom_height_margin: 1.0
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case B: getPrintableArea', () => {
-    const printer = config.PRINTER_CONFIG.C2060;  // vkPoints: [33, 48, 76, 92, 120]
+    const printer = config.PRINTER_CONFIG.C2060; // vkPoints: [33, 48, 76, 92, 120]
 
     it('VK point h=33: W − 0.8, H − 0.8 (vk_point_height_margin)', () => {
         const r = getPrintableArea(32.2, 33, printer, false, config, false);
-        expect(r.w).toBeCloseTo(31.4, 6);   // 32.2 − 0.8
-        expect(r.h).toBeCloseTo(32.2, 6);   // 33 − 0.8
+        expect(r.w).toBeCloseTo(31.4, 6); // 32.2 − 0.8
+        expect(r.h).toBeCloseTo(32.2, 6); // 33 − 0.8
     });
 
     it('non-VK h=22: H trừ ít hơn (0.1)', () => {
         const r = getPrintableArea(32.2, 22, printer, false, config, false);
         expect(r.w).toBeCloseTo(31.4, 6);
-        expect(r.h).toBeCloseTo(21.9, 6);  // 22 − 0.1
+        expect(r.h).toBeCloseTo(21.9, 6); // 22 − 0.1
     });
 
     it('isDigitalCutting=true: cả 2 chiều trừ 1.8', () => {
@@ -170,9 +180,15 @@ describe('Case D: calculateLamination', () => {
 //   price_over_1000_progressive=100k, progressive_step=1000
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case E: calculateVariableDataCost', () => {
-    it('qty=0 → 0', () => { expect(calculateVariableDataCost(0, config)).toBe(0); });
-    it('qty=300 (≤500) → 200.000', () => { expect(calculateVariableDataCost(300, config)).toBe(200000); });
-    it('qty=750 (≤1000) → 300.000', () => { expect(calculateVariableDataCost(750, config)).toBe(300000); });
+    it('qty=0 → 0', () => {
+        expect(calculateVariableDataCost(0, config)).toBe(0);
+    });
+    it('qty=300 (≤500) → 200.000', () => {
+        expect(calculateVariableDataCost(300, config)).toBe(200000);
+    });
+    it('qty=750 (≤1000) → 300.000', () => {
+        expect(calculateVariableDataCost(750, config)).toBe(300000);
+    });
     it('qty=2500 → 600.000 (base 500k + 1×100k step)', () => {
         // additionalSteps = floor((2500-1001)/1000) = 1
         expect(calculateVariableDataCost(2500, config)).toBe(600000);
@@ -219,10 +235,18 @@ describe('Case F: calculateFinishingCost — đục lỗ 1 vị trí', () => {
 //   [{200k,0.75}, {500k,0.70}, {1M,0.65}, {2M,0.60}, {Inf,0.55}]
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case G: getProfitMargin', () => {
-    it('cost=100k → 0.75', () => { expect(getProfitMargin(100000, config)).toBe(0.75); });
-    it('cost=200k (boundary, ≤200k) → 0.75', () => { expect(getProfitMargin(200000, config)).toBe(0.75); });
-    it('cost=300k → 0.70', () => { expect(getProfitMargin(300000, config)).toBe(0.70); });
-    it('cost=3M → 0.55 (tier Infinity)', () => { expect(getProfitMargin(3000000, config)).toBe(0.55); });
+    it('cost=100k → 0.75', () => {
+        expect(getProfitMargin(100000, config)).toBe(0.75);
+    });
+    it('cost=200k (boundary, ≤200k) → 0.75', () => {
+        expect(getProfitMargin(200000, config)).toBe(0.75);
+    });
+    it('cost=300k → 0.70', () => {
+        expect(getProfitMargin(300000, config)).toBe(0.7);
+    });
+    it('cost=3M → 0.55 (tier Infinity)', () => {
+        expect(getProfitMargin(3000000, config)).toBe(0.55);
+    });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,9 +299,12 @@ describe('Case I: calculateFoilStamping', () => {
         // moldMakingCost = 36×2000 + 50.000 = 122.000
         // totalCost = 372.000
         const params = {
-            foilStamping: 'yes', foilCustomSize: true,
-            foilH: 5, foilW: 5,
-            productQuantity: 100, foilSpecialColor: false,
+            foilStamping: 'yes',
+            foilCustomSize: true,
+            foilH: 5,
+            foilW: 5,
+            productQuantity: 100,
+            foilSpecialColor: false,
         };
         const r = calculateFoilStamping(params, config);
         expect(r.impressionPrice).toBe(250000);
@@ -293,9 +320,12 @@ describe('Case I: calculateFoilStamping', () => {
         // moldMakingCost = 651×2000 + 100.000 = 1.402.000
         // totalCost = 1.727.500
         const params = {
-            foilStamping: 'yes', foilCustomSize: true,
-            foilH: 20, foilW: 30,
-            productQuantity: 100, foilSpecialColor: false,
+            foilStamping: 'yes',
+            foilCustomSize: true,
+            foilH: 20,
+            foilW: 30,
+            productQuantity: 100,
+            foilSpecialColor: false,
         };
         const r = calculateFoilStamping(params, config);
         expect(r.impressionPrice).toBe(325500);
@@ -331,7 +361,7 @@ describe('Case J: calculateDieCuttingCosts', () => {
         // moldCost = (120000 / (21×21)) × (30×30) = (120000/441) × 900 ≈ 244.898
         const params = { dieCuttingType: 'mold', moldType: 'simple', productW: 30, productH: 30 };
         const r = calculateDieCuttingCosts(params, 100, false, config);
-        expect(r.moldCost).toBeCloseTo(120000 * (30 * 30) / (21 * 21), 6);
+        expect(r.moldCost).toBeCloseTo((120000 * (30 * 30)) / (21 * 21), 6);
         expect(r.moldCost).toBeCloseTo(244897.96, 1);
     });
 
@@ -364,13 +394,20 @@ describe('Case K: calculateCustomerQuote — 500 card visit 2 mặt C300', () =>
         laminationType: 'none',
         printContents: 1,
         variableData: 'no',
-        paperType: 3,  // C300 — pricingModel='ream', customerSurcharge=0
+        paperType: 3, // C300 — pricingModel='ream', customerSurcharge=0
         artPaperPrice: 0,
     };
     const finishingCustomerPrices = { holePunching: 0, creasing: 0, mounting: 0 };
     const dieCuttingCustomerPrice = { moldCost: 0, laborCustomerPrice: 0 };
 
-    const r = calculateCustomerQuote(bestOption, params, finishingCustomerPrices, dieCuttingCustomerPrice, null, config);
+    const r = calculateCustomerQuote(
+        bestOption,
+        params,
+        finishingCustomerPrices,
+        dieCuttingCustomerPrice,
+        null,
+        config
+    );
 
     it('không lỗi cấu hình', () => {
         expect(r.error).toBeNull();

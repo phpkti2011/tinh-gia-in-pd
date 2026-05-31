@@ -29,12 +29,16 @@ describe('TASK-0017: large-print config schema + version', () => {
             expect(LARGE_PRINT_DEFAULT_CONFIG.MIN_LAMINATION_PRICE).toBe(15000);
             expect(LARGE_PRINT_DEFAULT_CONFIG.MATERIAL_TYPES.hiflex.options).toHaveLength(4);
             expect(LARGE_PRINT_DEFAULT_CONFIG.MATERIAL_TYPES.pp_co_keo.options[0]).toEqual({
-                width: 0.91, printPrice: 120000, materialPrice: 25000
+                width: 0.91,
+                printPrice: 120000,
+                materialPrice: 25000,
             });
             expect(LARGE_PRINT_DEFAULT_CONFIG.FORMEX_OPTIONS.formex_5mm.price).toBe(130000);
             expect(LARGE_PRINT_DEFAULT_CONFIG.FORMEX_DISCOUNT_TIERS).toHaveLength(3);
             expect(LARGE_PRINT_DEFAULT_CONFIG.STANDEE_OPTIONS).toHaveLength(4);
-            expect(LARGE_PRINT_DEFAULT_CONFIG.FINISHING_PRICES.dieCutting.tier1PricePerSqm).toBe(80000);
+            expect(LARGE_PRINT_DEFAULT_CONFIG.FINISHING_PRICES.dieCutting.tier1PricePerSqm).toBe(
+                80000
+            );
         });
     });
 
@@ -90,7 +94,7 @@ describe('TASK-0017: large-print config schema + version', () => {
             delete cfg.MATERIAL_TYPES;
             const r = validateLargePrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('MATERIAL_TYPES'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('MATERIAL_TYPES'))).toBe(true);
         });
 
         it('thiếu LAMINATION_TYPES → fail', () => {
@@ -110,7 +114,7 @@ describe('TASK-0017: large-print config schema + version', () => {
             delete cfg.FINISHING_PRICES;
             const r = validateLargePrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('FINISHING_PRICES'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('FINISHING_PRICES'))).toBe(true);
         });
 
         it('thiếu FORMEX_DISCOUNT_TIERS → fail', () => {
@@ -123,7 +127,7 @@ describe('TASK-0017: large-print config schema + version', () => {
             const cfg = { ...LARGE_PRINT_DEFAULT_CONFIG, STANDEE_OPTIONS: [] };
             const r = validateLargePrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('rỗng'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('rỗng'))).toBe(true);
         });
 
         it('thiếu MIN_PRINT_PRICE → fail', () => {
@@ -139,7 +143,7 @@ describe('TASK-0017: large-print config schema + version', () => {
             cfg.MATERIAL_TYPES.pp_co_keo.options[0].printPrice = 'high';
             const r = validateLargePrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('printPrice'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('printPrice'))).toBe(true);
         });
 
         it('LAMINATION_TYPES.mang_mo.options[0].price sai kiểu → fail', () => {
@@ -181,14 +185,14 @@ describe('TASK-0017: large-print config schema + version', () => {
             cfg.FINISHING_PRICES.dieCutting.tier1PricePerSqm = '80k';
             const r = validateLargePrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('dieCutting.tier1PricePerSqm'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('dieCutting.tier1PricePerSqm'))).toBe(true);
         });
 
         it('MATERIAL_TYPES rỗng → fail', () => {
             const cfg = { ...LARGE_PRINT_DEFAULT_CONFIG, MATERIAL_TYPES: {} };
             const r = validateLargePrintConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('không có material nào'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('không có material nào'))).toBe(true);
         });
     });
 

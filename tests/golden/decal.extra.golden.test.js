@@ -110,7 +110,7 @@ describe('Case H: generateSinglePriceTable với 15 con/tờ', () => {
     });
 
     it('customQuantity=0 → không sinh row isCustom', () => {
-        expect(rows.every(r => !r.isCustom)).toBe(true);
+        expect(rows.every((r) => !r.isCustom)).toBe(true);
     });
 
     it('dòng thứ 3 (Decal nhựa, có cán) ≈ 258.400đ (+ 8.400 = 1.200 × ceil 7)', () => {

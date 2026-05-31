@@ -17,5 +17,14 @@ google-apps-script.js
 # Markdown trong root cũng giữ nguyên
 *.md
 
-# Config files Prettier sẽ format theo defaults nếu không loại bỏ
-# (commented để có thể bỏ pass sau khi audit)
+# P3-FMT: scope format:check chỉ validate src/ + tests/ (JS/JSX).
+# Các file dưới đây không nằm trong scope format — bỏ qua để CI pass.
+# Sau này nếu muốn format chúng, gỡ ignore + chạy prettier --write riêng.
+.github/workflows/*.yml
+.prettierrc
+eslint.config.js
+package.json
+postcss.config.js
+tailwind.config.js
+vite.config.js
+src/index.css

@@ -81,7 +81,11 @@ export function validateDecalConfig(config) {
     }
 
     // 4. decalCosts (object {[name]: number})
-    if (!config.decalCosts || typeof config.decalCosts !== 'object' || Array.isArray(config.decalCosts)) {
+    if (
+        !config.decalCosts ||
+        typeof config.decalCosts !== 'object' ||
+        Array.isArray(config.decalCosts)
+    ) {
         errors.push('decalCosts: thiếu hoặc không phải object');
     } else {
         for (const [key, val] of Object.entries(config.decalCosts)) {

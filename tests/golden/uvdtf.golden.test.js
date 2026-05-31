@@ -271,10 +271,19 @@ describe('Case G: structural — object output có đủ 13 trường', () => {
 
     it('có đủ 13 trường public', () => {
         const expectedKeys = [
-            'totalLengthCM', 'totalMeters', 'pricePerMeter', 'billableMeters',
-            'totalPrice', 'rotated', 'finalItemW', 'finalItemH',
-            'itemsAcross', 'itemsPerMeter', 'rowsPerMeter',
-            'originalW', 'originalH',
+            'totalLengthCM',
+            'totalMeters',
+            'pricePerMeter',
+            'billableMeters',
+            'totalPrice',
+            'rotated',
+            'finalItemW',
+            'finalItemH',
+            'itemsAcross',
+            'itemsPerMeter',
+            'rowsPerMeter',
+            'originalW',
+            'originalH',
         ];
         for (const key of expectedKeys) {
             expect(r).toHaveProperty(key);

@@ -70,12 +70,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('decalConfig → decal + DECAL_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 3 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith(
-                'decal',
-                VALID_DECAL,
-                '1.0.0',
-                null
-            );
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.0.0', null);
         });
 
         it('largePrintConfig → large-print + LARGE_PRINT_CONFIG_SCHEMA_VERSION', async () => {
@@ -92,12 +87,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('uvdtfConfig → uvdtf + UVDTF_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('uvdtfConfig', VALID_UVDTF);
-            expect(mockSaveSupabase).toHaveBeenCalledWith(
-                'uvdtf',
-                VALID_UVDTF,
-                '1.0.0',
-                null
-            );
+            expect(mockSaveSupabase).toHaveBeenCalledWith('uvdtf', VALID_UVDTF, '1.0.0', null);
         });
     });
 
@@ -146,7 +136,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             });
 
             const result = await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(result.local).toBe(true);  // local vẫn ghi
+            expect(result.local).toBe(true); // local vẫn ghi
             expect(result.cloud).toBe(false);
             expect(result.error).toMatch(/Supabase/);
             expect(result.provider).toBe('supabase');

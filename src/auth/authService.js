@@ -23,7 +23,9 @@ export async function signInWithPassword(email, password) {
     if (!isSupabaseConfigured()) {
         return {
             data: null,
-            error: new Error('Supabase chưa cấu hình. Đặt VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY trong .env.local.'),
+            error: new Error(
+                'Supabase chưa cấu hình. Đặt VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY trong .env.local.'
+            ),
         };
     }
     return await supabase.auth.signInWithPassword({ email, password });

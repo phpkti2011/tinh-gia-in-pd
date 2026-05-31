@@ -17,11 +17,21 @@ function createLocalStorageMock() {
         getItem(key) {
             return Object.prototype.hasOwnProperty.call(this._data, key) ? this._data[key] : null;
         },
-        setItem(key, value) { this._data[key] = String(value); },
-        removeItem(key) { delete this._data[key]; },
-        clear() { this._data = {}; },
-        get length() { return Object.keys(this._data).length; },
-        key(i) { return Object.keys(this._data)[i] ?? null; },
+        setItem(key, value) {
+            this._data[key] = String(value);
+        },
+        removeItem(key) {
+            delete this._data[key];
+        },
+        clear() {
+            this._data = {};
+        },
+        get length() {
+            return Object.keys(this._data).length;
+        },
+        key(i) {
+            return Object.keys(this._data)[i] ?? null;
+        },
     };
 }
 globalThis.localStorage = createLocalStorageMock();
@@ -29,8 +39,7 @@ globalThis.localStorage = createLocalStorageMock();
 // P2-05.6: bỏ dynamic import cloudSync.js (file đã xoá).
 const { loadUvdtfConfig, saveUvdtfConfig, saveConfigToCloud } =
     await import('../../src/utils/configStorage.js');
-const { UVDTF_DEFAULT_CONFIG } =
-    await import('../../src/modules/uvdtf/config/index.js');
+const { UVDTF_DEFAULT_CONFIG } = await import('../../src/modules/uvdtf/config/index.js');
 
 describe('TASK-0013: validateUvDtfConfig wired vào configStorage', () => {
     let warnSpy, errorSpy;

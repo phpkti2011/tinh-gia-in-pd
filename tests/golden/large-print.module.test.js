@@ -22,9 +22,16 @@ describe('TASK-0016: large-print module path + compat shim', () => {
 
     it('behavior identical: Case A (PP 100×100cm) → 121.750đ qua cả 2 path', () => {
         const params = {
-            width: 100, height: 100, quantity: 1,
-            materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'none',
-            edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+            width: 100,
+            height: 100,
+            quantity: 1,
+            materialTypeKey: 'pp_co_keo',
+            laminationTypeKey: 'none',
+            formexTypeKey: 'none',
+            edgeTaping: false,
+            grommetsCheck: false,
+            grommetsCount: 0,
+            dieCutting: false,
             standeeKey: 'none',
         };
         const fromNew = newPath.calculateLargePrint(params, LARGE_PRINT_DEFAULT_CONFIG);
@@ -36,9 +43,16 @@ describe('TASK-0016: large-print module path + compat shim', () => {
 
     it('behavior identical: Case C (PP 150×400 + formex) → 1.424.000đ qua module mới', () => {
         const params = {
-            width: 150, height: 400, quantity: 1,
-            materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'formex_5mm',
-            edgeTaping: false, grommetsCheck: false, grommetsCount: 0, dieCutting: false,
+            width: 150,
+            height: 400,
+            quantity: 1,
+            materialTypeKey: 'pp_co_keo',
+            laminationTypeKey: 'none',
+            formexTypeKey: 'formex_5mm',
+            edgeTaping: false,
+            grommetsCheck: false,
+            grommetsCount: 0,
+            dieCutting: false,
             standeeKey: 'none',
         };
         const r = newPath.calculateLargePrint(params, LARGE_PRINT_DEFAULT_CONFIG);
@@ -48,15 +62,23 @@ describe('TASK-0016: large-print module path + compat shim', () => {
 
     it('null cases: invalid input vẫn return null qua module mới', () => {
         const invalidMaterial = {
-            width: 100, height: 100, quantity: 1,
-            materialTypeKey: 'unknown', laminationTypeKey: 'none', formexTypeKey: 'none',
+            width: 100,
+            height: 100,
+            quantity: 1,
+            materialTypeKey: 'unknown',
+            laminationTypeKey: 'none',
+            formexTypeKey: 'none',
             standeeKey: 'none',
         };
         expect(newPath.calculateLargePrint(invalidMaterial, LARGE_PRINT_DEFAULT_CONFIG)).toBeNull();
 
         const tooLarge = {
-            width: 400, height: 400, quantity: 1,
-            materialTypeKey: 'pp_co_keo', laminationTypeKey: 'none', formexTypeKey: 'none',
+            width: 400,
+            height: 400,
+            quantity: 1,
+            materialTypeKey: 'pp_co_keo',
+            laminationTypeKey: 'none',
+            formexTypeKey: 'none',
             standeeKey: 'none',
         };
         expect(newPath.calculateLargePrint(tooLarge, LARGE_PRINT_DEFAULT_CONFIG)).toBeNull();

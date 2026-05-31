@@ -85,8 +85,9 @@ describe('P2-05.2: priceConfigStore', () => {
             expect(r.newVersion).toBeNull();
         });
         it('không throw', async () => {
-            await expect(saveConfigToSupabase('decal', {}, '1.0.0', null))
-                .resolves.toMatchObject({ ok: false });
+            await expect(saveConfigToSupabase('decal', {}, '1.0.0', null)).resolves.toMatchObject({
+                ok: false,
+            });
         });
     });
 

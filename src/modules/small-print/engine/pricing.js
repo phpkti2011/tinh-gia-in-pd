@@ -5,7 +5,7 @@
 
 // Profit margin theo giá vốn (tier lookup)
 export function getProfitMargin(cost, config) {
-    const tier = config.PROFIT_MARGIN_TIERS.find(t => cost <= t.max_cost);
+    const tier = config.PROFIT_MARGIN_TIERS.find((t) => cost <= t.max_cost);
     return tier ? tier.margin : 0;
 }
 
@@ -17,7 +17,7 @@ export function calculateVariableDataCost(quantity, config) {
     if (quantity <= 1000) return cfg.price_1000;
 
     const additionalSteps = Math.floor((quantity - 1001) / cfg.progressive_step);
-    return cfg.price_over_1000_base + (additionalSteps * cfg.price_over_1000_progressive);
+    return cfg.price_over_1000_base + additionalSteps * cfg.price_over_1000_progressive;
 }
 
 // Phụ thu nhiều nội dung
@@ -29,13 +29,19 @@ export function calculatePrintContentSurcharge(totalCost, quantity, contentCount
 
     if (Math.abs(qtyPerContent - 1) < 0.001) {
         const surcharge = totalCost * cfg.single_content_surcharge;
-        return { surcharge, reason: `+${(cfg.single_content_surcharge * 100).toFixed(0)}% (mỗi nội dung 1 cái)` };
+        return {
+            surcharge,
+            reason: `+${(cfg.single_content_surcharge * 100).toFixed(0)}% (mỗi nội dung 1 cái)`,
+        };
     }
 
-    const tier = cfg.tiers.find(t => contentCount >= t.min && contentCount <= t.max);
+    const tier = cfg.tiers.find((t) => contentCount >= t.min && contentCount <= t.max);
     if (tier) {
         const surcharge = totalCost * tier.surcharge;
-        return { surcharge, reason: `+${(tier.surcharge * 100).toFixed(0)}% (${contentCount} nội dung)` };
+        return {
+            surcharge,
+            reason: `+${(tier.surcharge * 100).toFixed(0)}% (${contentCount} nội dung)`,
+        };
     }
 
     return { surcharge: 0, reason: '' };
@@ -53,8 +59,8 @@ export function calculateFinishingCost(quantity, type, configData) {
     const costTiers = Array.isArray(configData.cost_tiers) ? configData.cost_tiers : [];
     const customerTiers = Array.isArray(configData.customer_tiers) ? configData.customer_tiers : [];
 
-    const costTier = costTiers.find(t => quantity <= t.max_qty);
-    const customerTier = customerTiers.find(t => quantity <= t.max_qty);
+    const costTier = costTiers.find((t) => quantity <= t.max_qty);
+    const customerTier = customerTiers.find((t) => quantity <= t.max_qty);
 
     let cost = 0;
     let customerPrice = 0;
@@ -63,7 +69,8 @@ export function calculateFinishingCost(quantity, type, configData) {
         cost = costTier.type === 'package' ? costTier.price : quantity * costTier.price;
     }
     if (customerTier) {
-        customerPrice = customerTier.type === 'package' ? customerTier.price : quantity * customerTier.price;
+        customerPrice =
+            customerTier.type === 'package' ? customerTier.price : quantity * customerTier.price;
     }
 
     return { cost, customerPrice };

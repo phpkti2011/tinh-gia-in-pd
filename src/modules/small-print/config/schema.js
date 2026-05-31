@@ -50,19 +50,29 @@ function isPlainObject(v) {
 function validateLaminationInner(cfg, errors) {
     if (!isPlainObject(cfg)) return;
     if (typeof cfg.WIDTH !== 'number') errors.push('LAMINATION_CONFIG.WIDTH: phải là number');
-    if (typeof cfg.PRICE_PER_METER !== 'number') errors.push('LAMINATION_CONFIG.PRICE_PER_METER: phải là number');
+    if (typeof cfg.PRICE_PER_METER !== 'number')
+        errors.push('LAMINATION_CONFIG.PRICE_PER_METER: phải là number');
 }
 
 function validateProfitMarginTier(tier, i, errors) {
-    if (!isPlainObject(tier)) { errors.push(`PROFIT_MARGIN_TIERS[${i}]: phải là object`); return; }
-    if (typeof tier.max_cost !== 'number') errors.push(`PROFIT_MARGIN_TIERS[${i}].max_cost: phải là number (cho phép Infinity)`);
-    if (typeof tier.margin !== 'number') errors.push(`PROFIT_MARGIN_TIERS[${i}].margin: phải là number`);
+    if (!isPlainObject(tier)) {
+        errors.push(`PROFIT_MARGIN_TIERS[${i}]: phải là object`);
+        return;
+    }
+    if (typeof tier.max_cost !== 'number')
+        errors.push(`PROFIT_MARGIN_TIERS[${i}].max_cost: phải là number (cho phép Infinity)`);
+    if (typeof tier.margin !== 'number')
+        errors.push(`PROFIT_MARGIN_TIERS[${i}].margin: phải là number`);
 }
 
 function validateCustomerPriceTier(tier, i, errors) {
-    if (!isPlainObject(tier)) { errors.push(`CUSTOMER_PRICE_TIERS[${i}]: phải là object`); return; }
+    if (!isPlainObject(tier)) {
+        errors.push(`CUSTOMER_PRICE_TIERS[${i}]: phải là object`);
+        return;
+    }
     for (const f of ['min', 'max', 'print', 'laminate']) {
-        if (typeof tier[f] !== 'number') errors.push(`CUSTOMER_PRICE_TIERS[${i}].${f}: phải là number`);
+        if (typeof tier[f] !== 'number')
+            errors.push(`CUSTOMER_PRICE_TIERS[${i}].${f}: phải là number`);
     }
     if (!VALID_CUSTOMER_TIER_TYPES.includes(tier.type)) {
         errors.push(`CUSTOMER_PRICE_TIERS[${i}].type: phải là 'per_page' hoặc 'package'`);
@@ -70,7 +80,10 @@ function validateCustomerPriceTier(tier, i, errors) {
 }
 
 function validatePrinter(name, p, errors) {
-    if (!isPlainObject(p)) { errors.push(`PRINTER_CONFIG['${name}']: phải là object`); return; }
+    if (!isPlainObject(p)) {
+        errors.push(`PRINTER_CONFIG['${name}']: phải là object`);
+        return;
+    }
     if (typeof p.name !== 'string') errors.push(`PRINTER_CONFIG['${name}'].name: phải là string`);
     if (typeof p.maxW !== 'number') errors.push(`PRINTER_CONFIG['${name}'].maxW: phải là number`);
     if (typeof p.maxH !== 'number') errors.push(`PRINTER_CONFIG['${name}'].maxH: phải là number`);
@@ -81,10 +94,15 @@ function validatePrinter(name, p, errors) {
 }
 
 function validatePaperStock(paper, i, errors) {
-    if (!isPlainObject(paper)) { errors.push(`PAPER_STOCK_DATA[${i}]: phải là object`); return; }
+    if (!isPlainObject(paper)) {
+        errors.push(`PAPER_STOCK_DATA[${i}]: phải là object`);
+        return;
+    }
     if (typeof paper.name !== 'string') errors.push(`PAPER_STOCK_DATA[${i}].name: phải là string`);
     if (!VALID_PRICING_MODELS.includes(paper.pricingModel)) {
-        errors.push(`PAPER_STOCK_DATA[${i}].pricingModel: phải là 'ream'|'sqm'|'per_sheet'|'custom'`);
+        errors.push(
+            `PAPER_STOCK_DATA[${i}].pricingModel: phải là 'ream'|'sqm'|'per_sheet'|'custom'`
+        );
     }
 }
 

@@ -29,20 +29,39 @@ const config = DECAL_DEFAULT_CONFIG;
 //   - đơn giá round = 401đ
 // ─────────────────────────────────────────────────────────────────────────────
 describe('[Excel reference] tem 100×70mm × 19.500 cái có cán màng — TASK-0006 đã align', () => {
-    const stickerW = 100, stickerH = 70;
-    const printSheetW = 330, printSheetH = 330;
+    const stickerW = 100,
+        stickerH = 70;
+    const printSheetW = 330,
+        printSheetH = 330;
     const quantity = 19500;
 
     const layout = calculateStickersPerSheet(
-        stickerW, stickerH, printSheetW, printSheetH, 'rectangle', config
+        stickerW,
+        stickerH,
+        printSheetW,
+        printSheetH,
+        'rectangle',
+        config
     );
     const sheetCount = Math.ceil(quantity / layout.count);
 
     const priceNoLam = calculateSingleStickerPrice(
-        quantity, 'Decal giấy', false, layout.count, printSheetW, printSheetH, config
+        quantity,
+        'Decal giấy',
+        false,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
     const priceLam = calculateSingleStickerPrice(
-        quantity, 'Decal giấy', true, layout.count, printSheetW, printSheetH, config
+        quantity,
+        'Decal giấy',
+        true,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
 
     it('số con/tờ = 8', () => {

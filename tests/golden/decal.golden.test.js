@@ -37,16 +37,29 @@ const config = DECAL_DEFAULT_CONFIG;
 //   TOTAL ≈ 451.000
 // ---------------------------------------------------------------------------
 describe('Case A: tem 50×90mm, 500 cái, Decal giấy, KHÔNG cán màng', () => {
-    const stickerW = 50, stickerH = 90;
-    const printSheetW = 330, printSheetH = 330;
+    const stickerW = 50,
+        stickerH = 90;
+    const printSheetW = 330,
+        printSheetH = 330;
     const quantity = 500;
     const decalType = 'Decal giấy';
 
     const layout = calculateStickersPerSheet(
-        stickerW, stickerH, printSheetW, printSheetH, 'rectangle', config
+        stickerW,
+        stickerH,
+        printSheetW,
+        printSheetH,
+        'rectangle',
+        config
     );
     const total = calculateSingleStickerPrice(
-        quantity, decalType, false, layout.count, printSheetW, printSheetH, config
+        quantity,
+        decalType,
+        false,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
     const sheetCount = Math.ceil(quantity / layout.count);
     const unitPrice = total / quantity;
@@ -84,19 +97,38 @@ describe('Case A: tem 50×90mm, 500 cái, Decal giấy, KHÔNG cán màng', () =
 // TOTAL ≈ 467.667
 // ---------------------------------------------------------------------------
 describe('Case B: tem 50×90mm, 500 cái, Decal giấy, CÓ cán màng', () => {
-    const stickerW = 50, stickerH = 90;
-    const printSheetW = 330, printSheetH = 330;
+    const stickerW = 50,
+        stickerH = 90;
+    const printSheetW = 330,
+        printSheetH = 330;
     const quantity = 500;
     const decalType = 'Decal giấy';
 
     const layout = calculateStickersPerSheet(
-        stickerW, stickerH, printSheetW, printSheetH, 'rectangle', config
+        stickerW,
+        stickerH,
+        printSheetW,
+        printSheetH,
+        'rectangle',
+        config
     );
     const priceNoLam = calculateSingleStickerPrice(
-        quantity, decalType, false, layout.count, printSheetW, printSheetH, config
+        quantity,
+        decalType,
+        false,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
     const priceLam = calculateSingleStickerPrice(
-        quantity, decalType, true,  layout.count, printSheetW, printSheetH, config
+        quantity,
+        decalType,
+        true,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
 
     it('tổng tiền có cán ≈ 467.666,67đ', () => {
@@ -104,7 +136,10 @@ describe('Case B: tem 50×90mm, 500 cái, Decal giấy, CÓ cán màng', () => {
     });
 
     it('phí cán màng ≈ 16.666,67đ (= raw 33,333 × 500đ, KHÔNG ceil)', () => {
-        expect(priceLam - priceNoLam).toBeCloseTo((quantity / layout.count) * config.laminationCost, 6);
+        expect(priceLam - priceNoLam).toBeCloseTo(
+            (quantity / layout.count) * config.laminationCost,
+            6
+        );
         expect(priceLam - priceNoLam).toBeCloseTo(16666.67, 2);
     });
 
@@ -128,13 +163,20 @@ describe('Case B: tem 50×90mm, 500 cái, Decal giấy, CÓ cán màng', () => {
 //   đơn giá round = 401  ✓ Excel
 // ---------------------------------------------------------------------------
 describe('Case C [Excel reference]: tem 100×70mm, 19.500 cái, có cán 500đ/tờ', () => {
-    const stickerW = 100, stickerH = 70;
-    const printSheetW = 330, printSheetH = 330;
+    const stickerW = 100,
+        stickerH = 70;
+    const printSheetW = 330,
+        printSheetH = 330;
     const quantity = 19500;
     const decalType = 'Decal giấy';
 
     const layout = calculateStickersPerSheet(
-        stickerW, stickerH, printSheetW, printSheetH, 'rectangle', config
+        stickerW,
+        stickerH,
+        printSheetW,
+        printSheetH,
+        'rectangle',
+        config
     );
 
     it('số con/tờ = 8 (4×2, tem xoay ngang)', () => {
@@ -148,10 +190,22 @@ describe('Case C [Excel reference]: tem 100×70mm, 19.500 cái, có cán 500đ/t
 
     const sheetCount = Math.ceil(quantity / layout.count);
     const priceNoLam = calculateSingleStickerPrice(
-        quantity, decalType, false, layout.count, printSheetW, printSheetH, config
+        quantity,
+        decalType,
+        false,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
     const priceLam = calculateSingleStickerPrice(
-        quantity, decalType, true,  layout.count, printSheetW, printSheetH, config
+        quantity,
+        decalType,
+        true,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
 
     it('số tờ in hiển thị = ceil(19500/8) = 2.438', () => {
@@ -186,18 +240,37 @@ describe('Case C [Excel reference]: tem 100×70mm, 19.500 cái, có cán 500đ/t
 // → Decal nhựa ≈ 491.800
 // ---------------------------------------------------------------------------
 describe('Case D: cross-check phụ thu loại decal (Decal nhựa vs Decal giấy)', () => {
-    const stickerW = 50, stickerH = 90;
-    const printSheetW = 330, printSheetH = 330;
+    const stickerW = 50,
+        stickerH = 90;
+    const printSheetW = 330,
+        printSheetH = 330;
     const quantity = 500;
 
     const layout = calculateStickersPerSheet(
-        stickerW, stickerH, printSheetW, printSheetH, 'rectangle', config
+        stickerW,
+        stickerH,
+        printSheetW,
+        printSheetH,
+        'rectangle',
+        config
     );
     const priceGiay = calculateSingleStickerPrice(
-        quantity, 'Decal giấy', false, layout.count, printSheetW, printSheetH, config
+        quantity,
+        'Decal giấy',
+        false,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
     const priceNhua = calculateSingleStickerPrice(
-        quantity, 'Decal nhựa', false, layout.count, printSheetW, printSheetH, config
+        quantity,
+        'Decal nhựa',
+        false,
+        layout.count,
+        printSheetW,
+        printSheetH,
+        config
     );
 
     it('chênh nhựa − giấy = 40.800đ (1200đ/tờ × ceil 34 tờ — decalExtra vẫn dùng ceil)', () => {
@@ -224,7 +297,8 @@ describe('Case D: cross-check phụ thu loại decal (Decal nhựa vs Decal gi�
 // ---------------------------------------------------------------------------
 describe('Case E: ranh giới progressiveTiers (1, 2, 11 tờ in) — không bị ảnh hưởng TASK-0006', () => {
     const decalType = 'Decal giấy';
-    const W = 330, H = 330; // multiplier = 1
+    const W = 330,
+        H = 330; // multiplier = 1
 
     it('1 tờ in = 100.000đ', () => {
         const p = calculateSingleStickerPrice(1, decalType, false, 1, W, H, config);

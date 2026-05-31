@@ -15,12 +15,7 @@
 //
 // Không có nhóm OBJECT phụ — UV DTF là module nhỏ nhất.
 
-const REQUIRED_NUMBERS = [
-    'materialWidthCM',
-    'printableWidthCM',
-    'paddingCM',
-    'minBillableMeters',
-];
+const REQUIRED_NUMBERS = ['materialWidthCM', 'printableWidthCM', 'paddingCM', 'minBillableMeters'];
 
 function validatePriceTier(tier, index, errors) {
     const prefix = `priceTiers[${index}]`;

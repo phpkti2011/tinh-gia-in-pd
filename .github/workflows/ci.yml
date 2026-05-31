@@ -39,11 +39,15 @@ jobs:
         run: npm ci
 
       # P3-LINT.2: ESLint v9 flat config (eslint.config.js). Pass = 0 errors.
-      # Warnings cho phép (technical debt cũ — sẽ giảm dần ở P3-LINT.3).
-      # `format:check` (Prettier) KHÔNG có ở CI vì 100 files chưa format —
-      # sẽ enable ở P3-FMT khi `prettier --write` toàn repo xong.
+      # Warnings cho phép (technical debt cũ — đã giảm 99% ở P3-LINT.3,
+      # còn 1 warning có chủ ý trong DecalResultPanel hook deps).
       - name: Lint
         run: npm run lint
+
+      # P3-FMT: Prettier check style cho src/ + tests/ (.prettierignore loại
+      # docs + configs + index.css + workflow yaml — chỉ validate JS/JSX).
+      - name: Format check
+        run: npm run format:check
 
       # CI KHÔNG có .env.local → import.meta.env.VITE_SUPABASE_URL/KEY = undefined.
       # Code đã handle gracefully (P2-01 supabaseClient warn + null; adapter trả

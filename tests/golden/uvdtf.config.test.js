@@ -89,7 +89,7 @@ describe('TASK-0013: uvdtf config schema + version', () => {
             delete cfg.materialWidthCM;
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('materialWidthCM'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('materialWidthCM'))).toBe(true);
         });
 
         it('thiếu printableWidthCM → fail', () => {
@@ -97,7 +97,7 @@ describe('TASK-0013: uvdtf config schema + version', () => {
             delete cfg.printableWidthCM;
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('printableWidthCM'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('printableWidthCM'))).toBe(true);
         });
 
         it('thiếu paddingCM → fail', () => {
@@ -116,7 +116,7 @@ describe('TASK-0013: uvdtf config schema + version', () => {
             const cfg = { ...UVDTF_DEFAULT_CONFIG, paddingCM: '0.4' };
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('paddingCM'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('paddingCM'))).toBe(true);
         });
     });
 
@@ -126,14 +126,14 @@ describe('TASK-0013: uvdtf config schema + version', () => {
             delete cfg.priceTiers;
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('priceTiers'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('priceTiers'))).toBe(true);
         });
 
         it('priceTiers rỗng → fail', () => {
             const cfg = { ...UVDTF_DEFAULT_CONFIG, priceTiers: [] };
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('rỗng'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('rỗng'))).toBe(true);
         });
 
         it('priceTiers không phải array → fail', () => {
@@ -146,7 +146,7 @@ describe('TASK-0013: uvdtf config schema + version', () => {
             cfg.priceTiers[0].price = '440000';
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('priceTiers[0].price'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('priceTiers[0].price'))).toBe(true);
         });
 
         it('priceTiers[0].maxMeters sai kiểu → fail', () => {
@@ -154,7 +154,7 @@ describe('TASK-0013: uvdtf config schema + version', () => {
             cfg.priceTiers[0].maxMeters = '2';
             const r = validateUvDtfConfig(cfg);
             expect(r.isValid).toBe(false);
-            expect(r.errors.some(e => e.includes('priceTiers[0].maxMeters'))).toBe(true);
+            expect(r.errors.some((e) => e.includes('priceTiers[0].maxMeters'))).toBe(true);
         });
 
         it('priceTiers chấp nhận Infinity ở maxMeters cho tier cuối', () => {

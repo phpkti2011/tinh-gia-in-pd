@@ -22,7 +22,7 @@ export const DECAL_DEFAULT_CONFIG = {
     demiCutSurchargeTiers: [
         { upTo: 20, percent: 20 },
         { upTo: 30, percent: 35 },
-        { upTo: Infinity, percent: 45 }
+        { upTo: Infinity, percent: 45 },
     ],
     decalCosts: {
         'Decal giấy': 0,

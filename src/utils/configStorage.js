@@ -4,9 +4,15 @@ import { DECAL_DEFAULT_CONFIG } from '../config/decalConfig';
 import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
 import { restoreInfinity } from './restoreInfinity.js';
 import { validateDecalConfig, DECAL_CONFIG_SCHEMA_VERSION } from '../modules/decal/config/index.js';
-import { validateSmallPrintConfig, SMALL_PRINT_CONFIG_SCHEMA_VERSION } from '../modules/small-print/config/index.js';
+import {
+    validateSmallPrintConfig,
+    SMALL_PRINT_CONFIG_SCHEMA_VERSION,
+} from '../modules/small-print/config/index.js';
 import { validateUvDtfConfig, UVDTF_CONFIG_SCHEMA_VERSION } from '../modules/uvdtf/config/index.js';
-import { validateLargePrintConfig, LARGE_PRINT_CONFIG_SCHEMA_VERSION } from '../modules/large-print/config/index.js';
+import {
+    validateLargePrintConfig,
+    LARGE_PRINT_CONFIG_SCHEMA_VERSION,
+} from '../modules/large-print/config/index.js';
 import { loadConfigFromSupabase, saveConfigToSupabase } from '../lib/priceConfigStore.js';
 
 // P2-05.6: Apps Script đã được REMOVE hoàn toàn:
@@ -62,10 +68,30 @@ function deepValidateLargePrint(data, source) {
 // (CHECK constraint trong docs/database/supabase-price-configs.sql).
 // P2-05.4: schemaVersion để truyền vào saveConfigToSupabase RPC.
 const MODULE_MAP = {
-    printConfig:      { key: 'printConfig',      default: DEFAULT_CONFIG,             supabaseKey: 'small-print', schemaVersion: SMALL_PRINT_CONFIG_SCHEMA_VERSION },
-    largePrintConfig: { key: 'largePrintConfig', default: LARGE_PRINT_DEFAULT_CONFIG, supabaseKey: 'large-print', schemaVersion: LARGE_PRINT_CONFIG_SCHEMA_VERSION },
-    decalConfig:      { key: 'decalConfig',      default: DECAL_DEFAULT_CONFIG,       supabaseKey: 'decal',       schemaVersion: DECAL_CONFIG_SCHEMA_VERSION },
-    uvdtfConfig:      { key: 'uvdtfConfig',      default: UVDTF_DEFAULT_CONFIG,       supabaseKey: 'uvdtf',       schemaVersion: UVDTF_CONFIG_SCHEMA_VERSION },
+    printConfig: {
+        key: 'printConfig',
+        default: DEFAULT_CONFIG,
+        supabaseKey: 'small-print',
+        schemaVersion: SMALL_PRINT_CONFIG_SCHEMA_VERSION,
+    },
+    largePrintConfig: {
+        key: 'largePrintConfig',
+        default: LARGE_PRINT_DEFAULT_CONFIG,
+        supabaseKey: 'large-print',
+        schemaVersion: LARGE_PRINT_CONFIG_SCHEMA_VERSION,
+    },
+    decalConfig: {
+        key: 'decalConfig',
+        default: DECAL_DEFAULT_CONFIG,
+        supabaseKey: 'decal',
+        schemaVersion: DECAL_CONFIG_SCHEMA_VERSION,
+    },
+    uvdtfConfig: {
+        key: 'uvdtfConfig',
+        default: UVDTF_DEFAULT_CONFIG,
+        supabaseKey: 'uvdtf',
+        schemaVersion: UVDTF_CONFIG_SCHEMA_VERSION,
+    },
 };
 
 // Kiểm tra config có đủ key thiết yếu và giá trị hợp lệ không (tránh dùng data rác)
@@ -92,9 +118,11 @@ function isValidConfig(moduleName, data) {
     const arrKeys = requiredArrayKeys[moduleName] || [];
     const objKeys = requiredObjectKeys[moduleName] || [];
     const otherKeys = requiredOtherKeys[moduleName] || [];
-    return arrKeys.every(k => Array.isArray(data[k]) && data[k].length > 0)
-        && objKeys.every(k => data[k] && typeof data[k] === 'object' && !Array.isArray(data[k]))
-        && otherKeys.every(k => data[k] != null);
+    return (
+        arrKeys.every((k) => Array.isArray(data[k]) && data[k].length > 0) &&
+        objKeys.every((k) => data[k] && typeof data[k] === 'object' && !Array.isArray(data[k])) &&
+        otherKeys.every((k) => data[k] != null)
+    );
 }
 
 // Async: load config ưu tiên Supabase → localStorage → default.
@@ -118,11 +146,20 @@ export async function loadConfigFromCloud(moduleName) {
                 // Deep schema check (cùng pattern với localStorage block bên dưới)
                 if (moduleName === 'decalConfig' && !deepValidateDecal(supaData, 'supabase')) {
                     // skip — fallback localStorage
-                } else if (moduleName === 'printConfig' && !deepValidatePrint(supaData, 'supabase')) {
+                } else if (
+                    moduleName === 'printConfig' &&
+                    !deepValidatePrint(supaData, 'supabase')
+                ) {
                     // skip — fallback localStorage
-                } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(supaData, 'supabase')) {
+                } else if (
+                    moduleName === 'uvdtfConfig' &&
+                    !deepValidateUvdtf(supaData, 'supabase')
+                ) {
                     // skip — fallback localStorage
-                } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(supaData, 'supabase')) {
+                } else if (
+                    moduleName === 'largePrintConfig' &&
+                    !deepValidateLargePrint(supaData, 'supabase')
+                ) {
                     // skip — fallback localStorage
                 } else {
                     localStorage.setItem(mod.key, JSON.stringify(supaData));
@@ -144,11 +181,20 @@ export async function loadConfigFromCloud(moduleName) {
                 // deep schema check cho decal + print + uvdtf + large-print
                 if (moduleName === 'decalConfig' && !deepValidateDecal(parsed, 'localStorage')) {
                     // skip — fallback default
-                } else if (moduleName === 'printConfig' && !deepValidatePrint(parsed, 'localStorage')) {
+                } else if (
+                    moduleName === 'printConfig' &&
+                    !deepValidatePrint(parsed, 'localStorage')
+                ) {
                     // skip — fallback default
-                } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(parsed, 'localStorage')) {
+                } else if (
+                    moduleName === 'uvdtfConfig' &&
+                    !deepValidateUvdtf(parsed, 'localStorage')
+                ) {
                     // skip — fallback default
-                } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(parsed, 'localStorage')) {
+                } else if (
+                    moduleName === 'largePrintConfig' &&
+                    !deepValidateLargePrint(parsed, 'localStorage')
+                ) {
                     // skip — fallback default
                 } else {
                     return parsed;
@@ -175,25 +221,55 @@ export async function loadConfigFromCloud(moduleName) {
 export async function saveConfigToCloud(moduleName, config) {
     const mod = MODULE_MAP[moduleName];
     if (!mod) {
-        return { local: false, cloud: false, error: `Unknown module: ${moduleName}`, provider: 'supabase', newVersion: null };
+        return {
+            local: false,
+            cloud: false,
+            error: `Unknown module: ${moduleName}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
 
     // 1. Validate config TRƯỚC khi ghi bất kỳ nơi nào (giữ pattern TASK-0005.5/0010/0013/0017)
     if (moduleName === 'decalConfig' && !deepValidateDecal(config, 'saveConfigToCloud')) {
         const v = validateDecalConfig(config);
-        return { local: false, cloud: false, error: `Decal config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
+        return {
+            local: false,
+            cloud: false,
+            error: `Decal config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
     if (moduleName === 'printConfig' && !deepValidatePrint(config, 'saveConfigToCloud')) {
         const v = validateSmallPrintConfig(config);
-        return { local: false, cloud: false, error: `Print config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
+        return {
+            local: false,
+            cloud: false,
+            error: `Print config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
     if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(config, 'saveConfigToCloud')) {
         const v = validateUvDtfConfig(config);
-        return { local: false, cloud: false, error: `UV DTF config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
+        return {
+            local: false,
+            cloud: false,
+            error: `UV DTF config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
     if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(config, 'saveConfigToCloud')) {
         const v = validateLargePrintConfig(config);
-        return { local: false, cloud: false, error: `Large print config invalid: ${v.errors.join('; ')}`, provider: 'supabase', newVersion: null };
+        return {
+            local: false,
+            cloud: false,
+            error: `Large print config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
 
     // 2. Luôn lưu localStorage (admin không mất dữ liệu trên máy dù cloud fail)
@@ -201,7 +277,13 @@ export async function saveConfigToCloud(moduleName, config) {
         localStorage.setItem(mod.key, JSON.stringify(config));
     } catch (e) {
         // QuotaExceeded, private mode, …
-        return { local: false, cloud: false, error: `localStorage save failed: ${e.message}`, provider: 'supabase', newVersion: null };
+        return {
+            local: false,
+            cloud: false,
+            error: `localStorage save failed: ${e.message}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
 
     // 3. Lưu Supabase qua RPC save_price_config (transactional version + log)
@@ -210,12 +292,19 @@ export async function saveConfigToCloud(moduleName, config) {
             mod.supabaseKey,
             config,
             mod.schemaVersion,
-            null  // note — UI có thể truyền sau ở Phase 3
+            null // note — UI có thể truyền sau ở Phase 3
         );
         if (!result.ok) {
-            const errMsg = result.error?.message || String(result.error) || 'Unknown Supabase save error';
+            const errMsg =
+                result.error?.message || String(result.error) || 'Unknown Supabase save error';
             console.warn(`[ConfigStorage] Supabase save failed for ${moduleName}: ${errMsg}`);
-            return { local: true, cloud: false, error: errMsg, provider: 'supabase', newVersion: null };
+            return {
+                local: true,
+                cloud: false,
+                error: errMsg,
+                provider: 'supabase',
+                newVersion: null,
+            };
         }
         return {
             local: true,
@@ -225,27 +314,42 @@ export async function saveConfigToCloud(moduleName, config) {
             newVersion: result.newVersion,
         };
     } catch (e) {
-        return { local: true, cloud: false, error: e.message, provider: 'supabase', newVersion: null };
+        return {
+            local: true,
+            cloud: false,
+            error: e.message,
+            provider: 'supabase',
+            newVersion: null,
+        };
     }
 }
 
 function isObject(item) {
-    return (item && typeof item === 'object' && !Array.isArray(item));
+    return item && typeof item === 'object' && !Array.isArray(item);
 }
 
 export function mergeDeep(target, source) {
     let output = Object.assign({}, target);
     if (isObject(target) && isObject(source)) {
-        Object.keys(source).forEach(key => {
+        Object.keys(source).forEach((key) => {
             if (isObject(source[key])) {
-                if (!(key in target))
-                    Object.assign(output, { [key]: source[key] });
-                else
-                    output[key] = mergeDeep(target[key], source[key]);
+                if (!(key in target)) Object.assign(output, { [key]: source[key] });
+                else output[key] = mergeDeep(target[key], source[key]);
             } else if (Array.isArray(source[key])) {
-                 if ((key === 'CUSTOMER_PRICE_TIERS' || key === 'PROFIT_MARGIN_TIERS' || key === 'cost_tiers' || key === 'customer_tiers' || key === 'tiers' || key === 'clickTiers' || key === 'vkPoints' || key === 'COMMON_SHEET_SIZES' || key === 'DECAL_SHEET_SIZES') && source[key].length > 0) {
+                if (
+                    (key === 'CUSTOMER_PRICE_TIERS' ||
+                        key === 'PROFIT_MARGIN_TIERS' ||
+                        key === 'cost_tiers' ||
+                        key === 'customer_tiers' ||
+                        key === 'tiers' ||
+                        key === 'clickTiers' ||
+                        key === 'vkPoints' ||
+                        key === 'COMMON_SHEET_SIZES' ||
+                        key === 'DECAL_SHEET_SIZES') &&
+                    source[key].length > 0
+                ) {
                     output[key] = JSON.parse(JSON.stringify(source[key]));
-                 } else if (Array.isArray(target[key])) {
+                } else if (Array.isArray(target[key])) {
                     output[key] = JSON.parse(JSON.stringify(target[key]));
                 } else {
                     output[key] = JSON.parse(JSON.stringify(source[key]));
@@ -268,11 +372,13 @@ export function loadConfig() {
                 if (deepValidatePrint(parsed, 'localStorage')) return parsed;
                 // else fallback
             } else {
-                console.warn("[ConfigStorage] localStorage printConfig thiếu key thiết yếu, dùng config mặc định.");
+                console.warn(
+                    '[ConfigStorage] localStorage printConfig thiếu key thiết yếu, dùng config mặc định.'
+                );
             }
         }
-    } catch(e) {
-        console.error("Lỗi khi đọc config từ localStorage:", e);
+    } catch (e) {
+        console.error('Lỗi khi đọc config từ localStorage:', e);
     }
     return restoreInfinity(JSON.parse(JSON.stringify(DEFAULT_CONFIG)));
 }
@@ -284,8 +390,8 @@ export function saveConfig(config) {
     try {
         localStorage.setItem('printConfig', JSON.stringify(config));
         return true;
-    } catch(e) {
-        console.error("Lỗi khi lưu config:", e);
+    } catch (e) {
+        console.error('Lỗi khi lưu config:', e);
         return false;
     }
 }
@@ -300,11 +406,13 @@ export function loadLargePrintConfig() {
                 if (deepValidateLargePrint(parsed, 'localStorage')) return parsed;
                 // else fallback
             } else {
-                console.warn("[ConfigStorage] localStorage largePrintConfig thiếu key thiết yếu, dùng config mặc định.");
+                console.warn(
+                    '[ConfigStorage] localStorage largePrintConfig thiếu key thiết yếu, dùng config mặc định.'
+                );
             }
         }
-    } catch(e) {
-        console.error("Lỗi khi đọc large print config:", e);
+    } catch (e) {
+        console.error('Lỗi khi đọc large print config:', e);
     }
     return restoreInfinity(JSON.parse(JSON.stringify(LARGE_PRINT_DEFAULT_CONFIG)));
 }
@@ -316,8 +424,8 @@ export function saveLargePrintConfig(config) {
     try {
         localStorage.setItem('largePrintConfig', JSON.stringify(config));
         return true;
-    } catch(e) {
-        console.error("Lỗi khi lưu large print config:", e);
+    } catch (e) {
+        console.error('Lỗi khi lưu large print config:', e);
         return false;
     }
 }
@@ -332,11 +440,13 @@ export function loadDecalConfig() {
                 if (deepValidateDecal(parsed, 'localStorage')) return parsed;
                 // Nếu deep fail thì rơi xuống default
             } else {
-                console.warn("[ConfigStorage] localStorage decalConfig thiếu key thiết yếu, dùng config mặc định.");
+                console.warn(
+                    '[ConfigStorage] localStorage decalConfig thiếu key thiết yếu, dùng config mặc định.'
+                );
             }
         }
-    } catch(e) {
-        console.error("Lỗi khi đọc decal config:", e);
+    } catch (e) {
+        console.error('Lỗi khi đọc decal config:', e);
     }
     return restoreInfinity(JSON.parse(JSON.stringify(DECAL_DEFAULT_CONFIG)));
 }
@@ -348,8 +458,8 @@ export function saveDecalConfig(config) {
     try {
         localStorage.setItem('decalConfig', JSON.stringify(config));
         return true;
-    } catch(e) {
-        console.error("Lỗi khi lưu decal config:", e);
+    } catch (e) {
+        console.error('Lỗi khi lưu decal config:', e);
         return false;
     }
 }
@@ -364,11 +474,13 @@ export function loadUvdtfConfig() {
                 if (deepValidateUvdtf(parsed, 'localStorage')) return parsed;
                 // else fallback
             } else {
-                console.warn("[ConfigStorage] localStorage uvdtfConfig thiếu key thiết yếu, dùng config mặc định.");
+                console.warn(
+                    '[ConfigStorage] localStorage uvdtfConfig thiếu key thiết yếu, dùng config mặc định.'
+                );
             }
         }
-    } catch(e) {
-        console.error("Lỗi khi đọc UV DTF config:", e);
+    } catch (e) {
+        console.error('Lỗi khi đọc UV DTF config:', e);
     }
     return restoreInfinity(JSON.parse(JSON.stringify(UVDTF_DEFAULT_CONFIG)));
 }
@@ -380,8 +492,8 @@ export function saveUvdtfConfig(config) {
     try {
         localStorage.setItem('uvdtfConfig', JSON.stringify(config));
         return true;
-    } catch(e) {
-        console.error("Lỗi khi lưu UV DTF config:", e);
+    } catch (e) {
+        console.error('Lỗi khi lưu UV DTF config:', e);
         return false;
     }
 }
