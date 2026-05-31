@@ -13,7 +13,7 @@ P2-05 sẽ chia thành nhiều sub-task:
 |---|---|---|
 | **P2-05.1** | Schema + RLS + docs. CHƯA wire app. | ✅ DONE |
 | **P2-05.2** | Adapter `src/lib/priceConfigStore.js` + RPC `save_price_config()`. CHƯA wire vào UI. | ✅ DONE |
-| P2-05.3 | `configStorage.js` đọc cloud từ Supabase (vẫn giữ Apps Script làm fallback). | ⏸ |
+| **P2-05.3** | `configStorage.loadConfigFromCloud()` ưu tiên Supabase → Apps Script fallback → localStorage → default. | ✅ DONE |
 | P2-05.4 | `configStorage.js` save lên Supabase + tạo version + log. Bỏ Apps Script khỏi save path. | ⏸ |
 | P2-05.5 | UI history/rollback cho admin (xem version cũ, rollback). | ⏸ |
 | P2-05.6 | Cleanup: remove Apps Script code + `VITE_ADMIN_PASSWORD` env + `cloudSync.js` legacy. | ⏸ |
@@ -220,16 +220,34 @@ Lưu ý: **Supabase JS client chưa support multi-statement transaction nguyên 
 - ✅ ~25 smoke tests trong `tests/lib/priceConfigStore.test.js`.
 - ❌ **CHƯA wire** vào `configStorage.js` / SettingsPanel — đó là P2-05.3/04.
 
-### ⏸ P2-05.3: Wire READ từ Supabase
+### ✅ P2-05.3: Wire READ từ Supabase — DONE
 
-- Modify `configStorage.js` 4 hàm `load{Print,Decal,LargePrint,Uvdtf}Config()`:
-  ```js
-  // Pseudo:
-  const supaConfig = await loadConfigFromSupabase('xxx');
-  if (supaConfig?.data) return supaConfig.data;
-  // Fallback Apps Script (giữ tạm) → localStorage → defaultConfig.
-  ```
-- Apps Script vẫn là fallback tạm thời (chưa xoá ở P2-05.3).
+Wire vào async path `loadConfigFromCloud(moduleName)` thay vì async-hoá `loadXxxConfig()` sync (giữ minimal change, ít risk regression).
+
+Priority order (mới):
+1. **Supabase** (`loadConfigFromSupabase(supabaseKey)` từ adapter P2-05.2) → nếu có data hợp lệ (shallow + deep schema check) → cache localStorage → return.
+2. **Apps Script** (`fetchCloudConfig(moduleName)`) — fallback tạm đến P2-05.6.
+3. **localStorage** (`localStorage.getItem(mod.key)`) → nếu hợp lệ.
+4. **Default config** (`mod.default`, deep clone + restoreInfinity).
+
+Mapping `moduleName → supabaseKey` (CHECK enum trong DB):
+- `printConfig` → `small-print`
+- `decalConfig` → `decal`
+- `largePrintConfig` → `large-print`
+- `uvdtfConfig` → `uvdtf`
+
+Khi Supabase chưa cấu hình (env thiếu) hoặc chưa có row hoặc data invalid → fallback xuống Apps Script bình thường. App KHÔNG crash, KHÔNG đổi behavior.
+
+Validation cùng pattern với Apps Script fallback:
+- `isValidConfig()` (shallow key check).
+- `deepValidateXxx()` (full schema validation per module).
+- Fail bất kỳ → skip cache + skip return → fallback.
+
+Tests: 7 integration tests trong `tests/lib/configStorage.supabase-read.test.js` (per-file jsdom env):
+- 4 module mapping verification.
+- Valid Supabase data → cache + return.
+- Supabase null / invalid / error → fallback Apps Script.
+- Tất cả fail → default.
 
 ### ⏸ P2-05.4: Wire SAVE qua Supabase
 

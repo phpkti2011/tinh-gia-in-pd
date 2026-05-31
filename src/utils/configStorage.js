@@ -7,6 +7,7 @@ import { validateDecalConfig } from '../modules/decal/config/index.js';
 import { validateSmallPrintConfig } from '../modules/small-print/config/index.js';
 import { validateUvDtfConfig } from '../modules/uvdtf/config/index.js';
 import { validateLargePrintConfig } from '../modules/large-print/config/index.js';
+import { loadConfigFromSupabase } from '../lib/priceConfigStore.js';
 
 // TASK-0005.5: deep schema validation cho decal config (bổ sung cho shallow
 // isValidConfig). Trả về true nếu pass; warn + return false nếu fail.
@@ -49,12 +50,14 @@ function deepValidateLargePrint(data, source) {
     return true;
 }
 
-// Module name → localStorage key → default config mapping
+// Module name → localStorage key → default config → Supabase module key mapping.
+// P2-05.3: supabaseKey thêm để map sang enum trong Supabase price_configs.module
+// (CHECK constraint trong docs/database/supabase-price-configs.sql).
 const MODULE_MAP = {
-    printConfig: { key: 'printConfig', default: DEFAULT_CONFIG },
-    largePrintConfig: { key: 'largePrintConfig', default: LARGE_PRINT_DEFAULT_CONFIG },
-    decalConfig: { key: 'decalConfig', default: DECAL_DEFAULT_CONFIG },
-    uvdtfConfig: { key: 'uvdtfConfig', default: UVDTF_DEFAULT_CONFIG },
+    printConfig:      { key: 'printConfig',      default: DEFAULT_CONFIG,             supabaseKey: 'small-print' },
+    largePrintConfig: { key: 'largePrintConfig', default: LARGE_PRINT_DEFAULT_CONFIG, supabaseKey: 'large-print' },
+    decalConfig:      { key: 'decalConfig',      default: DECAL_DEFAULT_CONFIG,       supabaseKey: 'decal' },
+    uvdtfConfig:      { key: 'uvdtfConfig',      default: UVDTF_DEFAULT_CONFIG,       supabaseKey: 'uvdtf' },
 };
 
 // Kiểm tra config có đủ key thiết yếu và giá trị hợp lệ không (tránh dùng data rác)
@@ -86,13 +89,43 @@ function isValidConfig(moduleName, data) {
         && otherKeys.every(k => data[k] != null);
 }
 
-// Async: load config ưu tiên cloud → localStorage → default
+// Async: load config ưu tiên Supabase → Apps Script cloud → localStorage → default.
+// P2-05.3: thêm Supabase block ở đầu. Apps Script vẫn còn làm fallback đến P2-05.6.
+// Nếu Supabase chưa cấu hình env / chưa có row / data invalid → fallback xuống Apps Script.
 export async function loadConfigFromCloud(moduleName) {
     const mod = MODULE_MAP[moduleName];
     if (!mod) return null;
     const defaultCfg = JSON.parse(JSON.stringify(mod.default));
 
-    // Thử cloud trước
+    // P2-05.3: Thử Supabase trước (priority cao nhất).
+    // Adapter handle null Supabase gracefully → trả null, không throw.
+    // restoreInfinity() khôi phục Infinity từ null trong jsonb (giống Apps Script
+    // + localStorage path) — vì jsonb serialization làm mất Infinity giống JSON.
+    if (mod.supabaseKey) {
+        try {
+            const supaResult = await loadConfigFromSupabase(mod.supabaseKey);
+            const supaData = supaResult?.data ? restoreInfinity(supaResult.data) : null;
+            if (isValidConfig(moduleName, supaData)) {
+                // Deep schema check (cùng pattern với cloud + localStorage block bên dưới)
+                if (moduleName === 'decalConfig' && !deepValidateDecal(supaData, 'supabase')) {
+                    // skip — fallback Apps Script
+                } else if (moduleName === 'printConfig' && !deepValidatePrint(supaData, 'supabase')) {
+                    // skip — fallback Apps Script
+                } else if (moduleName === 'uvdtfConfig' && !deepValidateUvdtf(supaData, 'supabase')) {
+                    // skip — fallback Apps Script
+                } else if (moduleName === 'largePrintConfig' && !deepValidateLargePrint(supaData, 'supabase')) {
+                    // skip — fallback Apps Script
+                } else {
+                    localStorage.setItem(mod.key, JSON.stringify(supaData));
+                    return supaData;
+                }
+            }
+        } catch (e) {
+            console.warn(`[ConfigStorage] Supabase load failed for ${moduleName}:`, e.message);
+        }
+    }
+
+    // Fallback: Apps Script cloud (giữ đến P2-05.6 khi remove Apps Script hoàn toàn)
     if (isCloudEnabled()) {
         try {
             const cloudData = await fetchCloudConfig(moduleName);
