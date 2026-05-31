@@ -161,7 +161,7 @@ d8b2dda (v1.2)       feat: validate small-print config milestone
 ### Setup phase (TASK-0001 → TASK-0002.6)
 - **TASK-0001**: Baseline audit — 9-section doc liệt kê tech stack, file engine, bảng giá, 9 vị trí password hardcoded, 2 file legacy. Build verify.
 - **TASK-0002**: Thêm Vitest 2.1.9 (downgrade từ 4.x do Node 20.11.1 không hỗ trợ rolldown).
-- **TASK-0002.5** + **TASK-0002.6**: Init Git + sanitize hardcoded `PHP11148045kti93@` thành `TEMP_ADMIN_PASSWORD_PLACEHOLDER` trước commit baseline. `.gitignore` chặn `node_modules`, `dist`, `.env*`, file legacy.
+- **TASK-0002.5** + **TASK-0002.6**: Init Git + sanitize hardcoded `<OLD_APPS_SCRIPT_PASSWORD>` thành `TEMP_ADMIN_PASSWORD_PLACEHOLDER` trước commit baseline. `.gitignore` chặn `node_modules`, `dist`, `.env*`, file legacy.
 
 ### Decal phase (TASK-0003 → TASK-0007.1)
 - **TASK-0003**: 20 golden test (Case A-E) khoá decalCalculator.
@@ -196,7 +196,7 @@ d8b2dda (v1.2)       feat: validate small-print config milestone
 
 ### 🔴 Security & Auth
 - **`TEMP_ADMIN_PASSWORD_PLACEHOLDER`** vẫn tồn tại ở 9 vị trí trong `src/`. Ai biết chuỗi này đều vào được Settings Panel. Acceptable tạm thời (đã document trong [`docs/security/SECURITY_NOTES.md`](security/SECURITY_NOTES.md)). **Cần Supabase Auth** để thay thế.
-- Password `PHP11148045kti93@` cũ đã lộ trong dist build trước-TASK-0002.6. Cần **rotate** trên Apps Script deployed.
+- Password `<OLD_APPS_SCRIPT_PASSWORD>` cũ đã lộ trong dist build trước-TASK-0002.6. Cần **rotate** trên Apps Script deployed.
 - File `google-apps-script.js` + 2 file legacy (HTML/xlsx) **vẫn trên đĩa dev** với password cũ — không vào git (gitignored).
 
 ### 🟡 Business logic gaps

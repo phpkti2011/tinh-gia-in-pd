@@ -129,6 +129,38 @@ Sau `git status`, các file sau **không xuất hiện** nhưng vẫn tồn tạ
 
 Sau khi xong các bước trên, append note vào file này (mục 4ter) đánh dấu "✅ Rotated YYYY-MM-DD" — **KHÔNG ghi password mới**.
 
+## 4quat. Cập nhật sau P2-04.7 (2026-05-31)
+
+### Đã làm trong P2-04.7
+
+P2-04.5 (squash merge rotation guide) đã phát hiện 3 vị trí literal password cũ còn sót trong docs (pre-existing từ trước P2-04):
+- `docs/phase-1-pricing-refactor-completion.md` — 2 vị trí (commit `98bfad8` / TASK-0019)
+- `docs/phase-2-supabase-auth-plan.md` — 1 vị trí (commit `9d12821` / P2-01)
+
+P2-04.7 đã redact toàn bộ 3 vị trí này, thay literal bằng placeholder `<OLD_APPS_SCRIPT_PASSWORD>`. Verify (dùng substring riêng từ password manager, KHÔNG paste vào docs):
+
+```bash
+# Thay <OLD_PWD_SUBSTRING> bằng 5-7 ký tự bất kỳ từ giữa password cũ
+# (lấy từ password manager — KHÔNG gõ ra terminal share session).
+git grep -in '<OLD_PWD_SUBSTRING>'   # phải trả về 0 hits
+```
+
+### ⚠️ Lưu ý quan trọng về git history
+
+- **Current working tree** (HEAD trên main sau P2-04.7) đã sạch — `git grep` không tìm thấy literal password cũ.
+- **Git history** (các commit `98bfad8`, `9d12821` và build cũ trong dist/) **VẪN CHỨA** literal password cũ. Bất kỳ ai clone repo và `git log -p` đều xem được.
+- Để xóa hoàn toàn khỏi history cần `git filter-repo` / `git filter-branch` (rewrite history — destructive, không làm trong P2-04.7 theo spec).
+
+### Khuyến nghị trước khi push remote / public
+
+1. **TRƯỚC khi push lần đầu lên GitHub/GitLab công cộng**, đảm bảo đã:
+   - ✅ Rotate password Apps Script thật (8 bước trong [apps-script-password-rotation.md](apps-script-password-rotation.md)).
+   - ✅ Confirm password cũ KHÔNG còn work với Apps Script deployed.
+   - ⚠️ Nếu chấp nhận password cũ trong git history là OK (đã rotate → coi như public): push thẳng.
+   - ⚠️ Nếu muốn sạch tuyệt đối: chạy `git filter-repo --replace-text` để rewrite history, **trước khi push**. Lưu ý: rewrite history sẽ đổi mọi commit hash → tag cũ (`v1.0` → `v2.3`) cần re-create lại. Đây là quyết định lớn — chỉ làm khi cần thiết.
+
+2. Cho repo PRIVATE (chưa public): có thể trì hoãn rewrite history; tập trung rotate password thật trước.
+
 ## 5. Quy tắc bắt buộc trước khi push lên remote lần đầu
 
 > Trong các lệnh dưới, thay `<OLD_ADMIN_PASSWORD>` bằng chuỗi password cũ. Chuỗi này **không lưu trong repo** — hãy giữ trong password manager riêng và copy-paste khi chạy lệnh.

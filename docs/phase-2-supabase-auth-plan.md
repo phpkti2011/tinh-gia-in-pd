@@ -96,7 +96,7 @@ Chi tiết ở [phase-2-admin-role-model.md](phase-2-admin-role-model.md). Tóm 
 
 ### P2-04: Rotate password Apps Script
 
-- Password cũ `PHP11148045kti93@` đã lộ trong dist build trước-TASK-0002.6.
+- Password cũ `<OLD_APPS_SCRIPT_PASSWORD>` đã lộ trong dist build trước-TASK-0002.6.
 - Update Apps Script deployed phía Google + `google-apps-script.js` local.
 
 ### P2-05..09: Database & Config (sau auth)
