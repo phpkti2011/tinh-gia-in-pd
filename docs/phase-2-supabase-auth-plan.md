@@ -6,7 +6,9 @@
 > - ✅ **P2-02 done** — user_roles schema + useUserRole hook (tag `v2.1-admin-role-model`).
 > - ✅ **P2-03 done** — `<AdminGate>` wrap 4 SettingsPanel, password placeholder cũ ĐÃ XOÁ KHỎI `src/`. ResultPanel admin reveal giờ dựa vào Supabase role. Apps Script password đọc từ env `VITE_ADMIN_PASSWORD`.
 > - 🟡 **P2-04 code-side done** — rotation guide ready ([apps-script-password-rotation.md](security/apps-script-password-rotation.md)). Chờ rotate phía Apps Script (manual).
-> - ⏸ P2-05..09 — Supabase database config, history, rollback.
+> - ✅ **P2-04.7/.8 done** — redact literal password cũ khỏi current working tree (3 vị trí + 2 substring trong SECURITY_NOTES verify cmd).
+> - 🟡 **P2-05.1 done (schema-only)** — 3 bảng `price_configs` / `price_config_versions` / `price_change_logs` + RLS designed trong [phase-2-price-config-database-plan.md](phase-2-price-config-database-plan.md) + SQL idempotent [database/supabase-price-configs.sql](database/supabase-price-configs.sql). CHƯA wire app vào DB.
+> - ⏸ P2-05.2..06 — adapter, wire read/save, history/rollback UI, remove Apps Script.
 
 ## 1. Mục tiêu auth (Phase 2 — group Auth & Admin)
 
