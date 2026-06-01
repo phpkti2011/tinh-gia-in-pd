@@ -52,9 +52,10 @@ export async function loadConfigFromSupabase(module) {
  * @param {object} data - Toàn bộ config object
  * @param {string} schemaVersion - vd '1.0.0'
  * @param {string|null} note - Ghi chú admin (optional)
+ * @param {{action?: 'rollback'}} [options] - P3-HISTORY.2: action override
  * @returns {Promise<{ok: boolean, error: Error|null, newVersion: number|null}>}
  */
-export async function saveConfigToSupabase(module, data, schemaVersion, note = null) {
+export async function saveConfigToSupabase(module, data, schemaVersion, note = null, options = {}) {
     if (!isSupabaseConfigured()) {
         return {
             ok: false,
@@ -69,12 +70,18 @@ export async function saveConfigToSupabase(module, data, schemaVersion, note = n
     }
 
     try {
-        const { data: rpcResult, error } = await supabase.rpc('save_price_config', {
+        const rpcPayload = {
             p_module: module,
             p_data: data,
             p_schema_version: schemaVersion,
             p_note: note,
-        });
+        };
+        // P3-HISTORY.2: chỉ pass p_action nếu được set (giữ backward compat —
+        // RPC default null → behavior cũ auto-pick create/update).
+        if (options?.action) {
+            rpcPayload.p_action = options.action;
+        }
+        const { data: rpcResult, error } = await supabase.rpc('save_price_config', rpcPayload);
         if (error) {
             console.warn('[priceConfigStore] saveConfigToSupabase RPC error:', error.message);
             return { ok: false, error, newVersion: null };
@@ -89,6 +96,91 @@ export async function saveConfigToSupabase(module, data, schemaVersion, note = n
         console.warn('[priceConfigStore] saveConfigToSupabase threw:', e?.message);
         return { ok: false, error: e, newVersion: null };
     }
+}
+
+/**
+ * Đọc data đầy đủ của 1 version (P3-HISTORY.2 — lazy fetch khi click Rollback).
+ * KHÔNG dùng cho list (avoid bandwidth + render raw JSON).
+ * @param {string} versionId - UUID của version row
+ * @returns {Promise<{id, module, version, schema_version, data, note, created_by, created_at}|null>}
+ *          null khi: Supabase chưa cấu hình / versionId rỗng / RLS deny / lỗi.
+ */
+export async function loadVersionData(versionId) {
+    if (!isSupabaseConfigured()) return null;
+    if (!versionId) return null;
+
+    try {
+        const { data, error } = await supabase
+            .from('price_config_versions')
+            .select('id, module, version, schema_version, data, note, created_by, created_at')
+            .eq('id', versionId)
+            .maybeSingle();
+        if (error) {
+            console.warn('[priceConfigStore] loadVersionData error:', error.message);
+            return null;
+        }
+        return data ?? null;
+    } catch (e) {
+        console.warn('[priceConfigStore] loadVersionData threw:', e?.message);
+        return null;
+    }
+}
+
+/**
+ * Rollback module về data của 1 version cũ (P3-HISTORY.2).
+ *
+ * Flow:
+ *   1. Load full data của version cũ qua loadVersionData(versionId).
+ *   2. Gọi saveConfigToSupabase với action='rollback' → RPC tạo version mới
+ *      với data cũ + audit log action='rollback'.
+ *   3. Version cũ KHÔNG bị xoá (history vẫn append-only).
+ *
+ * @param {{module: string, versionId: string, note?: string|null}} args
+ * @returns {Promise<{ok: boolean, error: Error|null, newVersion: number|null}>}
+ */
+export async function rollbackConfigVersion({ module, versionId, note = null }) {
+    if (!isSupabaseConfigured()) {
+        return {
+            ok: false,
+            error: new Error('Supabase chưa cấu hình.'),
+            newVersion: null,
+        };
+    }
+    if (!module || !versionId) {
+        return {
+            ok: false,
+            error: new Error('module + versionId required'),
+            newVersion: null,
+        };
+    }
+
+    // Bước 1: load data version cũ
+    const versionRow = await loadVersionData(versionId);
+    if (!versionRow) {
+        return {
+            ok: false,
+            error: new Error(
+                'Không tải được dữ liệu version để rollback (có thể RLS deny hoặc version không tồn tại).'
+            ),
+            newVersion: null,
+        };
+    }
+
+    // Verify module match (defensive — versionId thuộc đúng module)
+    if (versionRow.module !== module) {
+        return {
+            ok: false,
+            error: new Error(
+                `Version ${versionId} thuộc module "${versionRow.module}" không khớp với module yêu cầu "${module}".`
+            ),
+            newVersion: null,
+        };
+    }
+
+    // Bước 2: save với action='rollback'
+    return await saveConfigToSupabase(module, versionRow.data, versionRow.schema_version, note, {
+        action: 'rollback',
+    });
 }
 
 /**

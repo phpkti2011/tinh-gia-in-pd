@@ -215,17 +215,24 @@ create policy "price_change_logs_admin_insert"
 -- KHONG co policy UPDATE/DELETE.
 
 -- ============================================================================
--- 7bis. RPC function save_price_config(p_module, p_data, p_schema_version, p_note)
---       Transactional save: insert version + upsert config + insert log.
---       Goi tu frontend qua supabase.rpc('save_price_config', {...}).
---       Added in P2-05.2.
+-- 7bis. RPC function save_price_config — Transactional save.
+--
+-- Goi tu frontend qua supabase.rpc('save_price_config', {...}).
+--
+-- Added in P2-05.2 voi 4 params (module, data, schema_version, note).
+-- Extended in P3-HISTORY.2 voi them p_action de support rollback explicit.
+--
+-- Backward compat: p_action defaults to null → behavior cu (auto pick
+-- 'create' hoac 'update' based on whether row exists). P3-HISTORY.2 frontend
+-- truyen p_action='rollback' khi rollback version.
 -- ============================================================================
 
 create or replace function public.save_price_config(
     p_module         text,
     p_data           jsonb,
     p_schema_version text,
-    p_note           text default null
+    p_note           text default null,
+    p_action         text default null  -- P3-HISTORY.2: 'rollback' override
 )
 returns jsonb
 language plpgsql
@@ -252,28 +259,43 @@ begin
             using errcode = '22023';  -- invalid_parameter_value
     end if;
 
-    -- 3. Lookup current version (null neu chua co)
+    -- 3. Validate p_action neu duoc truyen (P3-HISTORY.2)
+    if p_action is not null and p_action not in ('create','update','rollback') then
+        raise exception 'invalid action: %', p_action
+            using errcode = '22023';
+    end if;
+
+    -- 4. Lookup current version (null neu chua co)
     select current_version into v_current_version
     from public.price_configs
     where module = p_module
     for update;  -- lock row de tranh race condition multi admin
 
+    -- 5. Tinh new version + action:
+    --    - Neu chua co row: action luon 'create', bo qua p_action.
+    --    - Neu co row:
+    --        * p_action='rollback' (P3-HISTORY.2): action='rollback'.
+    --        * Else: action='update'.
     if v_current_version is null then
         v_new_version := 1;
         v_action      := 'create';
     else
         v_new_version := v_current_version + 1;
-        v_action      := 'update';
+        if p_action = 'rollback' then
+            v_action := 'rollback';
+        else
+            v_action := 'update';
+        end if;
     end if;
 
-    -- 4. Insert version snapshot (UNIQUE(module, version) chong duplicate)
+    -- 6. Insert version snapshot (UNIQUE(module, version) chong duplicate)
     insert into public.price_config_versions (
         module, version, schema_version, data, note, created_by
     ) values (
         p_module, v_new_version, p_schema_version, p_data, p_note, v_user_id
     );
 
-    -- 5. Upsert current config (PK = module via UNIQUE)
+    -- 7. Upsert current config (PK = module via UNIQUE)
     insert into public.price_configs (
         module, current_version, schema_version, data, updated_by
     ) values (
@@ -286,7 +308,7 @@ begin
         updated_by      = excluded.updated_by;
         -- updated_at auto-set boi trigger trg_price_configs_touch
 
-    -- 6. Audit log
+    -- 8. Audit log
     insert into public.price_change_logs (
         module, action, old_version, new_version, note, changed_by
     ) values (
@@ -302,12 +324,15 @@ begin
 end;
 $$;
 
-comment on function public.save_price_config(text, jsonb, text, text) is
-    'Transactional save price config: insert version snapshot + upsert current + audit log. Security definer + is_admin() check de bypass RLS an toan.';
+comment on function public.save_price_config(text, jsonb, text, text, text) is
+    'Transactional save price config: insert version snapshot + upsert current + audit log. P3-HISTORY.2: support p_action=rollback. Security definer + is_admin() check.';
 
 -- Grant execute: chi authenticated (admin check trong function body)
-revoke all on function public.save_price_config(text, jsonb, text, text) from public;
-grant execute on function public.save_price_config(text, jsonb, text, text) to authenticated;
+revoke all on function public.save_price_config(text, jsonb, text, text, text) from public;
+grant execute on function public.save_price_config(text, jsonb, text, text, text) to authenticated;
+-- Note: signature 4-arg cu (text, jsonb, text, text) tu dong xoa khi `create or
+-- replace` voi signature moi 5-arg. Frontend P2-05.2 goi 4 named args van work
+-- vi p_action default null.
 
 -- ============================================================================
 -- 8. Verify (chay sau khi setup xong)

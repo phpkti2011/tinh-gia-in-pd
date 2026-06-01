@@ -1,18 +1,26 @@
 # Admin Price Config History (P3-HISTORY)
 
-> Ngày: 2026-06-01 (P3-HISTORY.1 — chỉ xem)
-> Trạng thái: 🟡 View-only (rollback ở P3-HISTORY.2)
+> Ngày: 2026-06-01 (P3-HISTORY.2 — rollback)
+> Trạng thái: 🟢 Done — view + rollback
 > Tiền đề: [P3-COV](coverage-setup.md) (`v3.6-vitest-coverage-baseline`), [Phase 2 DB](phase-2-price-config-database-plan.md)
 
 ## 1. Mục tiêu
 
-Admin biết bảng giá đã thay đổi như thế nào theo thời gian — ai save, lúc nào, version nào, ghi chú gì. Bước đầu của P3-HISTORY group.
+Admin biết bảng giá đã thay đổi như thế nào theo thời gian — ai save, lúc nào, version nào, ghi chú gì. Và có thể **rollback về version cũ** an toàn (immutable: rollback tạo version mới, không xoá version cũ).
 
-**Phạm vi P3-HISTORY.1:**
+**Phạm vi P3-HISTORY.1 (view):**
 - ✅ UI panel collapsible trong 4 SettingsPanel
 - ✅ Hiển thị danh sách versions + change log
-- ❌ KHÔNG rollback (chờ P3-HISTORY.2)
-- ❌ KHÔNG input note (chờ P3-HISTORY.3 hoặc gộp với .2)
+- ❌ KHÔNG rollback (đã có ở P3-HISTORY.2)
+
+**Phạm vi P3-HISTORY.2 (rollback):**
+- ✅ Nút "Rollback về vN" trên mỗi version row (trừ version mới nhất)
+- ✅ Confirm dialog rõ ràng (module + version + thông tin tạo)
+- ✅ Gọi RPC `save_price_config` với `p_action='rollback'` → audit log ghi action='rollback'
+- ✅ Reload versions + audit log sau rollback thành công
+- ✅ Error banner nếu fail; loading state per-row
+- ❌ KHÔNG tự update config đang mở trong SettingsPanel (admin reload trang nếu cần)
+- ❌ KHÔNG input note tự do (P3-HISTORY.3)
 - ❌ KHÔNG export/import
 
 ## 2. Dữ liệu lấy từ bảng nào
@@ -21,8 +29,10 @@ Admin biết bảng giá đã thay đổi như thế nào theo thời gian — a
 |---|---|---|
 | Versions list | `loadVersionHistory(module, limit=20)` | `public.price_config_versions` (P2-05.1) |
 | Audit log | `loadChangeLog(module, limit=20)` | `public.price_change_logs` (P2-05.1) |
+| Version data full (rollback) | `loadVersionData(versionId)` | `public.price_config_versions` |
+| Rollback | `rollbackConfigVersion({module, versionId, note})` → RPC `save_price_config(p_action='rollback')` | `public.price_configs` + audit |
 
-Adapter ở [src/lib/priceConfigStore.js](../src/lib/priceConfigStore.js) — handle Supabase null gracefully (trả `[]`, không crash).
+Adapter ở [src/lib/priceConfigStore.js](../src/lib/priceConfigStore.js) — handle Supabase null gracefully (trả `[]`/`null`/`ok=false`, không crash).
 
 ## 3. Module mapping
 
@@ -71,8 +81,27 @@ Khớp với CHECK enum trong `price_configs.module`.
 
 ### Reload
 - Nút "Tải lại" góc phải tiêu đề.
-- Disabled trong khi loading.
+- Disabled trong khi loading hoặc đang rollback.
 - Re-call cả 2 loaders.
+
+### Rollback (P3-HISTORY.2)
+- Trên mỗi row version **cũ** (không phải version mới nhất / "hiện tại"), nút "Rollback về vN".
+- Click → `window.confirm()` dialog với thông tin: module, version#, người tạo (uuid-prefix), thời gian tạo, cảnh báo "version mới sẽ được tạo dựa trên dữ liệu v cũ".
+- User cancel → no-op.
+- User OK:
+  - Disable tất cả nút rollback (1 task tại 1 lúc).
+  - Nút row đó → "Đang rollback…".
+  - Call `rollbackConfigVersion({ module, versionId, note: "Rollback về vN" })`:
+    1. Adapter `loadVersionData(versionId)` → lấy full data version cũ.
+    2. Verify `versionRow.module === module` (defensive).
+    3. Adapter `saveConfigToSupabase(module, oldData, oldSchema, note, { action: 'rollback' })` → RPC tạo version mới với `action='rollback'`.
+  - Success: green banner "Đã rollback thành công. Version mới: vX. Tải lại trang hoặc bấm 'Tải lại cấu hình' nếu cần áp dụng ngay." → reload history (versions + audit).
+  - Fail: red banner "Rollback thất bại: \<error\>" / "Rollback exception: \<message\>". KHÔNG reload (giữ state cũ để admin debug).
+  - Cả 2 banner đều có nút ✕ để đóng.
+
+### Tại sao KHÔNG tự update config đang mở
+- SettingsPanel có local state `localConfig` (copy của config khi mở modal). Update trực tiếp sẽ tạo confusion (admin đang edit, save → ghi đè rollback). Đơn giản hơn: admin reload trang sau rollback.
+- UI ghi chú rõ điều này.
 
 ## 5. Privacy
 
@@ -106,11 +135,12 @@ Tương lai (P3-HISTORY.X): có thể join với `auth.users` qua RPC để show
 
 ## 9. Task tiếp theo
 
-### P3-HISTORY.2: Rollback version
-- Add nút "Rollback về v N" trên mỗi version row.
-- Confirmation dialog: "Rollback decal về v3 (lưu bởi user X ngày Y)?"
-- Gọi `saveConfigToCloud(moduleName, oldVersionData)` → tự thành version mới với `action='rollback'`.
-- Update versions list + audit log sau rollback.
+### P3-HISTORY.2: Rollback version ✅ DONE (2026-06-01)
+- Nút "Rollback về vN" cho mọi version cũ.
+- Confirm dialog có module + version + người tạo + cảnh báo.
+- RPC `save_price_config` extended với `p_action='rollback'` (backward compatible).
+- Adapter functions mới: `loadVersionData`, `rollbackConfigVersion`, `saveConfigToSupabase(..., options)`.
+- 12 test cases mới (5 adapter + 7 UI flow).
 
 ### P3-HISTORY.3 (optional): Input note khi save
 - SettingsPanel handleSave thêm modal input "Ghi chú thay đổi này" trước khi gọi save.
