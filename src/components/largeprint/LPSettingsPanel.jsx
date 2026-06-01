@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { saveLargePrintConfig } from '../../utils/configStorage';
+import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -717,6 +718,10 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
                 </div>
 
                 {/* Footer */}
+                <div className="px-6 pb-4">
+                    <PriceConfigHistoryPanel moduleKey="large-print" />
+                </div>
+
                 <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
                     <button
                         onClick={handleSave}

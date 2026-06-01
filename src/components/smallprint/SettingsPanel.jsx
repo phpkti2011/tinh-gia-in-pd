@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { saveConfig } from '../../utils/configStorage';
+import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, isPercentage = false, className, step }) {
     const displayNum = isPercentage ? parseFloat((configValue * 100).toFixed(2)) : configValue;
@@ -917,6 +918,8 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                     </div>
                 </section>
             </div>
+
+            <PriceConfigHistoryPanel moduleKey="small-print" />
 
             <div className="flex justify-end mt-10 pt-6 border-t border-gray-700 space-x-4">
                 <button

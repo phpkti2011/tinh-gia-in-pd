@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { saveUvdtfConfig } from '../../utils/configStorage';
+import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -247,6 +248,10 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                             </tbody>
                         </table>
                     </section>
+                </div>
+
+                <div className="px-6 pb-4">
+                    <PriceConfigHistoryPanel moduleKey="uvdtf" />
                 </div>
 
                 {/* Footer */}
