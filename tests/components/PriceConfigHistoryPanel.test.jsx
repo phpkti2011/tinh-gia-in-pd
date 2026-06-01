@@ -8,10 +8,12 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 
 const mockLoadVersionHistory = vi.fn();
 const mockLoadChangeLog = vi.fn();
+const mockRollbackConfigVersion = vi.fn();
 
 vi.mock('../../src/lib/priceConfigStore.js', () => ({
     loadVersionHistory: (...args) => mockLoadVersionHistory(...args),
     loadChangeLog: (...args) => mockLoadChangeLog(...args),
+    rollbackConfigVersion: (...args) => mockRollbackConfigVersion(...args),
 }));
 
 import PriceConfigHistoryPanel from '../../src/components/admin/PriceConfigHistoryPanel.jsx';
@@ -19,6 +21,7 @@ import PriceConfigHistoryPanel from '../../src/components/admin/PriceConfigHisto
 beforeEach(() => {
     mockLoadVersionHistory.mockReset();
     mockLoadChangeLog.mockReset();
+    mockRollbackConfigVersion.mockReset();
 });
 
 afterEach(() => {
@@ -211,7 +214,12 @@ describe('P3-HISTORY.1: PriceConfigHistoryPanel', () => {
                 expect(mockLoadVersionHistory).toHaveBeenCalledTimes(1);
             });
 
-            fireEvent.click(screen.getByText(/tải lại/i));
+            // "Tải lại" có thể xuất hiện ở footer ("Tải lại trang…") nên pick
+            // chính xác button (không match span/p).
+            const reloadBtn = screen
+                .getAllByRole('button')
+                .find((b) => b.textContent === 'Tải lại');
+            fireEvent.click(reloadBtn);
 
             await waitFor(() => {
                 expect(mockLoadVersionHistory).toHaveBeenCalledTimes(2);
@@ -257,6 +265,241 @@ describe('P3-HISTORY.1: PriceConfigHistoryPanel', () => {
             await waitFor(() => {
                 expect(mockLoadVersionHistory).toHaveBeenCalledWith('decal', 5);
             });
+        });
+    });
+});
+
+describe('P3-HISTORY.2: PriceConfigHistoryPanel rollback', () => {
+    const twoVersions = [
+        {
+            id: 'uuid-v2',
+            version: 2,
+            schema_version: '1.0.0',
+            note: 'Tăng giá decal',
+            created_by: '11111111-2222-3333-4444-555555555555',
+            created_at: '2026-05-31T14:30:00Z',
+        },
+        {
+            id: 'uuid-v1',
+            version: 1,
+            schema_version: '1.0.0',
+            note: 'Khởi tạo',
+            created_by: '11111111-2222-3333-4444-555555555555',
+            created_at: '2026-05-30T10:00:00Z',
+        },
+    ];
+
+    let confirmSpy;
+    beforeEach(() => {
+        confirmSpy = vi.spyOn(window, 'confirm');
+    });
+    afterEach(() => {
+        confirmSpy.mockRestore();
+    });
+
+    describe('Render rollback button', () => {
+        it('version mới nhất (idx 0) KHÔNG có nút rollback, version cũ CÓ', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/hiện tại/i)).toBeTruthy();
+            });
+            // Chỉ 1 nút "Rollback về v1" (cho version cũ), không có "Rollback về v2"
+            expect(screen.queryByText(/rollback về v1/i)).toBeTruthy();
+            expect(screen.queryByText(/rollback về v2/i)).toBeNull();
+        });
+
+        it('chỉ có 1 version → không có nút rollback nào (idx 0 = latest)', async () => {
+            mockLoadVersionHistory.mockResolvedValue([twoVersions[0]]);
+            mockLoadChangeLog.mockResolvedValue([]);
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText('v2')).toBeTruthy();
+            });
+            expect(screen.queryByText(/rollback về/i)).toBeNull();
+        });
+    });
+
+    describe('Confirm dialog gate', () => {
+        it('user cancel confirm → KHÔNG gọi rollbackConfigVersion', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(false);
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback về v1/i)).toBeTruthy();
+            });
+
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            expect(confirmSpy).toHaveBeenCalledTimes(1);
+            expect(mockRollbackConfigVersion).not.toHaveBeenCalled();
+        });
+
+        it('confirm dialog có message chứa version# + module', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(false);
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback về v1/i)).toBeTruthy();
+            });
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            const msg = confirmSpy.mock.calls[0][0];
+            expect(msg).toMatch(/decal/i);
+            expect(msg).toMatch(/v1/);
+        });
+    });
+
+    describe('Success flow', () => {
+        it('confirm OK → gọi rollbackConfigVersion với module + versionId + note', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(true);
+            mockRollbackConfigVersion.mockResolvedValue({
+                ok: true,
+                error: null,
+                newVersion: 3,
+            });
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback về v1/i)).toBeTruthy();
+            });
+
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            await waitFor(() => {
+                expect(mockRollbackConfigVersion).toHaveBeenCalledWith({
+                    module: 'decal',
+                    versionId: 'uuid-v1',
+                    note: 'Rollback về v1',
+                });
+            });
+        });
+
+        it('success → show success message + reload history', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(true);
+            mockRollbackConfigVersion.mockResolvedValue({
+                ok: true,
+                error: null,
+                newVersion: 3,
+            });
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(mockLoadVersionHistory).toHaveBeenCalledTimes(1);
+            });
+
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/đã rollback thành công/i)).toBeTruthy();
+            });
+            expect(screen.getByText(/v3/)).toBeTruthy();
+            // Reload đã gọi lại loaders → 2 lần total
+            await waitFor(() => {
+                expect(mockLoadVersionHistory).toHaveBeenCalledTimes(2);
+                expect(mockLoadChangeLog).toHaveBeenCalledTimes(2);
+            });
+        });
+    });
+
+    describe('Error flow', () => {
+        it('adapter trả ok=false → hiển thị error banner, KHÔNG reload', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(true);
+            mockRollbackConfigVersion.mockResolvedValue({
+                ok: false,
+                error: new Error('RLS deny'),
+                newVersion: null,
+            });
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(mockLoadVersionHistory).toHaveBeenCalledTimes(1);
+            });
+
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback thất bại/i)).toBeTruthy();
+            });
+            expect(screen.getByText(/RLS deny/i)).toBeTruthy();
+            // KHÔNG reload (vẫn 1 lần)
+            expect(mockLoadVersionHistory).toHaveBeenCalledTimes(1);
+        });
+
+        it('adapter throw → hiển thị exception message', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(true);
+            mockRollbackConfigVersion.mockRejectedValue(new Error('Network down'));
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback về v1/i)).toBeTruthy();
+            });
+
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback exception/i)).toBeTruthy();
+            });
+            expect(screen.getByText(/network down/i)).toBeTruthy();
+        });
+
+        it('user có thể đóng error banner bằng nút ✕', async () => {
+            mockLoadVersionHistory.mockResolvedValue(twoVersions);
+            mockLoadChangeLog.mockResolvedValue([]);
+            confirmSpy.mockReturnValue(true);
+            mockRollbackConfigVersion.mockResolvedValue({
+                ok: false,
+                error: new Error('fail'),
+                newVersion: null,
+            });
+
+            render(<PriceConfigHistoryPanel moduleKey="decal" />);
+            fireEvent.click(screen.getByText(/lịch sử chỉnh giá/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback về v1/i)).toBeTruthy();
+            });
+            fireEvent.click(screen.getByText(/rollback về v1/i));
+
+            await waitFor(() => {
+                expect(screen.getByText(/rollback thất bại/i)).toBeTruthy();
+            });
+
+            fireEvent.click(screen.getByLabelText(/đóng thông báo/i));
+
+            // Banner biến mất
+            expect(screen.queryByText(/rollback thất bại/i)).toBeNull();
         });
     });
 });
