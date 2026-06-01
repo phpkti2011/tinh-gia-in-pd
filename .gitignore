@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 
+# Coverage report (Vitest @vitest/coverage-v8 — P3-COV)
+coverage/
+
 # Environment files (KHÔNG commit secrets)
 .env
 .env.local
