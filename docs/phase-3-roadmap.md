@@ -26,7 +26,9 @@ Roadmap chi tiết trong [phase-2-supabase-database-completion.md mục 9](phase
 
 | Sub-task | Mục tiêu | Trạng thái |
 |---|---|---|
-| P3-HISTORY | Tab "Lịch sử" trong SettingsPanel: list `loadVersionHistory()` + `loadChangeLog()` + nút Rollback. (Carryover P2-05.5 optional) | ⏸ |
+| **P3-HISTORY.1** | Admin history panel: list `loadVersionHistory()` + `loadChangeLog()` collapsible trong 4 SettingsPanel. Chưa rollback. | 🟡 In progress (`feature/admin-price-history-panel`) |
+| P3-HISTORY.2 | Add rollback button cho mỗi version row. | ⏸ |
+| P3-HISTORY.3 | Input note khi save (modal/inline). | ⏸ |
 | P3-TOAST | Toast notification cho cloud save result. Đóng R6 (save fail silent). | ⏸ |
 | P3-NOTE | Input "Ghi chú thay đổi" khi admin save (truyền vào RPC). | ⏸ |
 

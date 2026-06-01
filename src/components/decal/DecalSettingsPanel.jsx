@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { saveDecalConfig } from '../../utils/configStorage';
+import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -296,6 +297,8 @@ export default function DecalSettingsPanel({ config, onSave, onCancel }) {
                     </div>
                 </section>
             </div>
+
+            <PriceConfigHistoryPanel moduleKey="decal" />
 
             <div className="flex justify-end mt-10 pt-6 border-t border-gray-700 space-x-4">
                 <button
