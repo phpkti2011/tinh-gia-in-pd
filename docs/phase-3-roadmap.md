@@ -20,7 +20,7 @@ Roadmap chi tiết trong [phase-2-supabase-database-completion.md mục 9](phase
 | P3-LINT | ESLint + Prettier + lint step trong CI. | ⏸ |
 | P3-COV | Coverage report (Vitest v8 → Codecov). | ⏸ |
 | P3-E2E | Playwright E2E với Supabase test project. | ⏸ |
-| P3-DEPLOY | Auto-deploy Vercel main qua GitHub Action. | ⏸ |
+| **P3-DEPLOY** | Auto-deploy Vercel main qua Vercel git integration (recommended) hoặc GitHub Action. Config + docs ready, chờ user setup Vercel Dashboard. | 🟡 In progress (`chore/setup-vercel-deploy`) |
 
 ### UI feature (nhóm 2 — sau Ops)
 
