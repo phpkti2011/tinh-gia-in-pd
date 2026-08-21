@@ -1,12 +1,11 @@
 // React 18+ auto JSX transform — không cần import React.
+import NumberField from '../common/NumberField';
+
 export default function DecalInputPanel({ config, params, onChange }) {
+    // Handler cho select + checkbox. Number field dùng NumberField shared.
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        let newValue = type === 'checkbox' ? checked : value;
-        if (type === 'number') {
-            newValue = parseFloat(value);
-            if (isNaN(newValue)) newValue = 0;
-        }
+        const newValue = type === 'checkbox' ? checked : value;
         onChange(name, newValue);
     };
 
@@ -108,13 +107,11 @@ export default function DecalInputPanel({ config, params, onChange }) {
                         <div>
                             <label htmlFor="printSheetW">Rộng (W)</label>
                             <div className="relative">
-                                <input
-                                    type="number"
+                                <NumberField
                                     id="printSheetW"
-                                    name="printSheetW"
                                     value={params.printSheetW}
-                                    onChange={handleChange}
-                                    step="1"
+                                    onCommit={(v) => onChange('printSheetW', v)}
+                                    step={1}
                                 />
                                 <span className="unit">mm</span>
                             </div>
@@ -122,13 +119,11 @@ export default function DecalInputPanel({ config, params, onChange }) {
                         <div>
                             <label htmlFor="printSheetH">Cao (H)</label>
                             <div className="relative">
-                                <input
-                                    type="number"
+                                <NumberField
                                     id="printSheetH"
-                                    name="printSheetH"
                                     value={params.printSheetH}
-                                    onChange={handleChange}
-                                    step="1"
+                                    onCommit={(v) => onChange('printSheetH', v)}
+                                    step={1}
                                 />
                                 <span className="unit">mm</span>
                             </div>
@@ -148,13 +143,11 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             <div>
                                 <label htmlFor="stickerW">Rộng (W)</label>
                                 <div className="relative">
-                                    <input
-                                        type="number"
+                                    <NumberField
                                         id="stickerW"
-                                        name="stickerW"
                                         value={params.stickerW}
-                                        onChange={handleChange}
-                                        step="1"
+                                        onCommit={(v) => onChange('stickerW', v)}
+                                        step={1}
                                     />
                                     <span className="unit">mm</span>
                                 </div>
@@ -162,13 +155,11 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             <div>
                                 <label htmlFor="stickerH">Cao (H)</label>
                                 <div className="relative">
-                                    <input
-                                        type="number"
+                                    <NumberField
                                         id="stickerH"
-                                        name="stickerH"
                                         value={params.stickerH}
-                                        onChange={handleChange}
-                                        step="1"
+                                        onCommit={(v) => onChange('stickerH', v)}
+                                        step={1}
                                     />
                                     <span className="unit">mm</span>
                                 </div>
@@ -181,14 +172,12 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             <span className="text-blue-400">3.</span> Số Lượng Tùy Chỉnh
                         </h2>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="customQuantity"
-                                name="customQuantity"
                                 value={params.customQuantity}
-                                onChange={handleChange}
-                                step="1"
-                                min="1"
+                                onCommit={(v) => onChange('customQuantity', v)}
+                                step={1}
+                                min={1}
                             />
                             <span className="unit">tem</span>
                         </div>
@@ -268,13 +257,11 @@ export default function DecalInputPanel({ config, params, onChange }) {
                                 <div>
                                     <label htmlFor="customSheetW">Rộng (W)</label>
                                     <div className="relative">
-                                        <input
-                                            type="number"
+                                        <NumberField
                                             id="customSheetW"
-                                            name="customSheetW"
                                             value={params.customSheetW}
-                                            onChange={handleChange}
-                                            step="1"
+                                            onCommit={(v) => onChange('customSheetW', v)}
+                                            step={1}
                                         />
                                         <span className="unit">mm</span>
                                     </div>
@@ -282,13 +269,11 @@ export default function DecalInputPanel({ config, params, onChange }) {
                                 <div>
                                     <label htmlFor="customSheetH">Cao (H)</label>
                                     <div className="relative">
-                                        <input
-                                            type="number"
+                                        <NumberField
                                             id="customSheetH"
-                                            name="customSheetH"
                                             value={params.customSheetH}
-                                            onChange={handleChange}
-                                            step="1"
+                                            onCommit={(v) => onChange('customSheetH', v)}
+                                            step={1}
                                         />
                                         <span className="unit">mm</span>
                                     </div>
@@ -302,14 +287,12 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             <span className="text-blue-400">3.</span> Số Sticker / Tờ
                         </h2>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="sheetStickerCount"
-                                name="sheetStickerCount"
                                 value={params.sheetStickerCount}
-                                onChange={handleChange}
-                                step="1"
-                                min="1"
+                                onCommit={(v) => onChange('sheetStickerCount', v)}
+                                step={1}
+                                min={1}
                             />
                             <span className="unit">sticker</span>
                         </div>
@@ -323,14 +306,12 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             <span className="text-blue-400">4.</span> Số Lượng Tờ Tùy Chỉnh
                         </h2>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="sheetCustomQuantity"
-                                name="sheetCustomQuantity"
                                 value={params.sheetCustomQuantity}
-                                onChange={handleChange}
-                                step="1"
-                                min="1"
+                                onCommit={(v) => onChange('sheetCustomQuantity', v)}
+                                step={1}
+                                min={1}
                             />
                             <span className="unit">tờ</span>
                         </div>

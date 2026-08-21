@@ -253,7 +253,8 @@ describe('Case G: getProfitMargin', () => {
 // CASE H — calculatePrintContentSurcharge
 // PRINT_CONTENT_CONFIG:
 //   single_content_surcharge: 0.20 (khi mỗi nội dung chỉ 1 cái)
-//   tiers: [{2-5,0.10}, {6-10,0.20}, {11-25,0.30}, {26-Inf,0.35}]
+//   tiers: [{4-9,0.10}, {10-14,0.20}, {15-25,0.30}, {26-Inf,0.35}]
+//   Gap ở contentCount ∈ {2, 3}: không phụ thu (ưu đãi bậc thấp).
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case H: calculatePrintContentSurcharge (phụ thu nhiều nội dung)', () => {
     it('contentCount=1 → 0', () => {
@@ -267,12 +268,17 @@ describe('Case H: calculatePrintContentSurcharge (phụ thu nhiều nội dung)'
         expect(r.reason).toMatch(/20%/);
     });
 
-    it('contentCount=3, qty=500 → tier 2-5 → +10%', () => {
+    it('contentCount=3, qty=500 → gap (2-3) → 0', () => {
         const r = calculatePrintContentSurcharge(1000000, 500, 3, config);
+        expect(r.surcharge).toBe(0);
+    });
+
+    it('contentCount=5, qty=500 → tier 4-9 → +10%', () => {
+        const r = calculatePrintContentSurcharge(1000000, 500, 5, config);
         expect(r.surcharge).toBeCloseTo(100000, 6);
     });
 
-    it('contentCount=15, qty=500 → tier 11-25 → +30%', () => {
+    it('contentCount=15, qty=500 → tier 15-25 → +30%', () => {
         const r = calculatePrintContentSurcharge(1000000, 500, 15, config);
         expect(r.surcharge).toBeCloseTo(300000, 6);
     });
@@ -292,46 +298,68 @@ describe('Case I: calculateFoilStamping', () => {
         expect(r.totalCost).toBe(0);
     });
 
-    it('case nhỏ 5×5cm × 100 cái (bị min total 250k chặn) → totalCost = 372.000đ', () => {
-        // H=5, W=5 → areaForCalc = 36, isSmall=true
-        // rawPricePerImpression = 36×5 = 180 < minPriceNormal 400 → 400
-        // totalImpressionPriceRaw = 400×100 = 40.000 < minTotalSmall 250.000 → 250.000
-        // moldMakingCost = 36×2000 + 50.000 = 122.000
-        // totalCost = 372.000
+    it('1 khuôn nhỏ 5×5cm × 100 cái (bị min total 250k chặn) → totalCost = 372.000đ', () => {
+        // area = 36, isSmall=true; perImpr = max(180,400)=400 ×100=40.000 < 250.000 → 250.000
+        // making = 36×2000 = 72.000; ship nhỏ 50.000 → moldCost = 122.000; total = 372.000
         const params = {
             foilStamping: 'yes',
-            foilCustomSize: true,
-            foilH: 5,
-            foilW: 5,
             productQuantity: 100,
-            foilSpecialColor: false,
+            foilMolds: [{ w: 5, h: 5, special: false, impressions: 1 }],
         };
         const r = calculateFoilStamping(params, config);
         expect(r.impressionPrice).toBe(250000);
         expect(r.moldCost).toBe(122000);
         expect(r.totalCost).toBe(372000);
-        expect(r.isSmall).toBe(true);
+        expect(r.molds).toHaveLength(1);
+        expect(r.molds[0].isSmall).toBe(true);
     });
 
-    it('case lớn 30×20cm × 100 cái (vượt min) → totalCost = 1.727.500đ', () => {
-        // H=20, W=30 → areaForCalc = (20+1)(30+1) = 651 > 280 → isSmall=false
-        // rawPricePerImpression = 651×5 = 3.255 > minPriceNormal 400 → 3.255
-        // totalImpressionPriceRaw = 3.255×100 = 325.500 > minTotalLarge 300.000 → 325.500
-        // moldMakingCost = 651×2000 + 100.000 = 1.402.000
-        // totalCost = 1.727.500
+    it('1 khuôn lớn 30×20cm × 100 cái (vượt min) → totalCost = 1.727.500đ', () => {
+        // area = 651 > 280 → large; perImpr = 3.255 ×100 = 325.500 > 300.000 → 325.500
+        // making = 651×2000 = 1.302.000; ship lớn 100.000 → moldCost = 1.402.000; total = 1.727.500
         const params = {
             foilStamping: 'yes',
-            foilCustomSize: true,
-            foilH: 20,
-            foilW: 30,
             productQuantity: 100,
-            foilSpecialColor: false,
+            foilMolds: [{ w: 30, h: 20, special: false, impressions: 1 }],
         };
         const r = calculateFoilStamping(params, config);
         expect(r.impressionPrice).toBe(325500);
         expect(r.moldCost).toBe(1402000);
         expect(r.totalCost).toBe(1727500);
-        expect(r.isSmall).toBe(false);
+        expect(r.molds[0].isSmall).toBe(false);
+    });
+
+    it('1 khuôn, 2 lần ép (cùng khuôn) → công ×1.5, khuôn không đổi', () => {
+        // công = 250.000 × (1 + (2−1)×0.5) = 375.000; khuôn = 122.000; total = 497.000
+        const params = {
+            foilStamping: 'yes',
+            productQuantity: 100,
+            foilMolds: [{ w: 5, h: 5, special: false, impressions: 2 }],
+        };
+        const r = calculateFoilStamping(params, config);
+        expect(r.molds[0].impressionFactor).toBe(1.5);
+        expect(r.impressionPrice).toBe(375000);
+        expect(r.moldCost).toBe(122000);
+        expect(r.totalCost).toBe(497000);
+    });
+
+    it('2 khuôn khác nhau (mỗi khuôn 1 lần) → công ×2, ship chỉ 1 lần', () => {
+        // 2 khuôn 5×5: công = 250.000×2 = 500.000; making = 72.000×2 = 144.000
+        // ship (đều nhỏ) 50.000 × 1 → moldCost = 194.000; total = 694.000
+        const params = {
+            foilStamping: 'yes',
+            productQuantity: 100,
+            foilMolds: [
+                { w: 5, h: 5, special: false, impressions: 1 },
+                { w: 5, h: 5, special: false, impressions: 1 },
+            ],
+        };
+        const r = calculateFoilStamping(params, config);
+        expect(r.molds).toHaveLength(2);
+        expect(r.impressionPrice).toBe(500000);
+        expect(r.shipping).toBe(50000);
+        expect(r.moldCost).toBe(194000);
+        expect(r.totalCost).toBe(694000);
     });
 });
 
@@ -443,6 +471,45 @@ describe('Case K: calculateCustomerQuote — 500 card visit 2 mặt C300', () =>
 
     it('tổng tiền khách = 300.000đ', () => {
         expect(r.totalCustomerCost).toBe(300000);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CASE K2 — giá 1 màu ĐEN = 4 màu − 20%, sàn đ/trang
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case K2: calculateCustomerQuote — in 1 màu đen', () => {
+    const bestOption = {
+        cutSheetW: 32.2,
+        cutSheetH: 21.2,
+        cutSheetSize: '32.2 x 21.2',
+        numCuttableSheets: 6,
+        productsPerSheet: 10,
+    };
+    const baseP = {
+        productQuantity: 500,
+        printSides: 2,
+        laminationType: 'none',
+        printContents: 1,
+        variableData: 'no',
+        paperType: 3,
+        artPaperPrice: 0,
+    };
+    const fin = { holePunching: 0, creasing: 0, mounting: 0 };
+    const die = { moldCost: 0, laborCustomerPrice: 0 };
+    const q = (p, cfg = config) => calculateCustomerQuote(bestOption, p, fin, die, null, cfg);
+
+    it('4 màu 300.000đ → 1 màu = 100 trang × max(3000×0.8,1200)=2400 = 240.000đ', () => {
+        expect(q({ ...baseP, printColorMode: '4color' }).totalPrintCost).toBe(300000);
+        expect(q({ ...baseP, printColorMode: '1color' }).totalPrintCost).toBe(240000);
+    });
+
+    it('sàn đ/trang chặn: minPerPage 2800 → 1 màu = 100 × 2800 = 280.000đ', () => {
+        const cfg = { ...config, ONE_COLOR_MIN_PRICE_PER_PAGE: 2800 };
+        expect(q({ ...baseP, printColorMode: '1color' }, cfg).totalPrintCost).toBe(280000);
+    });
+
+    it('unitPriceText 1 màu có ghi "1 màu đen"', () => {
+        expect(q({ ...baseP, printColorMode: '1color' }).unitPriceText).toMatch(/1 màu đen/);
     });
 });
 

@@ -24,6 +24,20 @@ export const DEFAULT_CONFIG = {
         custom_height_margin: 1.0,
     },
     ART_PAPER_SURCHARGE: 80000,
+    PAPER_REFERENCE_CONFIG: {
+        // Giấy chuẩn tiệm: CUSTOMER_PRICE_TIERS được thiết kế dựa vào giấy này.
+        // Khi khách chọn giấy khác pricingModel='ream', engine tự tính chênh lệch
+        // giá vốn so với giấy chuẩn → cộng/trừ vào giá báo khách.
+        referencePaperName: 'C300',
+        // Tỉ lệ chia sẻ chênh lệch với khách: 1.0 = khách hưởng 100% khi rẻ hơn +
+        // chịu 100% khi đắt hơn. 0.7 = tiệm giữ lại 30% profit.
+        adjustmentRatio: 1.0,
+        // Sàn "Đơn giá IN / trang" (đ/trang) — panel Giá Tối Thiểu (admin only).
+        // Nếu computed printOnlyPerPage < value → clamp lên value.
+        // Đảm bảo tiệm không quote in dưới mức này bất kể volume/giá giấy.
+        // Đặt 0 để tắt floor.
+        minPrintPricePerPage: 1500,
+    },
     PRINTER_CONFIG: {
         C2060: {
             name: 'C2060',
@@ -42,15 +56,13 @@ export const DEFAULT_CONFIG = {
         C6085: {
             name: 'C6085',
             maxW: 33.0,
-            maxH: 120.0,
+            maxH: 76.0,
             clickTiers: [
                 { maxH: 35, clicks: 1 },
                 { maxH: 48, clicks: 2 },
                 { maxH: 76, clicks: 3 },
-                { maxH: 92, clicks: 4 },
-                { maxH: 120, clicks: 5 },
             ],
-            vkPoints: [35, 48, 76, 92, 120],
+            vkPoints: [35, 48, 76],
             prices: { '4color': 650, '1color': 400 },
         },
     },
@@ -68,9 +80,9 @@ export const DEFAULT_CONFIG = {
     PRINT_CONTENT_CONFIG: {
         single_content_surcharge: 0.2,
         tiers: [
-            { min: 2, max: 5, surcharge: 0.1 },
-            { min: 6, max: 10, surcharge: 0.2 },
-            { min: 11, max: 25, surcharge: 0.3 },
+            { min: 4, max: 9, surcharge: 0.1 },
+            { min: 10, max: 14, surcharge: 0.2 },
+            { min: 15, max: 25, surcharge: 0.3 },
             { min: 26, max: Infinity, surcharge: 0.35 },
         ],
     },
@@ -358,6 +370,8 @@ export const DEFAULT_CONFIG = {
         foilPadWidth: 1,
         foilPadLength: 0.7,
         foilRollLengthM: 110,
+        // Phần công của MỖI lần ép THÊM trên cùng 1 khuôn (lần đầu = full, lần thêm = 50%).
+        extraImpressionRate: 0.5,
     },
     CUSTOMER_PRICE_TIERS: [
         { min: 1, max: 5, print: 10000, laminate: 8000, type: 'per_page' },
@@ -375,4 +389,8 @@ export const DEFAULT_CONFIG = {
         { min: 3001, max: 4500, print: 1700, laminate: 250, type: 'per_page' },
         { min: 4501, max: Infinity, print: 1670, laminate: 250, type: 'per_page' },
     ],
+    // Giá KHÁCH khi in 1 màu ĐEN = giá 4 màu × (1 − %), nhưng không dưới sàn/trang.
+    // Dùng chung cho In KTS + Catalogue + Sổ lò xo (các module này share printConfig).
+    ONE_COLOR_DISCOUNT_PERCENT: 20,
+    ONE_COLOR_MIN_PRICE_PER_PAGE: 1200,
 };

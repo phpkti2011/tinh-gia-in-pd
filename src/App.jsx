@@ -11,11 +11,36 @@ import DecalSettingsPanel from './components/decal/DecalSettingsPanel';
 import UvdtfInputPanel from './components/uvdtf/UvdtfInputPanel';
 import UvdtfResultPanel from './components/uvdtf/UvdtfResultPanel';
 import UvdtfSettingsPanel from './components/uvdtf/UvdtfSettingsPanel';
+import CatalogueInputPanel from './components/catalogue/CatalogueInputPanel';
+import CatalogueResultPanel from './components/catalogue/CatalogueResultPanel';
+import CatalogueSettingsPanel from './components/catalogue/CatalogueSettingsPanel';
+import SpiralInputPanel from './components/spiral/SpiralInputPanel';
+import SpiralResultPanel from './components/spiral/SpiralResultPanel';
+import SpiralSettingsPanel from './components/spiral/SpiralSettingsPanel';
+import StickerInputPanel from './components/sticker/StickerInputPanel';
+import StickerResultPanel from './components/sticker/StickerResultPanel';
+import StickerSettingsPanel from './components/sticker/StickerSettingsPanel';
+import CardInputPanel from './components/card/CardInputPanel';
+import CardResultPanel from './components/card/CardResultPanel';
+import CardSettingsPanel from './components/card/CardSettingsPanel';
+import FlyerInputPanel from './components/flyer/FlyerInputPanel';
+import FlyerResultPanel from './components/flyer/FlyerResultPanel';
+import FlyerSettingsPanel from './components/flyer/FlyerSettingsPanel';
+import CheapDecalInputPanel from './components/cheapdecal/CheapDecalInputPanel';
+import CheapDecalResultPanel from './components/cheapdecal/CheapDecalResultPanel';
+import CheapDecalSettingsPanel from './components/cheapdecal/CheapDecalSettingsPanel';
 import {
     loadConfig,
     loadLargePrintConfig,
     loadDecalConfig,
     loadUvdtfConfig,
+    loadCatalogueConfig,
+    loadSpiralConfig,
+    loadStickerConfig,
+    loadCardConfig,
+    loadFlyerConfig,
+    loadCheapDecalConfig,
+    loadModuleVisibilityConfig,
     loadConfigFromCloud,
     saveConfigToCloud,
 } from './utils/configStorage';
@@ -36,7 +61,15 @@ import {
     generateSheetPriceTable,
 } from './utils/decalCalculator';
 import { calculateUvDtf } from './utils/uvdtfCalculator';
+import { calculateCatalogue } from './utils/catalogueCalculator';
+import { calculateSpiral } from './utils/spiralCalculator';
+import { calculateSticker } from './utils/stickerCalculator';
+import { calculateCard } from './utils/cardCalculator';
+import { calculateFlyer } from './utils/flyerCalculator';
+import { calculateCheapDecal } from './utils/cheapDecalCalculator';
 import AdminGate from './auth/AdminGate';
+import { useAuth } from './auth/useAuth';
+import { useUserRole } from './auth/useUserRole';
 
 // P2-05.6: Apps Script cloud sync ĐÃ ĐƯỢC REMOVE hoàn toàn:
 //   - src/utils/cloudSync.js: deleted.
@@ -45,80 +78,193 @@ import AdminGate from './auth/AdminGate';
 // Cloud source duy nhất: Supabase (qua configStorage → priceConfigStore →
 // Supabase RPC + Auth JWT + RLS admin check).
 
-function HomePage({ onSelect }) {
+// Danh sách tile module (data-driven). Class Tailwind giữ literal để JIT không purge.
+const MODULES = [
+    {
+        id: 'small',
+        icon: '🖨',
+        title: 'In KTS Khổ Nhỏ',
+        desc: 'In laser kỹ thuật số trên giấy couche, bristol, ford, decal... Tối ưu hóa xếp hình, tính giá vốn & báo giá khách hàng.',
+        border: 'hover:border-blue-500',
+        titleHover: 'group-hover:text-blue-400',
+        link: 'text-blue-400',
+    },
+    {
+        id: 'large',
+        icon: '🖼',
+        title: 'In Khổ Lớn',
+        desc: 'In phun khổ lớn trên PP, decal, backlit, bạt hiflex... Tự động tối ưu khổ cuộn, cán màng, bồi formex.',
+        border: 'hover:border-green-500',
+        titleHover: 'group-hover:text-green-400',
+        link: 'text-green-400',
+    },
+    {
+        id: 'decal',
+        icon: '🏷',
+        title: 'Tính Giá Decal',
+        desc: 'Tính giá tem lẻ & tờ sticker. Mô phỏng xếp tem, bảng giá lũy tiến, bế demi, cán màng tự động.',
+        border: 'hover:border-purple-500',
+        titleHover: 'group-hover:text-purple-400',
+        link: 'text-purple-400',
+    },
+    {
+        id: 'uvdtf',
+        icon: '✨',
+        title: 'In UV DTF',
+        desc: 'Tính giá in UV DTF theo mét tới. Tự động xoay tối ưu, mô phỏng xếp hình trên cuộn.',
+        border: 'hover:border-orange-500',
+        titleHover: 'group-hover:text-orange-400',
+        link: 'text-orange-400',
+    },
+    {
+        id: 'catalogue',
+        icon: '📚',
+        title: 'Catalogue Bấm Kim',
+        desc: 'Tính giá catalogue/brochure bấm kim (gấp lồng). Tự tính số tờ in, quy đổi trang A4 & dùng chung bảng giá In KTS.',
+        border: 'hover:border-red-500',
+        titleHover: 'group-hover:text-red-400',
+        link: 'text-red-400',
+    },
+    {
+        id: 'spiral',
+        icon: '📒',
+        title: 'Sổ Đóng Lò Xo',
+        desc: 'Tính giá sổ/notebook đóng lò xo. In từng tờ, tách bìa/ruột, chọn 1-2 mặt & dùng chung bảng giá In KTS.',
+        border: 'hover:border-teal-500',
+        titleHover: 'group-hover:text-teal-400',
+        link: 'text-teal-400',
+    },
+    {
+        id: 'sticker',
+        icon: '🏷️',
+        title: 'Tính Giá Tờ Sticker',
+        desc: 'Báo giá tờ sticker theo khổ (10x10 / A6 / A5 / A4) & số lượng. Bậc giá, phụ phí cán màng, số sticker, nội dung & vẽ đường cắt.',
+        border: 'hover:border-pink-500',
+        titleHover: 'group-hover:text-pink-400',
+        link: 'text-pink-400',
+    },
+    {
+        id: 'card',
+        icon: '💳',
+        title: 'Tính Giá Thẻ Nhựa',
+        desc: 'Báo giá thẻ nhựa / thẻ gỗ theo loại thẻ & số lượng. Chip Mifare/NFC, add-on, nhóm khách trực tiếp / đại lý.',
+        border: 'hover:border-indigo-500',
+        titleHover: 'group-hover:text-indigo-400',
+        link: 'text-indigo-400',
+    },
+    {
+        id: 'flyer',
+        icon: '📄',
+        title: 'Tính Giá Tờ Rơi',
+        desc: 'Báo giá tờ rơi A5/A4 theo số lượng. Loại giấy, in 1/2 mặt, cán màng, cấn gấp & số nội dung.',
+        border: 'hover:border-amber-500',
+        titleHover: 'group-hover:text-amber-400',
+        link: 'text-amber-400',
+    },
+    {
+        id: 'cheapdecal',
+        icon: '🔖',
+        title: 'Decal Nhãn Giá Rẻ',
+        desc: 'Báo giá nhanh decal nhãn theo cỡ & số lượng (500/1000/2000). Hình tròn/vuông, decal giấy/nhựa, cán màng, lấy trong ngày.',
+        border: 'hover:border-rose-500',
+        titleHover: 'group-hover:text-rose-400',
+        link: 'text-rose-400',
+    },
+];
+
+function ModuleTile({ mod, onSelect, isAdmin, visible, onToggle }) {
+    return (
+        <div className="relative h-full">
+            <button
+                onClick={() => onSelect(mod.id)}
+                className={`w-full h-full bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 ${mod.border} rounded-xl p-8 text-left transition-all duration-200 group ${isAdmin && !visible ? 'opacity-60' : ''}`}
+            >
+                <div className="text-4xl mb-4">{mod.icon}</div>
+                <h2 className={`text-2xl font-bold text-white ${mod.titleHover} mb-2`}>
+                    {mod.title}
+                </h2>
+                <p className="text-gray-400 text-sm">{mod.desc}</p>
+                <div
+                    className={`mt-4 ${mod.link} text-sm font-medium group-hover:translate-x-2 transition-transform`}
+                >
+                    Mở công cụ →
+                </div>
+            </button>
+            {isAdmin && (
+                <button
+                    onClick={() => onToggle(mod.id)}
+                    title={visible ? 'Đang hiện — bấm để ẩn' : 'Đang ẩn — bấm để hiện'}
+                    className={`absolute top-3 right-3 z-10 px-2.5 py-1 rounded text-xs font-semibold ${
+                        visible
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                    }`}
+                >
+                    {visible ? 'Hiện' : 'Ẩn'}
+                </button>
+            )}
+        </div>
+    );
+}
+
+function HomePage({ onSelect, isAdmin, visibility, onSaveVisibility }) {
+    const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'cloud' | 'local'
+    const vis = visibility || {};
+    // Người dùng thường: chỉ tile đang hiện. Admin: thấy hết (tile ẩn để mờ + nút toggle).
+    const shown = MODULES.filter((m) => isAdmin || vis[m.id] !== false);
+
+    const handleToggle = async (id) => {
+        const newMap = { ...vis, [id]: !(vis[id] !== false) };
+        setSaveStatus('saving');
+        try {
+            const res = await onSaveVisibility(newMap);
+            setSaveStatus(res?.cloud ? 'cloud' : 'local');
+        } catch {
+            setSaveStatus('local');
+        }
+    };
+
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-screen-xl">
-            <header className="text-center mb-12">
+            <header className="text-center mb-8">
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
                     Công Cụ Tính Giá In Ấn
                 </h1>
                 <p className="text-gray-400 mt-2">Chọn loại hình in để bắt đầu tính giá</p>
+                {isAdmin && (
+                    <p className="mt-3 text-xs">
+                        {saveStatus === 'saving' && (
+                            <span className="text-gray-400">Đang lưu…</span>
+                        )}
+                        {saveStatus === 'cloud' && (
+                            <span className="text-emerald-400">✓ Đã lưu (đồng bộ đám mây)</span>
+                        )}
+                        {saveStatus === 'local' && (
+                            <span className="text-yellow-400">
+                                ✓ Đã lưu trên máy này — đám mây chưa đồng bộ (cần chạy SQL enum
+                                ‘ui-visibility’)
+                            </span>
+                        )}
+                        {!saveStatus && (
+                            <span className="text-gray-500">
+                                Bấm nút Hiện/Ẩn trên góc tile để bật/tắt hiển thị với người dùng.
+                            </span>
+                        )}
+                    </p>
+                )}
             </header>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-                <button
-                    onClick={() => onSelect('small')}
-                    className="bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-blue-500 rounded-xl p-8 text-left transition-all duration-200 group"
-                >
-                    <div className="text-4xl mb-4">🖨</div>
-                    <h2 className="text-2xl font-bold text-white group-hover:text-blue-400 mb-2">
-                        In KTS Khổ Nhỏ
-                    </h2>
-                    <p className="text-gray-400 text-sm">
-                        In laser kỹ thuật số trên giấy couche, bristol, ford, decal... Tối ưu hóa
-                        xếp hình, tính giá vốn & báo giá khách hàng.
-                    </p>
-                    <div className="mt-4 text-blue-400 text-sm font-medium group-hover:translate-x-2 transition-transform">
-                        Mở công cụ →
-                    </div>
-                </button>
-                <button
-                    onClick={() => onSelect('large')}
-                    className="bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-green-500 rounded-xl p-8 text-left transition-all duration-200 group"
-                >
-                    <div className="text-4xl mb-4">🖼</div>
-                    <h2 className="text-2xl font-bold text-white group-hover:text-green-400 mb-2">
-                        In Khổ Lớn
-                    </h2>
-                    <p className="text-gray-400 text-sm">
-                        In phun khổ lớn trên PP, decal, backlit, bạt hiflex... Tự động tối ưu khổ
-                        cuộn, cán màng, bồi formex.
-                    </p>
-                    <div className="mt-4 text-green-400 text-sm font-medium group-hover:translate-x-2 transition-transform">
-                        Mở công cụ →
-                    </div>
-                </button>
-                <button
-                    onClick={() => onSelect('decal')}
-                    className="bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-purple-500 rounded-xl p-8 text-left transition-all duration-200 group"
-                >
-                    <div className="text-4xl mb-4">🏷</div>
-                    <h2 className="text-2xl font-bold text-white group-hover:text-purple-400 mb-2">
-                        Tính Giá Decal
-                    </h2>
-                    <p className="text-gray-400 text-sm">
-                        Tính giá tem lẻ & tờ sticker. Mô phỏng xếp tem, bảng giá lũy tiến, bế demi,
-                        cán màng tự động.
-                    </p>
-                    <div className="mt-4 text-purple-400 text-sm font-medium group-hover:translate-x-2 transition-transform">
-                        Mở công cụ →
-                    </div>
-                </button>
-                <button
-                    onClick={() => onSelect('uvdtf')}
-                    className="bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-orange-500 rounded-xl p-8 text-left transition-all duration-200 group"
-                >
-                    <div className="text-4xl mb-4">✨</div>
-                    <h2 className="text-2xl font-bold text-white group-hover:text-orange-400 mb-2">
-                        In UV DTF
-                    </h2>
-                    <p className="text-gray-400 text-sm">
-                        Tính giá in UV DTF theo mét tới. Tự động xoay tối ưu, mô phỏng xếp hình trên
-                        cuộn.
-                    </p>
-                    <div className="mt-4 text-orange-400 text-sm font-medium group-hover:translate-x-2 transition-transform">
-                        Mở công cụ →
-                    </div>
-                </button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 max-w-7xl mx-auto">
+                {shown.map((m) => (
+                    <ModuleTile
+                        key={m.id}
+                        mod={m}
+                        onSelect={onSelect}
+                        isAdmin={isAdmin}
+                        visible={vis[m.id] !== false}
+                        onToggle={handleToggle}
+                    />
+                ))}
             </div>
         </div>
     );
@@ -149,10 +295,9 @@ function SmallPrintModule({ onBack }) {
         tagHasHole: false,
         printColorMode: '4color',
         foilStamping: 'none',
-        foilSpecialColor: false,
-        foilCustomSize: false,
-        foilW: 5,
-        foilH: 5,
+        // Danh sách khuôn ép kim — mỗi khuôn có kích thước / màu / số lần ép riêng.
+        // (Thay cho foilSpecialColor/foilCustomSize/foilW/foilH cũ — xem engine finishing.js.)
+        foilMolds: [{ w: 9, h: 5.5, special: false, impressions: 1 }],
     });
     const [results, setResults] = useState([]);
     const [quote, setQuote] = useState(null);
@@ -828,6 +973,714 @@ function UvdtfModule({ onBack }) {
     );
 }
 
+function CatalogueModule({ onBack }) {
+    // Dùng chung printConfig (In KTS) cho bảng giá; catalogueConfig chỉ giữ STAPLE_CONFIG.
+    const [printConfig, setPrintConfig] = useState(null);
+    const [catalogueConfig, setCatalogueConfig] = useState(null);
+    const [activeTab, setActiveTab] = useState('main');
+    const [params, setParams] = useState({
+        numPages: 36,
+        finishedW: 210,
+        finishedH: 297,
+        orientation: 'portrait',
+        quantity: 100,
+        coverPaperType: '3',
+        innerPaperType: '0',
+        laminationMode: 'cover1',
+        coverSingleSide: false,
+        printColorMode: '4color',
+        artPaperPrice: 10000,
+    });
+    const [result, setResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    useEffect(() => {
+        setPrintConfig(loadConfig());
+        setCatalogueConfig(loadCatalogueConfig());
+        loadConfigFromCloud('printConfig').then((c) => {
+            if (c) setPrintConfig(c);
+        });
+        loadConfigFromCloud('catalogueConfig').then((c) => {
+            if (c) setCatalogueConfig(c);
+        });
+    }, []);
+
+    const handleChange = useCallback((name, value) => {
+        setParams((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
+    const engineConfig =
+        printConfig && catalogueConfig
+            ? { ...printConfig, STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG }
+            : null;
+
+    const doCalc = useCallback(() => {
+        if (!printConfig || !catalogueConfig) return;
+        try {
+            const cfg = { ...printConfig, STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG };
+            setResult(calculateCatalogue(params, cfg));
+        } catch (e) {
+            console.error('Catalogue calc error', e);
+            setResult(null);
+        }
+    }, [params, printConfig, catalogueConfig]);
+
+    useEffect(() => {
+        if (!printConfig || !catalogueConfig) return;
+        setIsCalculating(true);
+        const timer = setTimeout(() => {
+            doCalc();
+            setIsCalculating(false);
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [doCalc, printConfig, catalogueConfig]);
+
+    if (!engineConfig) return <div className="p-8 text-white">Đang tải cấu hình...</div>;
+
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+            <header className="text-center mb-8 relative">
+                <button
+                    onClick={onBack}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    Tính Giá Catalogue Bấm Kim
+                </h1>
+                <p className="text-gray-400 mt-2">
+                    Gấp lồng bấm kim · số trang chia hết cho 4 · dùng chung giá In KTS Khổ Nhỏ
+                </p>
+            </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'main' ? 'border-red-500 text-red-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'settings' ? 'border-red-500 text-red-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Cài Đặt
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'main' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <CatalogueInputPanel
+                            config={engineConfig}
+                            params={params}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <CatalogueResultPanel
+                            result={result}
+                            config={engineConfig}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
+                </div>
+            )}
+            {activeTab === 'settings' && (
+                <AdminGate>
+                    <CatalogueSettingsPanel
+                        config={catalogueConfig}
+                        onSave={(newConfig) => {
+                            setCatalogueConfig(newConfig);
+                            setActiveTab('main');
+                            saveConfigToCloud('catalogueConfig', newConfig);
+                        }}
+                        onCancel={() => setActiveTab('main')}
+                    />
+                </AdminGate>
+            )}
+        </div>
+    );
+}
+
+function SpiralModule({ onBack }) {
+    // Dùng chung printConfig (In KTS); spiralConfig chỉ giữ SPIRAL_CONFIG.
+    const [printConfig, setPrintConfig] = useState(null);
+    const [spiralConfig, setSpiralConfig] = useState(null);
+    const [activeTab, setActiveTab] = useState('main');
+    const [params, setParams] = useState({
+        numPages: 96,
+        finishedW: 148,
+        finishedH: 210,
+        quantity: 100,
+        coverPaperType: '3',
+        innerPaperType: '0',
+        coverSides: '2',
+        innerSides: '2',
+        coverColorMode: '4color',
+        innerColorMode: '4color',
+        coverLam: '1',
+        innerLam: '0',
+        linerType: '',
+        artPaperPrice: 10000,
+    });
+    const [result, setResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    useEffect(() => {
+        setPrintConfig(loadConfig());
+        setSpiralConfig(loadSpiralConfig());
+        loadConfigFromCloud('printConfig').then((c) => {
+            if (c) setPrintConfig(c);
+        });
+        loadConfigFromCloud('spiralConfig').then((c) => {
+            if (c) setSpiralConfig(c);
+        });
+    }, []);
+
+    const handleChange = useCallback((name, value) => {
+        setParams((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
+    const engineConfig =
+        printConfig && spiralConfig
+            ? { ...printConfig, SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG }
+            : null;
+
+    const doCalc = useCallback(() => {
+        if (!printConfig || !spiralConfig) return;
+        try {
+            const cfg = { ...printConfig, SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG };
+            setResult(calculateSpiral(params, cfg));
+        } catch (e) {
+            console.error('Spiral calc error', e);
+            setResult(null);
+        }
+    }, [params, printConfig, spiralConfig]);
+
+    useEffect(() => {
+        if (!printConfig || !spiralConfig) return;
+        setIsCalculating(true);
+        const timer = setTimeout(() => {
+            doCalc();
+            setIsCalculating(false);
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [doCalc, printConfig, spiralConfig]);
+
+    if (!engineConfig) return <div className="p-8 text-white">Đang tải cấu hình...</div>;
+
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+            <header className="text-center mb-8 relative">
+                <button
+                    onClick={onBack}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    Tính Giá Sổ Đóng Lò Xo
+                </h1>
+                <p className="text-gray-400 mt-2">
+                    In từng tờ · tách bìa/ruột · chọn 1-2 mặt · dùng chung giá In KTS Khổ Nhỏ
+                </p>
+            </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'main' ? 'border-teal-500 text-teal-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'settings' ? 'border-teal-500 text-teal-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Cài Đặt
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'main' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <SpiralInputPanel
+                            config={engineConfig}
+                            params={params}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <SpiralResultPanel
+                            result={result}
+                            config={engineConfig}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
+                </div>
+            )}
+            {activeTab === 'settings' && (
+                <AdminGate>
+                    <SpiralSettingsPanel
+                        config={spiralConfig}
+                        onSave={(newConfig) => {
+                            setSpiralConfig(newConfig);
+                            setActiveTab('main');
+                            saveConfigToCloud('spiralConfig', newConfig);
+                        }}
+                        onCancel={() => setActiveTab('main')}
+                    />
+                </AdminGate>
+            )}
+        </div>
+    );
+}
+
+function StickerModule({ onBack }) {
+    // Module độc lập — bảng giá riêng (stickerConfig), không dùng chung module khác.
+    const [config, setConfig] = useState(null);
+    const [activeTab, setActiveTab] = useState('main');
+    const [params, setParams] = useState({
+        size: '10x10',
+        qty: 24,
+        stickers: 12,
+        contents: 1,
+        finish: 'normal',
+        fileType: 'vector',
+    });
+    const [result, setResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    useEffect(() => {
+        setConfig(loadStickerConfig());
+        loadConfigFromCloud('stickerConfig').then((c) => {
+            if (c) setConfig(c);
+        });
+    }, []);
+
+    const handleChange = useCallback((name, value) => {
+        setParams((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
+    const doCalc = useCallback(() => {
+        if (!config) return;
+        try {
+            setResult(calculateSticker(params, config));
+        } catch (e) {
+            console.error('Sticker calc error', e);
+            setResult(null);
+        }
+    }, [params, config]);
+
+    useEffect(() => {
+        if (!config) return;
+        setIsCalculating(true);
+        const timer = setTimeout(() => {
+            doCalc();
+            setIsCalculating(false);
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [doCalc, config]);
+
+    if (!config) return <div className="p-8 text-white">Đang tải cấu hình...</div>;
+
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+            <header className="text-center mb-8 relative">
+                <button
+                    onClick={onBack}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá Tờ Sticker</h1>
+                <p className="text-gray-400 mt-2">
+                    Báo giá theo khổ tờ & số lượng · phụ phí cán màng, số sticker, nội dung, vẽ cắt
+                </p>
+            </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'main' ? 'border-pink-500 text-pink-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'settings' ? 'border-pink-500 text-pink-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Cài Đặt Bảng Giá
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'main' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <StickerInputPanel
+                            config={config}
+                            params={params}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <StickerResultPanel
+                            result={result}
+                            config={config}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
+                </div>
+            )}
+            {activeTab === 'settings' && (
+                <AdminGate>
+                    <StickerSettingsPanel
+                        config={config}
+                        onSave={(newConfig) => {
+                            setConfig(newConfig);
+                            setActiveTab('main');
+                            saveConfigToCloud('stickerConfig', newConfig);
+                        }}
+                        onCancel={() => setActiveTab('main')}
+                    />
+                </AdminGate>
+            )}
+        </div>
+    );
+}
+
+function CardModule({ onBack }) {
+    // Module độc lập — bảng giá riêng (cardConfig).
+    const [config, setConfig] = useState(null);
+    const [activeTab, setActiveTab] = useState('main');
+    const [params, setParams] = useState({
+        qty: 100,
+        product: 'normal',
+        segment: 'direct',
+        addons: {},
+    });
+    const [result, setResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    useEffect(() => {
+        setConfig(loadCardConfig());
+        loadConfigFromCloud('cardConfig').then((c) => {
+            if (c) setConfig(c);
+        });
+    }, []);
+
+    const handleChange = useCallback((name, value) => {
+        setParams((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
+    const doCalc = useCallback(() => {
+        if (!config) return;
+        try {
+            setResult(calculateCard(params, config));
+        } catch (e) {
+            console.error('Card calc error', e);
+            setResult(null);
+        }
+    }, [params, config]);
+
+    useEffect(() => {
+        if (!config) return;
+        setIsCalculating(true);
+        const timer = setTimeout(() => {
+            doCalc();
+            setIsCalculating(false);
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [doCalc, config]);
+
+    if (!config) return <div className="p-8 text-white">Đang tải cấu hình...</div>;
+
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+            <header className="text-center mb-8 relative">
+                <button
+                    onClick={onBack}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá Thẻ Nhựa</h1>
+                <p className="text-gray-400 mt-2">
+                    Báo giá theo loại thẻ & số lượng · chip / add-on · nhóm khách trực tiếp / đại lý
+                </p>
+            </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'main' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'settings' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Cài Đặt Bảng Giá
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'main' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <CardInputPanel config={config} params={params} onChange={handleChange} />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <CardResultPanel
+                            result={result}
+                            config={config}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
+                </div>
+            )}
+            {activeTab === 'settings' && (
+                <AdminGate>
+                    <CardSettingsPanel
+                        config={config}
+                        onSave={(newConfig) => {
+                            setConfig(newConfig);
+                            setActiveTab('main');
+                            saveConfigToCloud('cardConfig', newConfig);
+                        }}
+                        onCancel={() => setActiveTab('main')}
+                    />
+                </AdminGate>
+            )}
+        </div>
+    );
+}
+
+function FlyerModule({ onBack }) {
+    // Module độc lập — bảng giá riêng (flyerConfig).
+    const [config, setConfig] = useState(null);
+    const [activeTab, setActiveTab] = useState('main');
+    const [params, setParams] = useState({
+        size: 'A5',
+        quantity: 170,
+        paper: 'C150',
+        sides: '2',
+        lamination: 'none',
+        creasing: 'none',
+        contents: '1-2',
+    });
+    const [result, setResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    useEffect(() => {
+        setConfig(loadFlyerConfig());
+        loadConfigFromCloud('flyerConfig').then((c) => {
+            if (c) setConfig(c);
+        });
+    }, []);
+
+    const handleChange = useCallback((name, value) => {
+        setParams((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
+    const doCalc = useCallback(() => {
+        if (!config) return;
+        try {
+            setResult(calculateFlyer(params, config));
+        } catch (e) {
+            console.error('Flyer calc error', e);
+            setResult(null);
+        }
+    }, [params, config]);
+
+    useEffect(() => {
+        if (!config) return;
+        setIsCalculating(true);
+        const timer = setTimeout(() => {
+            doCalc();
+            setIsCalculating(false);
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [doCalc, config]);
+
+    if (!config) return <div className="p-8 text-white">Đang tải cấu hình...</div>;
+
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+            <header className="text-center mb-8 relative">
+                <button
+                    onClick={onBack}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá Tờ Rơi</h1>
+                <p className="text-gray-400 mt-2">
+                    Báo giá theo khổ & số lượng · giấy · in 1/2 mặt · cán màng · cấn gấp · nội dung
+                </p>
+            </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'main' ? 'border-amber-500 text-amber-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'settings' ? 'border-amber-500 text-amber-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Cài Đặt Bảng Giá
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'main' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <FlyerInputPanel config={config} params={params} onChange={handleChange} />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <FlyerResultPanel
+                            result={result}
+                            config={config}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
+                </div>
+            )}
+            {activeTab === 'settings' && (
+                <AdminGate>
+                    <FlyerSettingsPanel
+                        config={config}
+                        onSave={(newConfig) => {
+                            setConfig(newConfig);
+                            setActiveTab('main');
+                            saveConfigToCloud('flyerConfig', newConfig);
+                        }}
+                        onCancel={() => setActiveTab('main')}
+                    />
+                </AdminGate>
+            )}
+        </div>
+    );
+}
+
+function CheapDecalModule({ onBack }) {
+    // Module độc lập — bảng giá riêng (cheapDecalConfig).
+    const [config, setConfig] = useState(null);
+    const [activeTab, setActiveTab] = useState('main');
+    const [params, setParams] = useState({
+        size: '1',
+        quantity: 1000,
+        shape: 'round',
+        material: 'paper',
+        lamination: 'no',
+        rush: 'no',
+    });
+    const [result, setResult] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+
+    useEffect(() => {
+        setConfig(loadCheapDecalConfig());
+        loadConfigFromCloud('cheapDecalConfig').then((c) => {
+            if (c) setConfig(c);
+        });
+    }, []);
+
+    const handleChange = useCallback((name, value) => {
+        setParams((prev) => ({ ...prev, [name]: value }));
+    }, []);
+
+    const doCalc = useCallback(() => {
+        if (!config) return;
+        try {
+            setResult(calculateCheapDecal(params, config));
+        } catch (e) {
+            console.error('CheapDecal calc error', e);
+            setResult(null);
+        }
+    }, [params, config]);
+
+    useEffect(() => {
+        if (!config) return;
+        setIsCalculating(true);
+        const timer = setTimeout(() => {
+            doCalc();
+            setIsCalculating(false);
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [doCalc, config]);
+
+    if (!config) return <div className="p-8 text-white">Đang tải cấu hình...</div>;
+
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl">
+            <header className="text-center mb-8 relative">
+                <button
+                    onClick={onBack}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Decal Nhãn Giá Rẻ</h1>
+                <p className="text-gray-400 mt-2">
+                    Báo giá nhanh theo cỡ & số lượng · hình · vật liệu · cán màng · lấy trong ngày
+                </p>
+            </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'main' ? 'border-rose-500 text-rose-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'settings' ? 'border-rose-500 text-rose-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Cài Đặt Bảng Giá
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'main' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <CheapDecalInputPanel
+                            config={config}
+                            params={params}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <CheapDecalResultPanel
+                            result={result}
+                            config={config}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
+                </div>
+            )}
+            {activeTab === 'settings' && (
+                <AdminGate>
+                    <CheapDecalSettingsPanel
+                        config={config}
+                        onSave={(newConfig) => {
+                            setConfig(newConfig);
+                            setActiveTab('main');
+                            saveConfigToCloud('cheapDecalConfig', newConfig);
+                        }}
+                        onCancel={() => setActiveTab('main')}
+                    />
+                </AdminGate>
+            )}
+        </div>
+    );
+}
+
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
@@ -849,6 +1702,13 @@ class ErrorBoundary extends React.Component {
                                 localStorage.removeItem('largePrintConfig');
                                 localStorage.removeItem('decalConfig');
                                 localStorage.removeItem('uvdtfConfig');
+                                localStorage.removeItem('catalogueConfig');
+                                localStorage.removeItem('spiralConfig');
+                                localStorage.removeItem('stickerConfig');
+                                localStorage.removeItem('cardConfig');
+                                localStorage.removeItem('flyerConfig');
+                                localStorage.removeItem('cheapDecalConfig');
+                                localStorage.removeItem('moduleVisibilityConfig');
                                 window.location.reload();
                             }}
                             className="block w-full max-w-xs mx-auto bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold text-lg"
@@ -878,6 +1738,13 @@ class ErrorBoundary extends React.Component {
             localStorage.removeItem('largePrintConfig');
             localStorage.removeItem('decalConfig');
             localStorage.removeItem('uvdtfConfig');
+            localStorage.removeItem('catalogueConfig');
+            localStorage.removeItem('spiralConfig');
+            localStorage.removeItem('stickerConfig');
+            localStorage.removeItem('cardConfig');
+            localStorage.removeItem('flyerConfig');
+            localStorage.removeItem('cheapDecalConfig');
+            localStorage.removeItem('moduleVisibilityConfig');
             // Xóa ?reset khỏi URL rồi reload
             window.history.replaceState({}, '', window.location.pathname);
             window.location.reload();
@@ -887,6 +1754,23 @@ class ErrorBoundary extends React.Component {
 
 function App() {
     const [currentModule, setCurrentModule] = useState('home');
+    const { user } = useAuth();
+    const { isAdmin } = useUserRole(user);
+
+    // Hiển thị tile: default (sync) → cloud override. Default all-visible → không ẩn nhầm khi tải.
+    const [visibility, setVisibility] = useState(
+        () => loadModuleVisibilityConfig().MODULE_VISIBILITY
+    );
+    useEffect(() => {
+        loadConfigFromCloud('moduleVisibilityConfig').then((c) => {
+            if (c?.MODULE_VISIBILITY) setVisibility(c.MODULE_VISIBILITY);
+        });
+    }, []);
+
+    const saveVisibility = useCallback(async (map) => {
+        setVisibility(map);
+        return await saveConfigToCloud('moduleVisibilityConfig', { MODULE_VISIBILITY: map });
+    }, []);
 
     const content = (() => {
         if (currentModule === 'small')
@@ -897,7 +1781,25 @@ function App() {
             return <DecalModule onBack={() => setCurrentModule('home')} />;
         if (currentModule === 'uvdtf')
             return <UvdtfModule onBack={() => setCurrentModule('home')} />;
-        return <HomePage onSelect={setCurrentModule} />;
+        if (currentModule === 'catalogue')
+            return <CatalogueModule onBack={() => setCurrentModule('home')} />;
+        if (currentModule === 'spiral')
+            return <SpiralModule onBack={() => setCurrentModule('home')} />;
+        if (currentModule === 'sticker')
+            return <StickerModule onBack={() => setCurrentModule('home')} />;
+        if (currentModule === 'card') return <CardModule onBack={() => setCurrentModule('home')} />;
+        if (currentModule === 'flyer')
+            return <FlyerModule onBack={() => setCurrentModule('home')} />;
+        if (currentModule === 'cheapdecal')
+            return <CheapDecalModule onBack={() => setCurrentModule('home')} />;
+        return (
+            <HomePage
+                onSelect={setCurrentModule}
+                isAdmin={isAdmin}
+                visibility={visibility}
+                onSaveVisibility={saveVisibility}
+            />
+        );
     })();
 
     return <ErrorBoundary key={currentModule}>{content}</ErrorBoundary>;

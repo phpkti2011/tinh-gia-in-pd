@@ -148,75 +148,109 @@ export function calculateDieCuttingCosts(params, printSheetCount, isDecal, confi
     return { moldCost, laborCost, laborCustomerPrice };
 }
 
-// Ép kim (foil stamping) — multi-step pricing với min thresholds + cuộn nhũ
+// Ép kim (foil stamping) — DANH SÁCH KHUÔN. Mỗi khuôn có kích thước / màu / số lần
+// ép riêng; cộng dồn chi phí. Quy tắc (đã chốt):
+//   - Tiền khuôn = Σ(diện tích × moldPerArea) + phí ship 1 LẦN cho cả đơn (theo khuôn lớn nhất).
+//   - Tiền công ép = Σ theo từng khuôn; SÀN tối thiểu áp RIÊNG mỗi khuôn.
+//   - Số lần ép: lần đầu tính full, mỗi lần THÊM trên cùng khuôn tính extraImpressionRate (50%).
+//   - Ước tính cuộn nhũ tính riêng mỗi khuôn, theo SL × số lần ép.
+const EMPTY_FOIL = { totalCost: 0, impressionPrice: 0, moldCost: 0, shipping: 0, molds: [] };
+
 export function calculateFoilStamping(params, config) {
-    if (params.foilStamping !== 'yes')
-        return { totalCost: 0, impressionPrice: 0, moldCost: 0, rollsInfo: null };
+    if (params.foilStamping !== 'yes') return { ...EMPTY_FOIL };
 
     const cfg = config.EP_KIM_CONFIG;
-    const H = params.foilCustomSize
-        ? parseFloat(params.foilH) || 0
-        : parseFloat(params.productH) || 0;
-    const W = params.foilCustomSize
-        ? parseFloat(params.foilW) || 0
-        : parseFloat(params.productW) || 0;
     const quantity = parseInt(params.productQuantity, 10) || 0;
-    const isSpecial = params.foilSpecialColor || false;
+    const moldList = Array.isArray(params.foilMolds) ? params.foilMolds : [];
+    if (quantity <= 0 || moldList.length === 0) return { ...EMPTY_FOIL };
 
-    if (H <= 0 || W <= 0 || quantity <= 0)
-        return { totalCost: 0, impressionPrice: 0, moldCost: 0, rollsInfo: null };
-
-    const areaForCalc = (H + 1) * (W + 1);
     const sizeThreshold = cfg.thresholdW * cfg.thresholdH;
-    const isSmall = areaForCalc <= sizeThreshold;
-
-    // A. Chi phí ép kim
-    const rawPricePerImpression = areaForCalc * cfg.pricePerArea;
-    const minPricePerImpression = isSpecial ? cfg.minPriceSpecial : cfg.minPriceNormal;
-    const pricePerImpression = Math.max(rawPricePerImpression, minPricePerImpression);
-    const totalImpressionPriceRaw = pricePerImpression * quantity;
-    const minTotalStampingPrice = isSmall ? cfg.minTotalSmall : cfg.minTotalLarge;
-    const finalImpressionPrice = Math.max(totalImpressionPriceRaw, minTotalStampingPrice);
-
-    // B. Chi phí làm khuôn
-    const moldShippingFee = isSmall ? cfg.shippingSmall : cfg.shippingLarge;
-    const moldMakingCost = areaForCalc * cfg.moldPerArea + moldShippingFee;
-
-    const totalCost = finalImpressionPrice + moldMakingCost;
-
-    // C. Ước tính cuộn nhũ
     const rollLengthCm = cfg.foilRollLengthM * 100;
-    const opt1FoilWidth = H + cfg.foilPadWidth;
-    const opt1ImprLen = W + cfg.foilPadLength;
-    const opt1PerRoll = opt1ImprLen > 0 ? Math.floor(rollLengthCm / opt1ImprLen) : 0;
-    const opt1Rolls = opt1PerRoll > 0 ? Math.ceil(quantity / opt1PerRoll) : Infinity;
+    const extraRate = cfg.extraImpressionRate ?? 0.5;
 
-    const opt2FoilWidth = W + cfg.foilPadWidth;
-    const opt2ImprLen = H + cfg.foilPadLength;
-    const opt2PerRoll = opt2ImprLen > 0 ? Math.floor(rollLengthCm / opt2ImprLen) : 0;
-    const opt2Rolls = opt2PerRoll > 0 ? Math.ceil(quantity / opt2PerRoll) : Infinity;
+    let totalImpressionPrice = 0;
+    let totalMakingCost = 0;
+    let anyLarge = false;
+
+    const molds = moldList
+        .map((m) => {
+            const W = parseFloat(m.w) || 0;
+            const H = parseFloat(m.h) || 0;
+            const impressions = Math.max(1, parseInt(m.impressions, 10) || 1);
+            const special = !!m.special;
+            if (H <= 0 || W <= 0) return null; // bỏ qua khuôn chưa nhập kích thước
+
+            const areaForCalc = (H + 1) * (W + 1);
+            const isSmall = areaForCalc <= sizeThreshold;
+            if (!isSmall) anyLarge = true;
+
+            // A. Công ép — đơn giá/lượt & sàn tối thiểu RIÊNG mỗi khuôn
+            const rawPricePerImpression = areaForCalc * cfg.pricePerArea;
+            const minPricePerImpression = special ? cfg.minPriceSpecial : cfg.minPriceNormal;
+            const pricePerImpression = Math.max(rawPricePerImpression, minPricePerImpression);
+            const minTotalStampingPrice = isSmall ? cfg.minTotalSmall : cfg.minTotalLarge;
+            const base1 = Math.max(pricePerImpression * quantity, minTotalStampingPrice);
+            // Hệ số số lần ép: lần đầu full, mỗi lần thêm cùng khuôn = extraRate
+            const impressionFactor = 1 + (impressions - 1) * extraRate;
+            const impressionPrice = base1 * impressionFactor;
+
+            // B. Tiền làm khuôn (chưa gồm ship — ship tính chung 1 lần)
+            const makingCost = areaForCalc * cfg.moldPerArea;
+
+            totalImpressionPrice += impressionPrice;
+            totalMakingCost += makingCost;
+
+            // C. Ước tính cuộn nhũ cho khuôn này — lượng ép hiệu dụng = SL × số lần ép
+            const effQty = quantity * impressions;
+            const opt1ImprLen = W + cfg.foilPadLength;
+            const opt1PerRoll = opt1ImprLen > 0 ? Math.floor(rollLengthCm / opt1ImprLen) : 0;
+            const opt1Rolls = opt1PerRoll > 0 ? Math.ceil(effQty / opt1PerRoll) : Infinity;
+            const opt2ImprLen = H + cfg.foilPadLength;
+            const opt2PerRoll = opt2ImprLen > 0 ? Math.floor(rollLengthCm / opt2ImprLen) : 0;
+            const opt2Rolls = opt2PerRoll > 0 ? Math.ceil(effQty / opt2PerRoll) : Infinity;
+
+            return {
+                w: W,
+                h: H,
+                special,
+                impressions,
+                areaForCalc,
+                isSmall,
+                pricePerImpression,
+                impressionFactor,
+                impressionPrice,
+                makingCost,
+                rollsInfo: {
+                    opt1: {
+                        foilWidth: H + cfg.foilPadWidth,
+                        imprLen: opt1ImprLen,
+                        perRoll: opt1PerRoll,
+                        rolls: opt1Rolls,
+                    },
+                    opt2: {
+                        foilWidth: W + cfg.foilPadWidth,
+                        imprLen: opt2ImprLen,
+                        perRoll: opt2PerRoll,
+                        rolls: opt2Rolls,
+                    },
+                    bestRolls: Math.min(opt1Rolls, opt2Rolls),
+                },
+            };
+        })
+        .filter(Boolean);
+
+    if (molds.length === 0) return { ...EMPTY_FOIL };
+
+    // Phí ship khuôn — CHỈ 1 lần cho cả đơn, theo khuôn lớn nhất
+    const shipping = anyLarge ? cfg.shippingLarge : cfg.shippingSmall;
+    const moldCost = totalMakingCost + shipping;
+    const totalCost = totalImpressionPrice + moldCost;
 
     return {
         totalCost,
-        impressionPrice: finalImpressionPrice,
-        moldCost: moldMakingCost,
-        pricePerImpression,
-        areaForCalc,
-        isSmall,
-        rollsInfo: {
-            opt1: {
-                foilWidth: opt1FoilWidth,
-                imprLen: opt1ImprLen,
-                perRoll: opt1PerRoll,
-                rolls: opt1Rolls,
-            },
-            opt2: {
-                foilWidth: opt2FoilWidth,
-                imprLen: opt2ImprLen,
-                perRoll: opt2PerRoll,
-                rolls: opt2Rolls,
-            },
-            bestRolls: Math.min(opt1Rolls, opt2Rolls),
-        },
+        impressionPrice: totalImpressionPrice,
+        moldCost,
+        shipping,
+        molds,
     };
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { saveDecalConfig } from '../../utils/configStorage';
+import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, className, step }) {
@@ -35,7 +36,11 @@ function NumInput({ configValue, onCommit, className, step }) {
 
 export default function DecalSettingsPanel({ config, onSave, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
-    const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
+    // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
+    // key upper-bound để schema validation không fail khi save.
+    const [localConfig, setLocalConfig] = useState(() =>
+        restoreInfinity(JSON.parse(JSON.stringify(config)))
+    );
 
     const handleSave = () => {
         try {

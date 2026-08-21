@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { saveUvdtfConfig } from '../../utils/configStorage';
+import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, className, step }) {
@@ -48,7 +49,11 @@ const numCls =
 
 export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
-    const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
+    // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
+    // key upper-bound (maxMeters, ...) để schema validation không fail khi save.
+    const [localConfig, setLocalConfig] = useState(() =>
+        restoreInfinity(JSON.parse(JSON.stringify(config)))
+    );
 
     const handleSave = () => {
         try {
@@ -70,7 +75,8 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
 
     const updateConfig = (updater) => {
         setLocalConfig((prev) => {
-            const c = JSON.parse(JSON.stringify(prev));
+            // restoreInfinity giữ maxMeters=Infinity qua JSON round-trip.
+            const c = restoreInfinity(JSON.parse(JSON.stringify(prev)));
             updater(c);
             return c;
         });
@@ -94,173 +100,16 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
     const tiers = localConfig.priceTiers || [];
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-cyan-400">Cai dat UV DTF</h2>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handleSave}
-                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
-                        >
-                            Luu
-                        </button>
-                        <button
-                            onClick={onCancel}
-                            className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
-                        >
-                            Huy
-                        </button>
-                    </div>
-                </div>
-
-                {/* Scrollable body */}
-                <div className="overflow-y-auto px-6 py-4 space-y-8 flex-1">
-                    {/* ===== THONG SO CHUNG ===== */}
-                    <section>
-                        <h3 className={sectionTitle}>Thong So Chung</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="relative">
-                                <label className={labelCls}>Kho vat lieu</label>
-                                <NumInput
-                                    configValue={localConfig.materialWidthCM}
-                                    step={0.1}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.materialWidthCM = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">
-                                    cm
-                                </span>
-                            </div>
-                            <div className="relative">
-                                <label className={labelCls}>Vung in</label>
-                                <NumInput
-                                    configValue={localConfig.printableWidthCM}
-                                    step={0.1}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.printableWidthCM = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">
-                                    cm
-                                </span>
-                            </div>
-                            <div className="relative">
-                                <label className={labelCls}>Padding moi item</label>
-                                <NumInput
-                                    configValue={localConfig.paddingCM}
-                                    step={0.1}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.paddingCM = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">
-                                    cm
-                                </span>
-                            </div>
-                            <div className="relative">
-                                <label className={labelCls}>Met toi toi thieu</label>
-                                <NumInput
-                                    configValue={localConfig.minBillableMeters}
-                                    step={0.1}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.minBillableMeters = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">m</span>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* ===== BANG GIA THEO MET TOI ===== */}
-                    <section>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
-                                Bang Gia Theo Met Toi
-                            </h3>
-                            <button onClick={addTier} className={btnAdd}>
-                                + Them bac
-                            </button>
-                        </div>
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-gray-700">
-                                    <th className={thCls}>Den (met)</th>
-                                    <th className={thCls}>Don gia (d/m)</th>
-                                    <th className={thCls}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {tiers.map((tier, i) => (
-                                    <tr key={i} className="border-b border-gray-700/50">
-                                        <td className={tdCls}>
-                                            <input
-                                                type="number"
-                                                value={
-                                                    tier.maxMeters === Infinity
-                                                        ? ''
-                                                        : tier.maxMeters
-                                                }
-                                                placeholder="(vo han)"
-                                                step={1}
-                                                className={numCls}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === '' || val.trim() === '') {
-                                                        updateTier(i, 'maxMeters', Infinity);
-                                                    } else {
-                                                        const parsed = parseFloat(val);
-                                                        if (!isNaN(parsed))
-                                                            updateTier(i, 'maxMeters', parsed);
-                                                    }
-                                                }}
-                                            />
-                                        </td>
-                                        <td className={tdCls}>
-                                            <NumInput
-                                                configValue={tier.pricePerMeter}
-                                                step={1000}
-                                                className={numCls}
-                                                onCommit={(v) => updateTier(i, 'pricePerMeter', v)}
-                                            />
-                                        </td>
-                                        <td className={tdCls}>
-                                            <button onClick={() => delTier(i)} className={btnDel}>
-                                                Xoa
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </section>
-                </div>
-
-                <div className="px-6 pb-4">
-                    <PriceConfigHistoryPanel moduleKey="uvdtf" />
-                </div>
-
-                {/* Footer */}
-                <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
+        <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
+                <h2 className="text-2xl font-bold text-white">⚙ Cai dat UV DTF</h2>
+                <div className="flex gap-3">
                     <button
                         onClick={handleSave}
                         className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
                     >
-                        Luu cai dat
+                        Luu
                     </button>
                     <button
                         onClick={onCancel}
@@ -269,6 +118,153 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
                         Huy
                     </button>
                 </div>
+            </div>
+
+            {/* Body */}
+            <div className="space-y-8">
+                {/* ===== THONG SO CHUNG ===== */}
+                <section>
+                    <h3 className={sectionTitle}>Thong So Chung</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="relative">
+                            <label className={labelCls}>Kho vat lieu</label>
+                            <NumInput
+                                configValue={localConfig.materialWidthCM}
+                                step={0.1}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.materialWidthCM = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Vung in</label>
+                            <NumInput
+                                configValue={localConfig.printableWidthCM}
+                                step={0.1}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.printableWidthCM = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Padding moi item</label>
+                            <NumInput
+                                configValue={localConfig.paddingCM}
+                                step={0.1}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.paddingCM = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Met toi toi thieu</label>
+                            <NumInput
+                                configValue={localConfig.minBillableMeters}
+                                step={0.1}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.minBillableMeters = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">m</span>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ===== BANG GIA THEO MET TOI ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
+                            Bang Gia Theo Met Toi
+                        </h3>
+                        <button onClick={addTier} className={btnAdd}>
+                            + Them bac
+                        </button>
+                    </div>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-700">
+                                <th className={thCls}>Den (met)</th>
+                                <th className={thCls}>Don gia (d/m)</th>
+                                <th className={thCls}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tiers.map((tier, i) => (
+                                <tr key={i} className="border-b border-gray-700/50">
+                                    <td className={tdCls}>
+                                        <input
+                                            type="number"
+                                            value={
+                                                tier.maxMeters === Infinity ? '' : tier.maxMeters
+                                            }
+                                            placeholder="(vo han)"
+                                            step={1}
+                                            className={numCls}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || val.trim() === '') {
+                                                    updateTier(i, 'maxMeters', Infinity);
+                                                } else {
+                                                    const parsed = parseFloat(val);
+                                                    if (!isNaN(parsed))
+                                                        updateTier(i, 'maxMeters', parsed);
+                                                }
+                                            }}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={tier.pricePerMeter}
+                                            step={1000}
+                                            className={numCls}
+                                            onCommit={(v) => updateTier(i, 'pricePerMeter', v)}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <button onClick={() => delTier(i)} className={btnDel}>
+                                            Xoa
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+            <div className="mt-8">
+                <PriceConfigHistoryPanel moduleKey="uvdtf" />
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 mt-6 border-t border-gray-700 pt-4">
+                <button
+                    onClick={handleSave}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+                >
+                    Luu cai dat
+                </button>
+                <button
+                    onClick={onCancel}
+                    className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
+                >
+                    Huy
+                </button>
             </div>
         </div>
     );

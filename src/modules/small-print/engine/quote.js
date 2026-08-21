@@ -20,7 +20,17 @@ export function calculateCustomerQuote(
         laminationType,
         printContents,
         variableData,
+        printColorMode,
     } = params;
+
+    // Giá in 1 màu ĐEN = giá 4 màu × (1 − %), sàn theo đ/trang (chỉ per_page).
+    const oneColorDisc = (config.ONE_COLOR_DISCOUNT_PERCENT ?? 0) / 100;
+    const oneColorMinPP = config.ONE_COLOR_MIN_PRICE_PER_PAGE ?? 0;
+    const printRateFor = (basePrint, isPerPage) => {
+        if (printColorMode !== '1color') return basePrint;
+        const r = basePrint * (1 - oneColorDisc);
+        return isPerPage ? Math.max(r, oneColorMinPP) : r;
+    };
 
     const pressH = bestOption.cutSheetH;
 
@@ -64,13 +74,14 @@ export function calculateCustomerQuote(
             const hasLam = laminationType === 'laminate_1' || laminationType === 'laminate_2';
             const lamSides = laminationType === 'laminate_2' ? 2 : 1;
             if (tier.type === 'per_page') {
-                totalPrintCost = totalA4Pages * tier.print;
+                const rate = printRateFor(tier.print, true);
+                totalPrintCost = totalA4Pages * rate;
                 totalLaminationCost = hasLam ? totalA4Pages * tier.laminate * lamSides : 0;
-                unitPriceText = `${tier.print.toLocaleString('vi-VN')}đ/trang`;
+                unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             } else {
-                totalPrintCost = tier.print;
+                totalPrintCost = printRateFor(tier.print, false);
                 totalLaminationCost = hasLam ? tier.laminate * lamSides : 0;
-                unitPriceText = `Trọn gói`;
+                unitPriceText = `Trọn gói${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             }
         } else {
             return { error: `Lỗi cấu hình: Không tìm thấy mức giá cho ${totalA4Pages} trang A4` };
@@ -93,13 +104,14 @@ export function calculateCustomerQuote(
         const hasLam2 = laminationType === 'laminate_1' || laminationType === 'laminate_2';
         const lamSides2 = laminationType === 'laminate_2' ? 2 : 1;
         if (tier.type === 'per_page') {
-            totalPrintCost = totalA4Pages * tier.print;
+            const rate = printRateFor(tier.print, true);
+            totalPrintCost = totalA4Pages * rate;
             totalLaminationCost = hasLam2 ? totalA4Pages * tier.laminate * lamSides2 : 0;
-            unitPriceText = `${tier.print.toLocaleString('vi-VN')}đ/trang`;
+            unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         } else {
-            totalPrintCost = tier.print;
+            totalPrintCost = printRateFor(tier.print, false);
             totalLaminationCost = hasLam2 ? tier.laminate * lamSides2 : 0;
-            unitPriceText = `Trọn gói`;
+            unitPriceText = `Trọn gói${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         }
     }
 
@@ -121,6 +133,51 @@ export function calculateCustomerQuote(
         variableData === 'yes' ? calculateVariableDataCost(totalQuantity, config) : 0;
 
     const foilStampingCost = foilResult ? foilResult.totalCost : 0;
+
+    // Điều chỉnh giá theo giấy chuẩn (P3-PAPER-ADJ):
+    // Bảng CUSTOMER_PRICE_TIERS được tiệm thiết kế dựa vào giấy chuẩn (mặc định
+    // C300). Khi khách chọn giấy khác pricingModel='ream', trừ hoặc cộng chênh
+    // lệch giá vốn giấy vào giá báo khách:
+    //   - Rẻ hơn C300 → paperAdjustment > 0 → trừ vào giá khách (discount).
+    //   - Đắt hơn C300 → paperAdjustment < 0 → cộng vào giá khách (surcharge).
+    let paperAdjustment = 0;
+    let paperAdjustmentReason = '';
+    // Fallback nếu config cũ (localStorage/Supabase saved trước khi thêm key này)
+    // chưa có PAPER_REFERENCE_CONFIG — dùng default C300 + 100% ratio.
+    const refCfg = config.PAPER_REFERENCE_CONFIG || {
+        referencePaperName: 'C300',
+        adjustmentRatio: 1,
+    };
+    if (selectedPaper.pricingModel === 'ream') {
+        const referencePaper = (config.PAPER_STOCK_DATA || []).find(
+            (p) => p.name === refCfg.referencePaperName
+        );
+        if (
+            referencePaper &&
+            referencePaper.pricingModel === 'ream' &&
+            referencePaper.name !== selectedPaper.name
+        ) {
+            const pricePerReamDiff = referencePaper.pricePerReam - selectedPaper.pricePerReam;
+            if (pricePerReamDiff !== 0) {
+                const baseArea =
+                    config.STANDARD_LARGE_SHEET_SIZES[0].w * config.STANDARD_LARGE_SHEET_SIZES[0].h;
+                const targetArea = bestOption.largeSheetW * bestOption.largeSheetH;
+                const scale = baseArea > 0 ? targetArea / baseArea : 1;
+                const diffPerLargeSheet = (pricePerReamDiff / 500) * scale;
+                const validNumCutSheets =
+                    typeof numCutSheets === 'number' && numCutSheets > 0 ? numCutSheets : 1;
+                const totalLargeSheets = Math.ceil(totalPrintSheets / validNumCutSheets);
+                const ratio =
+                    typeof refCfg.adjustmentRatio === 'number' ? refCfg.adjustmentRatio : 1;
+                paperAdjustment = Math.round(diffPerLargeSheet * totalLargeSheets * ratio);
+                paperAdjustmentReason =
+                    paperAdjustment > 0
+                        ? `Rẻ hơn ${referencePaper.name}`
+                        : `Đắt hơn ${referencePaper.name}`;
+            }
+        }
+    }
+
     const baseCustomerCost =
         totalPrintCost +
         totalLaminationCost +
@@ -132,7 +189,8 @@ export function calculateCustomerQuote(
         dieCuttingCustomerPrice.moldCost +
         dieCuttingCustomerPrice.laborCustomerPrice +
         variableDataCost +
-        foilStampingCost;
+        foilStampingCost -
+        paperAdjustment;
 
     const { surcharge: customerSurcharge, reason: customerSurchargeReason } =
         calculatePrintContentSurcharge(baseCustomerCost, totalQuantity, printContents, config);
@@ -140,11 +198,26 @@ export function calculateCustomerQuote(
 
     return {
         totalA4Pages: totalA4Pages.toLocaleString('vi-VN', { maximumFractionDigits: 0 }),
+        totalA4PagesRaw: totalA4Pages,
+        // Breakdown để UI giải thích formula A4:
+        //   totalPrintSheets × conversionFactor × printSides ≈ totalA4Pages
+        totalPrintSheets,
+        conversionFactor,
+        printSides: Number(printSides) || 1,
         unitPriceText: unitPriceText,
         totalPrintCost,
         totalLaminationCost,
         totalArtPaperCustomerCost,
         totalPaperSurcharge,
+        // Breakdown fields — hiển thị chi tiết trong panel Giá.
+        holePunchingCustomerPrice: finishingCustomerPrices.holePunching || 0,
+        creasingCustomerPrice: finishingCustomerPrices.creasing || 0,
+        mountingCustomerPrice: finishingCustomerPrices.mounting || 0,
+        dieCuttingMoldCustomerPrice: dieCuttingCustomerPrice.moldCost || 0,
+        dieCuttingLaborCustomerPrice: dieCuttingCustomerPrice.laborCustomerPrice || 0,
+        variableDataCost,
+        paperAdjustment,
+        paperAdjustmentReason,
         foilStampingCost,
         customerSurcharge,
         customerSurchargeReason,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { saveConfig } from '../../utils/configStorage';
+import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, isPercentage = false, className, step }) {
@@ -49,7 +50,13 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
     // P2-03: Password gate cũ đã được xoá. Auth/role check giờ thực hiện ngoài
     // component qua <AdminGate> wrapper ở App.jsx — chỉ admin
     // (useUserRole.isAdmin === true) mới render được panel này.
-    const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
+    // JSON round-trip mất Infinity (→ null). restoreInfinity trả về Infinity cho
+    // các key upper-bound (max, max_cost, max_qty, upTo, ...) → schema validation
+    // ở saveConfig sẽ pass. Không dùng restoreInfinity: PROFIT_MARGIN_TIERS[last]
+    // .max_cost + CUSTOMER_PRICE_TIERS[last].max sẽ = null → fail schema check.
+    const [localConfig, setLocalConfig] = useState(() =>
+        restoreInfinity(JSON.parse(JSON.stringify(config)))
+    );
 
     const handleSave = () => {
         try {
@@ -323,6 +330,18 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                     <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
                         Bảng Giá Khách Hàng (theo trang A4)
                     </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div className="relative">
+                            <label className={labelCls}>% giảm giá khi in 1 màu đen</label>
+                            {fi('ONE_COLOR_DISCOUNT_PERCENT', localConfig.ONE_COLOR_DISCOUNT_PERCENT ?? 0, false, '1')}
+                            <span className="absolute right-3 top-[32px] text-gray-500">%</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Sàn đơn giá in 1 màu đen</label>
+                            {fi('ONE_COLOR_MIN_PRICE_PER_PAGE', localConfig.ONE_COLOR_MIN_PRICE_PER_PAGE ?? 0, false, '100')}
+                            <span className="absolute right-3 top-[32px] text-gray-500">đ/trang</span>
+                        </div>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -870,6 +889,16 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                                 '0.1'
                             )}
                             <span className="absolute right-3 top-[32px] text-gray-500">cm</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Hệ số lần ép thêm (cùng khuôn)</label>
+                            {fi(
+                                'EP_KIM_CONFIG.extraImpressionRate',
+                                localConfig.EP_KIM_CONFIG.extraImpressionRate,
+                                false,
+                                '0.05'
+                            )}
+                            <span className="absolute right-3 top-[32px] text-gray-500">×</span>
                         </div>
                     </div>
                 </section>

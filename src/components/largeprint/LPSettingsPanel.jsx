@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { saveLargePrintConfig } from '../../utils/configStorage';
+import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 function NumInput({ configValue, onCommit, className, step }) {
@@ -48,7 +49,11 @@ const numCls =
 
 export default function LPSettingsPanel({ config, onSave, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
-    const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
+    // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
+    // key upper-bound để schema validation không fail khi save.
+    const [localConfig, setLocalConfig] = useState(() =>
+        restoreInfinity(JSON.parse(JSON.stringify(config)))
+    );
 
     const handleSave = () => {
         try {
@@ -73,7 +78,9 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
     // --- Deep update helpers ---
     const updateConfig = (updater) => {
         setLocalConfig((prev) => {
-            const c = JSON.parse(JSON.stringify(prev));
+            // restoreInfinity giữ Infinity qua JSON round-trip, nếu không thì
+            // mỗi lần update sẽ mất Infinity ở max/max_cost/max_qty/upTo.
+            const c = restoreInfinity(JSON.parse(JSON.stringify(prev)));
             updater(c);
             return c;
         });
@@ -196,538 +203,16 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
     const fin = localConfig.FINISHING_PRICES;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-cyan-400">Cài đặt In Khổ Lớn</h2>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handleSave}
-                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
-                        >
-                            Lưu
-                        </button>
-                        <button
-                            onClick={onCancel}
-                            className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
-                        >
-                            Hủy
-                        </button>
-                    </div>
-                </div>
-
-                {/* Scrollable body */}
-                <div className="overflow-y-auto px-6 py-4 space-y-8 flex-1">
-                    {/* ===== VẬT LIỆU ===== */}
-                    <section>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>Vật liệu</h3>
-                            <button onClick={addMaterial} className={btnAdd}>
-                                + Thêm vật liệu
-                            </button>
-                        </div>
-                        {Object.entries(mat).map(([key, m]) => (
-                            <div
-                                key={key}
-                                className="bg-gray-750 bg-opacity-50 border border-gray-700 rounded-lg p-4 mb-4"
-                            >
-                                <div className="flex items-center gap-3 mb-3">
-                                    <label className={labelCls + ' mb-0 whitespace-nowrap'}>
-                                        Tên:
-                                    </label>
-                                    <input
-                                        value={m.name}
-                                        onChange={(e) => updateMatName(key, e.target.value)}
-                                        className={inputCls + ' max-w-xs'}
-                                    />
-                                    <span className="text-gray-500 text-xs">({key})</span>
-                                    <button
-                                        onClick={() => delMaterial(key)}
-                                        className={btnDel + ' ml-auto'}
-                                    >
-                                        Xóa vật liệu
-                                    </button>
-                                </div>
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-gray-700">
-                                            <th className={thCls}>Khổ (m)</th>
-                                            <th className={thCls}>Giá in (đ/m²)</th>
-                                            <th className={thCls}>Giá vật liệu (đ/m²)</th>
-                                            <th className={thCls}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {m.options.map((opt, i) => (
-                                            <tr key={i} className="border-b border-gray-700/50">
-                                                <td className={tdCls}>
-                                                    <NumInput
-                                                        configValue={opt.width}
-                                                        step={0.01}
-                                                        className={numCls}
-                                                        onCommit={(v) =>
-                                                            updateMatOption(key, i, 'width', v)
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className={tdCls}>
-                                                    <NumInput
-                                                        configValue={opt.printPrice}
-                                                        step={1000}
-                                                        className={numCls}
-                                                        onCommit={(v) =>
-                                                            updateMatOption(key, i, 'printPrice', v)
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className={tdCls}>
-                                                    <NumInput
-                                                        configValue={opt.materialPrice}
-                                                        step={1000}
-                                                        className={numCls}
-                                                        onCommit={(v) =>
-                                                            updateMatOption(
-                                                                key,
-                                                                i,
-                                                                'materialPrice',
-                                                                v
-                                                            )
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className={tdCls}>
-                                                    <button
-                                                        onClick={() => delMatOption(key, i)}
-                                                        className={btnDel}
-                                                    >
-                                                        Xóa
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                <button
-                                    onClick={() => addMatOption(key)}
-                                    className={btnAdd + ' mt-2'}
-                                >
-                                    + Thêm khổ
-                                </button>
-                            </div>
-                        ))}
-                    </section>
-
-                    {/* ===== CÁN MÀNG ===== */}
-                    <section>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>Cán màng</h3>
-                            <button onClick={addLamination} className={btnAdd}>
-                                + Thêm cán màng
-                            </button>
-                        </div>
-                        {Object.entries(lam).map(([key, l]) => (
-                            <div
-                                key={key}
-                                className="bg-gray-750 bg-opacity-50 border border-gray-700 rounded-lg p-4 mb-4"
-                            >
-                                <div className="flex items-center gap-3 mb-3">
-                                    <label className={labelCls + ' mb-0 whitespace-nowrap'}>
-                                        Tên:
-                                    </label>
-                                    <input
-                                        value={l.name}
-                                        onChange={(e) => updateLamName(key, e.target.value)}
-                                        className={inputCls + ' max-w-xs'}
-                                    />
-                                    <span className="text-gray-500 text-xs">({key})</span>
-                                    <button
-                                        onClick={() => delLamination(key)}
-                                        className={btnDel + ' ml-auto'}
-                                    >
-                                        Xóa
-                                    </button>
-                                </div>
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-gray-700">
-                                            <th className={thCls}>Khổ (m)</th>
-                                            <th className={thCls}>Giá (đ/m²)</th>
-                                            <th className={thCls}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {l.options.map((opt, i) => (
-                                            <tr key={i} className="border-b border-gray-700/50">
-                                                <td className={tdCls}>
-                                                    <NumInput
-                                                        configValue={opt.width}
-                                                        step={0.01}
-                                                        className={numCls}
-                                                        onCommit={(v) =>
-                                                            updateLamOption(key, i, 'width', v)
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className={tdCls}>
-                                                    <NumInput
-                                                        configValue={opt.price}
-                                                        step={1000}
-                                                        className={numCls}
-                                                        onCommit={(v) =>
-                                                            updateLamOption(key, i, 'price', v)
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className={tdCls}>
-                                                    <button
-                                                        onClick={() => delLamOption(key, i)}
-                                                        className={btnDel}
-                                                    >
-                                                        Xóa
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                <button
-                                    onClick={() => addLamOption(key)}
-                                    className={btnAdd + ' mt-2'}
-                                >
-                                    + Thêm khổ
-                                </button>
-                            </div>
-                        ))}
-                    </section>
-
-                    {/* ===== GIÁ TỐI THIỂU ===== */}
-                    <section>
-                        <h3 className={sectionTitle}>Giá Tối Thiểu</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="relative">
-                                <label className={labelCls}>Giá in tối thiểu</label>
-                                <NumInput
-                                    configValue={localConfig.MIN_PRINT_PRICE || 0}
-                                    step={1000}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.MIN_PRINT_PRICE = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
-                            </div>
-                            <div className="relative">
-                                <label className={labelCls}>Giá cán màng tối thiểu</label>
-                                <NumInput
-                                    configValue={localConfig.MIN_LAMINATION_PRICE || 0}
-                                    step={1000}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.MIN_LAMINATION_PRICE = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
-                            </div>
-                            <div className="relative">
-                                <label className={labelCls}>Giá dán biên tối thiểu</label>
-                                <NumInput
-                                    configValue={localConfig.MIN_EDGE_TAPING_PRICE || 0}
-                                    step={1000}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.MIN_EDGE_TAPING_PRICE = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
-                            </div>
-                            <div className="relative">
-                                <label className={labelCls}>Giá đóng khoen tối thiểu</label>
-                                <NumInput
-                                    configValue={localConfig.MIN_GROMMET_PRICE || 0}
-                                    step={1000}
-                                    className={inputClsPr}
-                                    onCommit={(v) =>
-                                        updateConfig((c) => {
-                                            c.MIN_GROMMET_PRICE = v;
-                                        })
-                                    }
-                                />
-                                <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* ===== STANDEE ===== */}
-                    <section>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>Standee</h3>
-                            <button
-                                onClick={() =>
-                                    updateConfig((c) => {
-                                        if (!c.STANDEE_OPTIONS) c.STANDEE_OPTIONS = [];
-                                        const id = 'standee_' + Date.now();
-                                        c.STANDEE_OPTIONS.push({
-                                            key: id,
-                                            name: 'Standee mới',
-                                            price: 0,
-                                        });
-                                    })
-                                }
-                                className={btnAdd}
-                            >
-                                + Thêm loại
-                            </button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {(localConfig.STANDEE_OPTIONS || []).map((opt, idx) => (
-                                <div
-                                    key={opt.key}
-                                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-4 space-y-2"
-                                >
-                                    <div>
-                                        <label className={labelCls}>Tên</label>
-                                        <input
-                                            type="text"
-                                            value={opt.name}
-                                            className={inputCls}
-                                            onChange={(e) =>
-                                                updateConfig((c) => {
-                                                    c.STANDEE_OPTIONS[idx].name = e.target.value;
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá</label>
-                                        <NumInput
-                                            configValue={opt.price}
-                                            step={1000}
-                                            className={inputClsPr}
-                                            onCommit={(v) =>
-                                                updateConfig((c) => {
-                                                    c.STANDEE_OPTIONS[idx].price = v;
-                                                })
-                                            }
-                                        />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
-                                    </div>
-                                    <button
-                                        onClick={() =>
-                                            updateConfig((c) => {
-                                                c.STANDEE_OPTIONS.splice(idx, 1);
-                                            })
-                                        }
-                                        className={
-                                            btnCls +
-                                            ' bg-red-600 hover:bg-red-700 text-white text-xs mt-1'
-                                        }
-                                    >
-                                        Xóa
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* ===== FORMEX ===== */}
-                    <section>
-                        <h3 className={sectionTitle}>Formex</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {Object.entries(formex)
-                                .filter(([k]) => k !== 'none')
-                                .map(([key, f]) => (
-                                    <div
-                                        key={key}
-                                        className="bg-gray-750 bg-opacity-50 border border-gray-700 rounded-lg p-4"
-                                    >
-                                        <label className={labelCls}>{f.name}</label>
-                                        <NumInput
-                                            configValue={f.price}
-                                            step={1000}
-                                            className={numCls}
-                                            onCommit={(v) => updateFormex(key, v)}
-                                        />
-                                        <span className="text-gray-500 text-xs ml-2">đ/m²</span>
-                                    </div>
-                                ))}
-                        </div>
-                    </section>
-
-                    {/* ===== CHIẾT KHẤU FORMEX ===== */}
-                    <section>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
-                                Chiết khấu Formex theo diện tích
-                            </h3>
-                            <button onClick={addDiscountTier} className={btnAdd}>
-                                + Thêm bậc
-                            </button>
-                        </div>
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-gray-700">
-                                    <th className={thCls}>Từ (m²)</th>
-                                    <th className={thCls}>Đến (m²)</th>
-                                    <th className={thCls}>Chiết khấu (%)</th>
-                                    <th className={thCls}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {discTiers.map((t, i) => (
-                                    <tr key={i} className="border-b border-gray-700/50">
-                                        <td className={tdCls}>
-                                            <NumInput
-                                                configValue={t.minArea}
-                                                step={1}
-                                                className={numCls}
-                                                onCommit={(v) =>
-                                                    updateDiscountTier(i, 'minArea', v)
-                                                }
-                                            />
-                                        </td>
-                                        <td className={tdCls}>
-                                            {t.maxArea === Infinity ? (
-                                                <span className="text-gray-400 italic">∞</span>
-                                            ) : (
-                                                <NumInput
-                                                    configValue={t.maxArea}
-                                                    step={1}
-                                                    className={numCls}
-                                                    onCommit={(v) =>
-                                                        updateDiscountTier(i, 'maxArea', v)
-                                                    }
-                                                />
-                                            )}
-                                        </td>
-                                        <td className={tdCls}>
-                                            <NumInput
-                                                configValue={parseFloat(
-                                                    (t.discount * 100).toFixed(2)
-                                                )}
-                                                step={1}
-                                                className={numCls}
-                                                onCommit={(v) =>
-                                                    updateDiscountTier(i, 'discount', v / 100)
-                                                }
-                                            />
-                                        </td>
-                                        <td className={tdCls}>
-                                            <button
-                                                onClick={() => delDiscountTier(i)}
-                                                className={btnDel}
-                                            >
-                                                Xóa
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </section>
-
-                    {/* ===== GIÁ THÀNH PHẨM ===== */}
-                    <section>
-                        <h3 className={sectionTitle}>Giá thành phẩm</h3>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelCls}>Viền xung quanh (đ/m²)</label>
-                                    <NumInput
-                                        configValue={fin.edgeTapingPricePerSqm}
-                                        step={1000}
-                                        className={numCls}
-                                        onCommit={(v) =>
-                                            updateFinishing('edgeTapingPricePerSqm', v)
-                                        }
-                                    />
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Mắt cáo (đ/cái)</label>
-                                    <NumInput
-                                        configValue={fin.grommetPricePerPiece}
-                                        step={500}
-                                        className={numCls}
-                                        onCommit={(v) => updateFinishing('grommetPricePerPiece', v)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="text-gray-300 font-semibold mb-2">
-                                    Cắt bế (dieCutting)
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className={labelCls}>Bậc 1: giới hạn (m²)</label>
-                                        <NumInput
-                                            configValue={fin.dieCutting.tier1LimitSqm}
-                                            step={1}
-                                            className={numCls}
-                                            onCommit={(v) => updateDieCut('tier1LimitSqm', v)}
-                                        />
-                                        <label className={labelCls + ' mt-2'}>
-                                            Giá bậc 1 (đ/m²)
-                                        </label>
-                                        <NumInput
-                                            configValue={fin.dieCutting.tier1PricePerSqm}
-                                            step={1000}
-                                            className={numCls}
-                                            onCommit={(v) => updateDieCut('tier1PricePerSqm', v)}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={labelCls}>Bậc 2: giới hạn (m²)</label>
-                                        <NumInput
-                                            configValue={fin.dieCutting.tier2LimitSqm}
-                                            step={1}
-                                            className={numCls}
-                                            onCommit={(v) => updateDieCut('tier2LimitSqm', v)}
-                                        />
-                                        <label className={labelCls + ' mt-2'}>
-                                            Giá bậc 2 (đ/m²)
-                                        </label>
-                                        <NumInput
-                                            configValue={fin.dieCutting.tier2PricePerSqm}
-                                            step={1000}
-                                            className={numCls}
-                                            onCommit={(v) => updateDieCut('tier2PricePerSqm', v)}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={labelCls}>Giá bậc 3 (đ/m²)</label>
-                                        <NumInput
-                                            configValue={fin.dieCutting.tier3PricePerSqm}
-                                            step={1000}
-                                            className={numCls}
-                                            onCommit={(v) => updateDieCut('tier3PricePerSqm', v)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 pb-4">
-                    <PriceConfigHistoryPanel moduleKey="large-print" />
-                </div>
-
-                <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700">
+        <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
+                <h2 className="text-2xl font-bold text-white">⚙ Cài đặt In Khổ Lớn</h2>
+                <div className="flex gap-3">
                     <button
                         onClick={handleSave}
                         className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
                     >
-                        Lưu cài đặt
+                        Lưu
                     </button>
                     <button
                         onClick={onCancel}
@@ -736,6 +221,501 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
                         Hủy
                     </button>
                 </div>
+            </div>
+
+            {/* Body */}
+            <div className="space-y-8">
+                {/* ===== VẬT LIỆU ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>Vật liệu</h3>
+                        <button onClick={addMaterial} className={btnAdd}>
+                            + Thêm vật liệu
+                        </button>
+                    </div>
+                    {Object.entries(mat).map(([key, m]) => (
+                        <div
+                            key={key}
+                            className="bg-gray-750 bg-opacity-50 border border-gray-700 rounded-lg p-4 mb-4"
+                        >
+                            <div className="flex items-center gap-3 mb-3">
+                                <label className={labelCls + ' mb-0 whitespace-nowrap'}>Tên:</label>
+                                <input
+                                    value={m.name}
+                                    onChange={(e) => updateMatName(key, e.target.value)}
+                                    className={inputCls + ' max-w-xs'}
+                                />
+                                <span className="text-gray-500 text-xs">({key})</span>
+                                <button
+                                    onClick={() => delMaterial(key)}
+                                    className={btnDel + ' ml-auto'}
+                                >
+                                    Xóa vật liệu
+                                </button>
+                            </div>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-gray-700">
+                                        <th className={thCls}>Khổ (m)</th>
+                                        <th className={thCls}>Giá in (đ/m²)</th>
+                                        <th className={thCls}>Giá vật liệu (đ/m²)</th>
+                                        <th className={thCls}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {m.options.map((opt, i) => (
+                                        <tr key={i} className="border-b border-gray-700/50">
+                                            <td className={tdCls}>
+                                                <NumInput
+                                                    configValue={opt.width}
+                                                    step={0.01}
+                                                    className={numCls}
+                                                    onCommit={(v) =>
+                                                        updateMatOption(key, i, 'width', v)
+                                                    }
+                                                />
+                                            </td>
+                                            <td className={tdCls}>
+                                                <NumInput
+                                                    configValue={opt.printPrice}
+                                                    step={1000}
+                                                    className={numCls}
+                                                    onCommit={(v) =>
+                                                        updateMatOption(key, i, 'printPrice', v)
+                                                    }
+                                                />
+                                            </td>
+                                            <td className={tdCls}>
+                                                <NumInput
+                                                    configValue={opt.materialPrice}
+                                                    step={1000}
+                                                    className={numCls}
+                                                    onCommit={(v) =>
+                                                        updateMatOption(key, i, 'materialPrice', v)
+                                                    }
+                                                />
+                                            </td>
+                                            <td className={tdCls}>
+                                                <button
+                                                    onClick={() => delMatOption(key, i)}
+                                                    className={btnDel}
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <button onClick={() => addMatOption(key)} className={btnAdd + ' mt-2'}>
+                                + Thêm khổ
+                            </button>
+                        </div>
+                    ))}
+                </section>
+
+                {/* ===== CÁN MÀNG ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>Cán màng</h3>
+                        <button onClick={addLamination} className={btnAdd}>
+                            + Thêm cán màng
+                        </button>
+                    </div>
+                    {Object.entries(lam).map(([key, l]) => (
+                        <div
+                            key={key}
+                            className="bg-gray-750 bg-opacity-50 border border-gray-700 rounded-lg p-4 mb-4"
+                        >
+                            <div className="flex items-center gap-3 mb-3">
+                                <label className={labelCls + ' mb-0 whitespace-nowrap'}>Tên:</label>
+                                <input
+                                    value={l.name}
+                                    onChange={(e) => updateLamName(key, e.target.value)}
+                                    className={inputCls + ' max-w-xs'}
+                                />
+                                <span className="text-gray-500 text-xs">({key})</span>
+                                <button
+                                    onClick={() => delLamination(key)}
+                                    className={btnDel + ' ml-auto'}
+                                >
+                                    Xóa
+                                </button>
+                            </div>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-gray-700">
+                                        <th className={thCls}>Khổ (m)</th>
+                                        <th className={thCls}>Giá (đ/m²)</th>
+                                        <th className={thCls}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {l.options.map((opt, i) => (
+                                        <tr key={i} className="border-b border-gray-700/50">
+                                            <td className={tdCls}>
+                                                <NumInput
+                                                    configValue={opt.width}
+                                                    step={0.01}
+                                                    className={numCls}
+                                                    onCommit={(v) =>
+                                                        updateLamOption(key, i, 'width', v)
+                                                    }
+                                                />
+                                            </td>
+                                            <td className={tdCls}>
+                                                <NumInput
+                                                    configValue={opt.price}
+                                                    step={1000}
+                                                    className={numCls}
+                                                    onCommit={(v) =>
+                                                        updateLamOption(key, i, 'price', v)
+                                                    }
+                                                />
+                                            </td>
+                                            <td className={tdCls}>
+                                                <button
+                                                    onClick={() => delLamOption(key, i)}
+                                                    className={btnDel}
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <button onClick={() => addLamOption(key)} className={btnAdd + ' mt-2'}>
+                                + Thêm khổ
+                            </button>
+                        </div>
+                    ))}
+                </section>
+
+                {/* ===== GIÁ TỐI THIỂU ===== */}
+                <section>
+                    <h3 className={sectionTitle}>Giá Tối Thiểu</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="relative">
+                            <label className={labelCls}>Giá in tối thiểu</label>
+                            <NumInput
+                                configValue={localConfig.MIN_PRINT_PRICE || 0}
+                                step={1000}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.MIN_PRINT_PRICE = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Giá cán màng tối thiểu</label>
+                            <NumInput
+                                configValue={localConfig.MIN_LAMINATION_PRICE || 0}
+                                step={1000}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.MIN_LAMINATION_PRICE = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Giá dán biên tối thiểu</label>
+                            <NumInput
+                                configValue={localConfig.MIN_EDGE_TAPING_PRICE || 0}
+                                step={1000}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.MIN_EDGE_TAPING_PRICE = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>Giá đóng khoen tối thiểu</label>
+                            <NumInput
+                                configValue={localConfig.MIN_GROMMET_PRICE || 0}
+                                step={1000}
+                                className={inputClsPr}
+                                onCommit={(v) =>
+                                    updateConfig((c) => {
+                                        c.MIN_GROMMET_PRICE = v;
+                                    })
+                                }
+                            />
+                            <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ===== STANDEE ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>Standee</h3>
+                        <button
+                            onClick={() =>
+                                updateConfig((c) => {
+                                    if (!c.STANDEE_OPTIONS) c.STANDEE_OPTIONS = [];
+                                    const id = 'standee_' + Date.now();
+                                    c.STANDEE_OPTIONS.push({
+                                        key: id,
+                                        name: 'Standee mới',
+                                        price: 0,
+                                    });
+                                })
+                            }
+                            className={btnAdd}
+                        >
+                            + Thêm loại
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {(localConfig.STANDEE_OPTIONS || []).map((opt, idx) => (
+                            <div
+                                key={opt.key}
+                                className="bg-gray-900/50 border border-gray-700 rounded-lg p-4 space-y-2"
+                            >
+                                <div>
+                                    <label className={labelCls}>Tên</label>
+                                    <input
+                                        type="text"
+                                        value={opt.name}
+                                        className={inputCls}
+                                        onChange={(e) =>
+                                            updateConfig((c) => {
+                                                c.STANDEE_OPTIONS[idx].name = e.target.value;
+                                            })
+                                        }
+                                    />
+                                </div>
+                                <div className="relative">
+                                    <label className={labelCls}>Giá</label>
+                                    <NumInput
+                                        configValue={opt.price}
+                                        step={1000}
+                                        className={inputClsPr}
+                                        onCommit={(v) =>
+                                            updateConfig((c) => {
+                                                c.STANDEE_OPTIONS[idx].price = v;
+                                            })
+                                        }
+                                    />
+                                    <span className="absolute right-3 top-[32px] text-gray-500">
+                                        đ
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() =>
+                                        updateConfig((c) => {
+                                            c.STANDEE_OPTIONS.splice(idx, 1);
+                                        })
+                                    }
+                                    className={
+                                        btnCls +
+                                        ' bg-red-600 hover:bg-red-700 text-white text-xs mt-1'
+                                    }
+                                >
+                                    Xóa
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* ===== FORMEX ===== */}
+                <section>
+                    <h3 className={sectionTitle}>Formex</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {Object.entries(formex)
+                            .filter(([k]) => k !== 'none')
+                            .map(([key, f]) => (
+                                <div
+                                    key={key}
+                                    className="bg-gray-750 bg-opacity-50 border border-gray-700 rounded-lg p-4"
+                                >
+                                    <label className={labelCls}>{f.name}</label>
+                                    <NumInput
+                                        configValue={f.price}
+                                        step={1000}
+                                        className={numCls}
+                                        onCommit={(v) => updateFormex(key, v)}
+                                    />
+                                    <span className="text-gray-500 text-xs ml-2">đ/m²</span>
+                                </div>
+                            ))}
+                    </div>
+                </section>
+
+                {/* ===== CHIẾT KHẤU FORMEX ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
+                            Chiết khấu Formex theo diện tích
+                        </h3>
+                        <button onClick={addDiscountTier} className={btnAdd}>
+                            + Thêm bậc
+                        </button>
+                    </div>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-700">
+                                <th className={thCls}>Từ (m²)</th>
+                                <th className={thCls}>Đến (m²)</th>
+                                <th className={thCls}>Chiết khấu (%)</th>
+                                <th className={thCls}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {discTiers.map((t, i) => (
+                                <tr key={i} className="border-b border-gray-700/50">
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={t.minArea}
+                                            step={1}
+                                            className={numCls}
+                                            onCommit={(v) => updateDiscountTier(i, 'minArea', v)}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        {t.maxArea === Infinity ? (
+                                            <span className="text-gray-400 italic">∞</span>
+                                        ) : (
+                                            <NumInput
+                                                configValue={t.maxArea}
+                                                step={1}
+                                                className={numCls}
+                                                onCommit={(v) =>
+                                                    updateDiscountTier(i, 'maxArea', v)
+                                                }
+                                            />
+                                        )}
+                                    </td>
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={parseFloat((t.discount * 100).toFixed(2))}
+                                            step={1}
+                                            className={numCls}
+                                            onCommit={(v) =>
+                                                updateDiscountTier(i, 'discount', v / 100)
+                                            }
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <button
+                                            onClick={() => delDiscountTier(i)}
+                                            className={btnDel}
+                                        >
+                                            Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </section>
+
+                {/* ===== GIÁ THÀNH PHẨM ===== */}
+                <section>
+                    <h3 className={sectionTitle}>Giá thành phẩm</h3>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className={labelCls}>Viền xung quanh (đ/m²)</label>
+                                <NumInput
+                                    configValue={fin.edgeTapingPricePerSqm}
+                                    step={1000}
+                                    className={numCls}
+                                    onCommit={(v) => updateFinishing('edgeTapingPricePerSqm', v)}
+                                />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Mắt cáo (đ/cái)</label>
+                                <NumInput
+                                    configValue={fin.grommetPricePerPiece}
+                                    step={500}
+                                    className={numCls}
+                                    onCommit={(v) => updateFinishing('grommetPricePerPiece', v)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="text-gray-300 font-semibold mb-2">
+                                Cắt bế (dieCutting)
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label className={labelCls}>Bậc 1: giới hạn (m²)</label>
+                                    <NumInput
+                                        configValue={fin.dieCutting.tier1LimitSqm}
+                                        step={1}
+                                        className={numCls}
+                                        onCommit={(v) => updateDieCut('tier1LimitSqm', v)}
+                                    />
+                                    <label className={labelCls + ' mt-2'}>Giá bậc 1 (đ/m²)</label>
+                                    <NumInput
+                                        configValue={fin.dieCutting.tier1PricePerSqm}
+                                        step={1000}
+                                        className={numCls}
+                                        onCommit={(v) => updateDieCut('tier1PricePerSqm', v)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Bậc 2: giới hạn (m²)</label>
+                                    <NumInput
+                                        configValue={fin.dieCutting.tier2LimitSqm}
+                                        step={1}
+                                        className={numCls}
+                                        onCommit={(v) => updateDieCut('tier2LimitSqm', v)}
+                                    />
+                                    <label className={labelCls + ' mt-2'}>Giá bậc 2 (đ/m²)</label>
+                                    <NumInput
+                                        configValue={fin.dieCutting.tier2PricePerSqm}
+                                        step={1000}
+                                        className={numCls}
+                                        onCommit={(v) => updateDieCut('tier2PricePerSqm', v)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Giá bậc 3 (đ/m²)</label>
+                                    <NumInput
+                                        configValue={fin.dieCutting.tier3PricePerSqm}
+                                        step={1000}
+                                        className={numCls}
+                                        onCommit={(v) => updateDieCut('tier3PricePerSqm', v)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-8">
+                <PriceConfigHistoryPanel moduleKey="large-print" />
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 border-t border-gray-700 pt-4">
+                <button
+                    onClick={handleSave}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+                >
+                    Lưu cài đặt
+                </button>
+                <button
+                    onClick={onCancel}
+                    className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
+                >
+                    Hủy
+                </button>
             </div>
         </div>
     );

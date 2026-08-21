@@ -2,6 +2,17 @@ import { DEFAULT_CONFIG } from '../config/defaultConfig';
 import { LARGE_PRINT_DEFAULT_CONFIG } from '../config/largePrintConfig';
 import { DECAL_DEFAULT_CONFIG } from '../config/decalConfig';
 import { UVDTF_DEFAULT_CONFIG } from '../config/uvdtfConfig';
+import { CATALOGUE_DEFAULT_CONFIG } from '../config/catalogueConfig';
+import { SPIRAL_DEFAULT_CONFIG } from '../config/spiralConfig';
+import { STICKER_DEFAULT_CONFIG } from '../config/stickerConfig';
+import { CARD_DEFAULT_CONFIG } from '../config/cardConfig';
+import { FLYER_DEFAULT_CONFIG } from '../config/flyerConfig';
+import { CHEAP_DECAL_DEFAULT_CONFIG } from '../config/cheapDecalConfig';
+import {
+    MODULE_VISIBILITY_DEFAULT_CONFIG,
+    validateModuleVisibilityConfig,
+    MODULE_VISIBILITY_SCHEMA_VERSION,
+} from '../config/moduleVisibilityConfig';
 import { restoreInfinity } from './restoreInfinity.js';
 import { validateDecalConfig, DECAL_CONFIG_SCHEMA_VERSION } from '../modules/decal/config/index.js';
 import {
@@ -13,6 +24,24 @@ import {
     validateLargePrintConfig,
     LARGE_PRINT_CONFIG_SCHEMA_VERSION,
 } from '../modules/large-print/config/index.js';
+import {
+    validateCatalogueConfig,
+    CATALOGUE_CONFIG_SCHEMA_VERSION,
+} from '../modules/catalogue/config/index.js';
+import {
+    validateSpiralConfig,
+    SPIRAL_CONFIG_SCHEMA_VERSION,
+} from '../modules/spiral/config/index.js';
+import {
+    validateStickerConfig,
+    STICKER_CONFIG_SCHEMA_VERSION,
+} from '../modules/sticker/config/index.js';
+import { validateCardConfig, CARD_CONFIG_SCHEMA_VERSION } from '../modules/card/config/index.js';
+import { validateFlyerConfig, FLYER_CONFIG_SCHEMA_VERSION } from '../modules/flyer/config/index.js';
+import {
+    validateCheapDecalConfig,
+    CHEAP_DECAL_CONFIG_SCHEMA_VERSION,
+} from '../modules/cheapdecal/config/index.js';
 import { loadConfigFromSupabase, saveConfigToSupabase } from '../lib/priceConfigStore.js';
 
 // P2-05.6: Apps Script đã được REMOVE hoàn toàn:
@@ -63,6 +92,79 @@ function deepValidateLargePrint(data, source) {
     return true;
 }
 
+// Deep schema validation cho catalogue config (catalogueConfig).
+function deepValidateCatalogue(data, source) {
+    const v = validateCatalogueConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} catalogueConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// Deep schema validation cho spiral config (spiralConfig).
+function deepValidateSpiral(data, source) {
+    const v = validateSpiralConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} spiralConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// Deep schema validation cho sticker config (stickerConfig).
+function deepValidateSticker(data, source) {
+    const v = validateStickerConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} stickerConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// Deep schema validation cho card config (cardConfig).
+function deepValidateCard(data, source) {
+    const v = validateCardConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} cardConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// Deep schema validation cho flyer config (flyerConfig).
+function deepValidateFlyer(data, source) {
+    const v = validateFlyerConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} flyerConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// Deep schema validation cho cheap decal config (cheapDecalConfig).
+function deepValidateCheapDecal(data, source) {
+    const v = validateCheapDecalConfig(data);
+    if (!v.isValid) {
+        console.warn(`[ConfigStorage] ${source} cheapDecalConfig không pass schema:`, v.errors);
+        return false;
+    }
+    return true;
+}
+
+// Deep schema validation cho cấu hình hiển thị tile (moduleVisibilityConfig).
+function deepValidateModuleVisibility(data, source) {
+    const v = validateModuleVisibilityConfig(data);
+    if (!v.isValid) {
+        console.warn(
+            `[ConfigStorage] ${source} moduleVisibilityConfig không pass schema:`,
+            v.errors
+        );
+        return false;
+    }
+    return true;
+}
+
 // Module name → localStorage key → default config → Supabase module key + schemaVersion.
 // P2-05.3: supabaseKey để map sang enum trong Supabase price_configs.module
 // (CHECK constraint trong docs/database/supabase-price-configs.sql).
@@ -92,6 +194,48 @@ const MODULE_MAP = {
         supabaseKey: 'uvdtf',
         schemaVersion: UVDTF_CONFIG_SCHEMA_VERSION,
     },
+    catalogueConfig: {
+        key: 'catalogueConfig',
+        default: CATALOGUE_DEFAULT_CONFIG,
+        supabaseKey: 'catalogue',
+        schemaVersion: CATALOGUE_CONFIG_SCHEMA_VERSION,
+    },
+    spiralConfig: {
+        key: 'spiralConfig',
+        default: SPIRAL_DEFAULT_CONFIG,
+        supabaseKey: 'spiral',
+        schemaVersion: SPIRAL_CONFIG_SCHEMA_VERSION,
+    },
+    stickerConfig: {
+        key: 'stickerConfig',
+        default: STICKER_DEFAULT_CONFIG,
+        supabaseKey: 'sticker',
+        schemaVersion: STICKER_CONFIG_SCHEMA_VERSION,
+    },
+    cardConfig: {
+        key: 'cardConfig',
+        default: CARD_DEFAULT_CONFIG,
+        supabaseKey: 'card',
+        schemaVersion: CARD_CONFIG_SCHEMA_VERSION,
+    },
+    flyerConfig: {
+        key: 'flyerConfig',
+        default: FLYER_DEFAULT_CONFIG,
+        supabaseKey: 'flyer',
+        schemaVersion: FLYER_CONFIG_SCHEMA_VERSION,
+    },
+    cheapDecalConfig: {
+        key: 'cheapDecalConfig',
+        default: CHEAP_DECAL_DEFAULT_CONFIG,
+        supabaseKey: 'cheapdecal',
+        schemaVersion: CHEAP_DECAL_CONFIG_SCHEMA_VERSION,
+    },
+    moduleVisibilityConfig: {
+        key: 'moduleVisibilityConfig',
+        default: MODULE_VISIBILITY_DEFAULT_CONFIG,
+        supabaseKey: 'ui-visibility',
+        schemaVersion: MODULE_VISIBILITY_SCHEMA_VERSION,
+    },
 };
 
 // Kiểm tra config có đủ key thiết yếu và giá trị hợp lệ không (tránh dùng data rác)
@@ -102,18 +246,39 @@ function isValidConfig(moduleName, data) {
         largePrintConfig: [],
         decalConfig: ['progressiveTiers'],
         uvdtfConfig: ['priceTiers'],
+        catalogueConfig: [],
+        spiralConfig: [],
+        stickerConfig: [],
+        cardConfig: [],
+        flyerConfig: [],
+        cheapDecalConfig: [],
+        moduleVisibilityConfig: [],
     };
     const requiredObjectKeys = {
         printConfig: ['PRINTER_CONFIG'],
         largePrintConfig: ['MATERIAL_TYPES', 'FINISHING_PRICES'],
         decalConfig: ['decalCosts'],
         uvdtfConfig: [],
+        catalogueConfig: ['STAPLE_CONFIG'],
+        spiralConfig: ['SPIRAL_CONFIG'],
+        stickerConfig: ['STICKER_CONFIG'],
+        cardConfig: ['CARD_CONFIG'],
+        flyerConfig: ['FLYER_CONFIG'],
+        cheapDecalConfig: ['CHEAP_DECAL_CONFIG'],
+        moduleVisibilityConfig: ['MODULE_VISIBILITY'],
     };
     const requiredOtherKeys = {
         printConfig: [],
         largePrintConfig: [],
         decalConfig: ['basePrintWidth'],
         uvdtfConfig: ['printableWidthCM'],
+        catalogueConfig: [],
+        spiralConfig: [],
+        stickerConfig: [],
+        cardConfig: [],
+        flyerConfig: [],
+        cheapDecalConfig: [],
+        moduleVisibilityConfig: [],
     };
     const arrKeys = requiredArrayKeys[moduleName] || [];
     const objKeys = requiredObjectKeys[moduleName] || [];
@@ -161,9 +326,44 @@ export async function loadConfigFromCloud(moduleName) {
                     !deepValidateLargePrint(supaData, 'supabase')
                 ) {
                     // skip — fallback localStorage
+                } else if (
+                    moduleName === 'catalogueConfig' &&
+                    !deepValidateCatalogue(supaData, 'supabase')
+                ) {
+                    // skip — fallback localStorage
+                } else if (
+                    moduleName === 'spiralConfig' &&
+                    !deepValidateSpiral(supaData, 'supabase')
+                ) {
+                    // skip — fallback localStorage
+                } else if (
+                    moduleName === 'stickerConfig' &&
+                    !deepValidateSticker(supaData, 'supabase')
+                ) {
+                    // skip — fallback localStorage
+                } else if (moduleName === 'cardConfig' && !deepValidateCard(supaData, 'supabase')) {
+                    // skip — fallback localStorage
+                } else if (
+                    moduleName === 'flyerConfig' &&
+                    !deepValidateFlyer(supaData, 'supabase')
+                ) {
+                    // skip — fallback localStorage
+                } else if (
+                    moduleName === 'cheapDecalConfig' &&
+                    !deepValidateCheapDecal(supaData, 'supabase')
+                ) {
+                    // skip — fallback localStorage
+                } else if (
+                    moduleName === 'moduleVisibilityConfig' &&
+                    !deepValidateModuleVisibility(supaData, 'supabase')
+                ) {
+                    // skip — fallback localStorage
                 } else {
-                    localStorage.setItem(mod.key, JSON.stringify(supaData));
-                    return supaData;
+                    // Merge với default để backward-compat: config lưu trước khi
+                    // add key mới (vd PAPER_REFERENCE_CONFIG) → key mới lấy từ default.
+                    const merged = { ...restoreInfinity(defaultCfg), ...supaData };
+                    localStorage.setItem(mod.key, JSON.stringify(merged));
+                    return merged;
                 }
             }
         } catch (e) {
@@ -196,8 +396,44 @@ export async function loadConfigFromCloud(moduleName) {
                     !deepValidateLargePrint(parsed, 'localStorage')
                 ) {
                     // skip — fallback default
+                } else if (
+                    moduleName === 'catalogueConfig' &&
+                    !deepValidateCatalogue(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
+                } else if (
+                    moduleName === 'spiralConfig' &&
+                    !deepValidateSpiral(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
+                } else if (
+                    moduleName === 'stickerConfig' &&
+                    !deepValidateSticker(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
+                } else if (
+                    moduleName === 'cardConfig' &&
+                    !deepValidateCard(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
+                } else if (
+                    moduleName === 'flyerConfig' &&
+                    !deepValidateFlyer(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
+                } else if (
+                    moduleName === 'cheapDecalConfig' &&
+                    !deepValidateCheapDecal(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
+                } else if (
+                    moduleName === 'moduleVisibilityConfig' &&
+                    !deepValidateModuleVisibility(parsed, 'localStorage')
+                ) {
+                    // skip — fallback default
                 } else {
-                    return parsed;
+                    // Merge với default để backward-compat: key mới lấy từ default.
+                    return { ...restoreInfinity(defaultCfg), ...parsed };
                 }
             }
         }
@@ -267,6 +503,79 @@ export async function saveConfigToCloud(moduleName, config) {
             local: false,
             cloud: false,
             error: `Large print config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (moduleName === 'catalogueConfig' && !deepValidateCatalogue(config, 'saveConfigToCloud')) {
+        const v = validateCatalogueConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Catalogue config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (moduleName === 'spiralConfig' && !deepValidateSpiral(config, 'saveConfigToCloud')) {
+        const v = validateSpiralConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Spiral config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (moduleName === 'stickerConfig' && !deepValidateSticker(config, 'saveConfigToCloud')) {
+        const v = validateStickerConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Sticker config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (moduleName === 'cardConfig' && !deepValidateCard(config, 'saveConfigToCloud')) {
+        const v = validateCardConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Card config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (moduleName === 'flyerConfig' && !deepValidateFlyer(config, 'saveConfigToCloud')) {
+        const v = validateFlyerConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Flyer config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (moduleName === 'cheapDecalConfig' && !deepValidateCheapDecal(config, 'saveConfigToCloud')) {
+        const v = validateCheapDecalConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Cheap decal config invalid: ${v.errors.join('; ')}`,
+            provider: 'supabase',
+            newVersion: null,
+        };
+    }
+    if (
+        moduleName === 'moduleVisibilityConfig' &&
+        !deepValidateModuleVisibility(config, 'saveConfigToCloud')
+    ) {
+        const v = validateModuleVisibilityConfig(config);
+        return {
+            local: false,
+            cloud: false,
+            error: `Module visibility config invalid: ${v.errors.join('; ')}`,
             provider: 'supabase',
             newVersion: null,
         };
@@ -369,7 +678,13 @@ export function loadConfig() {
             const parsed = restoreInfinity(JSON.parse(savedConfigStr));
             if (isValidConfig('printConfig', parsed)) {
                 // TASK-0010: deep schema validation thay cho chỉ shallow key check
-                if (deepValidatePrint(parsed, 'localStorage')) return parsed;
+                // Merge với DEFAULT_CONFIG để backward-compat: config cũ thiếu key
+                // mới (vd PAPER_REFERENCE_CONFIG) sẽ lấy từ default.
+                if (deepValidatePrint(parsed, 'localStorage'))
+                    return {
+                        ...restoreInfinity(JSON.parse(JSON.stringify(DEFAULT_CONFIG))),
+                        ...parsed,
+                    };
                 // else fallback
             } else {
                 console.warn(
@@ -496,4 +811,225 @@ export function saveUvdtfConfig(config) {
         console.error('Lỗi khi lưu UV DTF config:', e);
         return false;
     }
+}
+
+export function loadCatalogueConfig() {
+    try {
+        const saved = localStorage.getItem('catalogueConfig');
+        if (saved) {
+            const parsed = restoreInfinity(JSON.parse(saved));
+            if (
+                isValidConfig('catalogueConfig', parsed) &&
+                deepValidateCatalogue(parsed, 'localStorage')
+            ) {
+                // Merge với default để backward-compat: key mới lấy từ default.
+                // restoreInfinity giữ tiers[].max = Infinity qua JSON round-trip.
+                return {
+                    ...restoreInfinity(JSON.parse(JSON.stringify(CATALOGUE_DEFAULT_CONFIG))),
+                    ...parsed,
+                };
+            }
+            console.warn(
+                '[ConfigStorage] localStorage catalogueConfig không hợp lệ, dùng mặc định.'
+            );
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc catalogue config:', e);
+    }
+    return restoreInfinity(JSON.parse(JSON.stringify(CATALOGUE_DEFAULT_CONFIG)));
+}
+
+export function saveCatalogueConfig(config) {
+    if (!deepValidateCatalogue(config, 'saveCatalogueConfig')) return false;
+    try {
+        localStorage.setItem('catalogueConfig', JSON.stringify(config));
+        return true;
+    } catch (e) {
+        console.error('Lỗi khi lưu catalogue config:', e);
+        return false;
+    }
+}
+
+export function loadSpiralConfig() {
+    try {
+        const saved = localStorage.getItem('spiralConfig');
+        if (saved) {
+            const parsed = restoreInfinity(JSON.parse(saved));
+            if (
+                isValidConfig('spiralConfig', parsed) &&
+                deepValidateSpiral(parsed, 'localStorage')
+            ) {
+                return {
+                    ...restoreInfinity(JSON.parse(JSON.stringify(SPIRAL_DEFAULT_CONFIG))),
+                    ...parsed,
+                };
+            }
+            console.warn('[ConfigStorage] localStorage spiralConfig không hợp lệ, dùng mặc định.');
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc spiral config:', e);
+    }
+    return restoreInfinity(JSON.parse(JSON.stringify(SPIRAL_DEFAULT_CONFIG)));
+}
+
+export function saveSpiralConfig(config) {
+    if (!deepValidateSpiral(config, 'saveSpiralConfig')) return false;
+    try {
+        localStorage.setItem('spiralConfig', JSON.stringify(config));
+        return true;
+    } catch (e) {
+        console.error('Lỗi khi lưu spiral config:', e);
+        return false;
+    }
+}
+
+export function loadStickerConfig() {
+    try {
+        const saved = localStorage.getItem('stickerConfig');
+        if (saved) {
+            const parsed = restoreInfinity(JSON.parse(saved));
+            if (
+                isValidConfig('stickerConfig', parsed) &&
+                deepValidateSticker(parsed, 'localStorage')
+            ) {
+                return {
+                    ...restoreInfinity(JSON.parse(JSON.stringify(STICKER_DEFAULT_CONFIG))),
+                    ...parsed,
+                };
+            }
+            console.warn('[ConfigStorage] localStorage stickerConfig không hợp lệ, dùng mặc định.');
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc sticker config:', e);
+    }
+    return restoreInfinity(JSON.parse(JSON.stringify(STICKER_DEFAULT_CONFIG)));
+}
+
+export function saveStickerConfig(config) {
+    if (!deepValidateSticker(config, 'saveStickerConfig')) return false;
+    try {
+        localStorage.setItem('stickerConfig', JSON.stringify(config));
+        return true;
+    } catch (e) {
+        console.error('Lỗi khi lưu sticker config:', e);
+        return false;
+    }
+}
+
+export function loadCardConfig() {
+    try {
+        const saved = localStorage.getItem('cardConfig');
+        if (saved) {
+            const parsed = restoreInfinity(JSON.parse(saved));
+            if (isValidConfig('cardConfig', parsed) && deepValidateCard(parsed, 'localStorage')) {
+                return {
+                    ...restoreInfinity(JSON.parse(JSON.stringify(CARD_DEFAULT_CONFIG))),
+                    ...parsed,
+                };
+            }
+            console.warn('[ConfigStorage] localStorage cardConfig không hợp lệ, dùng mặc định.');
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc card config:', e);
+    }
+    return restoreInfinity(JSON.parse(JSON.stringify(CARD_DEFAULT_CONFIG)));
+}
+
+export function saveCardConfig(config) {
+    if (!deepValidateCard(config, 'saveCardConfig')) return false;
+    try {
+        localStorage.setItem('cardConfig', JSON.stringify(config));
+        return true;
+    } catch (e) {
+        console.error('Lỗi khi lưu card config:', e);
+        return false;
+    }
+}
+
+export function loadFlyerConfig() {
+    try {
+        const saved = localStorage.getItem('flyerConfig');
+        if (saved) {
+            const parsed = restoreInfinity(JSON.parse(saved));
+            if (isValidConfig('flyerConfig', parsed) && deepValidateFlyer(parsed, 'localStorage')) {
+                return {
+                    ...restoreInfinity(JSON.parse(JSON.stringify(FLYER_DEFAULT_CONFIG))),
+                    ...parsed,
+                };
+            }
+            console.warn('[ConfigStorage] localStorage flyerConfig không hợp lệ, dùng mặc định.');
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc flyer config:', e);
+    }
+    return restoreInfinity(JSON.parse(JSON.stringify(FLYER_DEFAULT_CONFIG)));
+}
+
+export function saveFlyerConfig(config) {
+    if (!deepValidateFlyer(config, 'saveFlyerConfig')) return false;
+    try {
+        localStorage.setItem('flyerConfig', JSON.stringify(config));
+        return true;
+    } catch (e) {
+        console.error('Lỗi khi lưu flyer config:', e);
+        return false;
+    }
+}
+
+export function loadCheapDecalConfig() {
+    try {
+        const saved = localStorage.getItem('cheapDecalConfig');
+        if (saved) {
+            const parsed = restoreInfinity(JSON.parse(saved));
+            if (
+                isValidConfig('cheapDecalConfig', parsed) &&
+                deepValidateCheapDecal(parsed, 'localStorage')
+            ) {
+                return {
+                    ...restoreInfinity(JSON.parse(JSON.stringify(CHEAP_DECAL_DEFAULT_CONFIG))),
+                    ...parsed,
+                };
+            }
+            console.warn(
+                '[ConfigStorage] localStorage cheapDecalConfig không hợp lệ, dùng mặc định.'
+            );
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc cheap decal config:', e);
+    }
+    return restoreInfinity(JSON.parse(JSON.stringify(CHEAP_DECAL_DEFAULT_CONFIG)));
+}
+
+export function saveCheapDecalConfig(config) {
+    if (!deepValidateCheapDecal(config, 'saveCheapDecalConfig')) return false;
+    try {
+        localStorage.setItem('cheapDecalConfig', JSON.stringify(config));
+        return true;
+    } catch (e) {
+        console.error('Lỗi khi lưu cheap decal config:', e);
+        return false;
+    }
+}
+
+export function loadModuleVisibilityConfig() {
+    try {
+        const saved = localStorage.getItem('moduleVisibilityConfig');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (
+                isValidConfig('moduleVisibilityConfig', parsed) &&
+                deepValidateModuleVisibility(parsed, 'localStorage')
+            ) {
+                return {
+                    MODULE_VISIBILITY: {
+                        ...MODULE_VISIBILITY_DEFAULT_CONFIG.MODULE_VISIBILITY,
+                        ...parsed.MODULE_VISIBILITY,
+                    },
+                };
+            }
+        }
+    } catch (e) {
+        console.error('Lỗi khi đọc module visibility config:', e);
+    }
+    return JSON.parse(JSON.stringify(MODULE_VISIBILITY_DEFAULT_CONFIG));
 }

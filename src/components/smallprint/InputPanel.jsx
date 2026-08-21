@@ -1,13 +1,41 @@
 // React 18+ auto JSX transform — không cần import React.
+import { useEffect } from 'react';
+import NumberField from '../common/NumberField';
+
 export default function InputPanel({ config, params, onChange, isAutoCalculating }) {
+    // Handler cho select + checkbox. Number field dùng NumberField shared để fix
+    // leading-zero bug (xem src/components/common/NumberField.jsx).
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        let newValue = type === 'checkbox' ? checked : value;
-        if (type === 'number') {
-            newValue = parseFloat(value);
-            if (isNaN(newValue)) newValue = 0;
-        }
+        const newValue = type === 'checkbox' ? checked : value;
         onChange(name, newValue);
+    };
+
+    // Ép kim — danh sách khuôn (mỗi khuôn: w, h, special, impressions). Cập nhật mảng
+    // rồi đẩy lên qua onChange('foilMolds', ...) — parent setParams merge như field khác.
+    const foilMolds = params.foilMolds || [];
+    const updateMold = (index, key, value) => {
+        onChange(
+            'foilMolds',
+            foilMolds.map((m, i) => (i === index ? { ...m, [key]: value } : m))
+        );
+    };
+    const addMold = () => {
+        onChange('foilMolds', [
+            ...foilMolds,
+            {
+                w: parseFloat(params.productW) || 0,
+                h: parseFloat(params.productH) || 0,
+                special: false,
+                impressions: 1,
+            },
+        ]);
+    };
+    const removeMold = (index) => {
+        onChange(
+            'foilMolds',
+            foilMolds.filter((_, i) => i !== index)
+        );
     };
 
     const paperData = config.PAPER_STOCK_DATA || [];
@@ -27,6 +55,15 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
         sheetOptions[params.largeSheetSelector].w === 'custom';
 
     const isSidesDisabled = isSqm || isPerSheet || params.mountingType === 'yes';
+
+    // BUG fix: khi chuyển sang decal/per_sheet/bồi, select "Số mặt in" bị disable
+    // với display value=1, nhưng state `params.printSides` giữ nguyên giá trị cũ
+    // (vd '2') → engine đọc 2 mặt sai. Auto reset về '1' cho khớp với display.
+    useEffect(() => {
+        if (isSidesDisabled && String(params.printSides) !== '1') {
+            onChange('printSides', '1');
+        }
+    }, [isSidesDisabled, params.printSides, onChange]);
 
     return (
         <div className="lg:col-span-1" id="controls">
@@ -53,13 +90,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                     <div id="artPaperPriceGroup" className="mb-4">
                         <label htmlFor="artPaperPrice">Giá 1 tờ giấy mỹ thuật</label>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="artPaperPrice"
-                                name="artPaperPrice"
                                 value={params.artPaperPrice}
-                                onChange={handleChange}
-                                step="100"
+                                onCommit={(v) => onChange('artPaperPrice', v)}
+                                step={100}
                             />
                             <span className="unit">VNĐ</span>
                         </div>
@@ -69,13 +104,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                     <div>
                         <label htmlFor="productW">Rộng (W)</label>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="productW"
-                                name="productW"
                                 value={params.productW}
-                                onChange={handleChange}
-                                step="0.1"
+                                onCommit={(v) => onChange('productW', v)}
+                                step={0.1}
                             />
                             <span className="unit">cm</span>
                         </div>
@@ -83,13 +116,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                     <div>
                         <label htmlFor="productH">Cao (H)</label>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="productH"
-                                name="productH"
                                 value={params.productH}
-                                onChange={handleChange}
-                                step="0.1"
+                                onCommit={(v) => onChange('productH', v)}
+                                step={0.1}
                             />
                             <span className="unit">cm</span>
                         </div>
@@ -98,13 +129,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                 <div className="mb-4">
                     <label htmlFor="bleed">Bù xén (tràn lề) mỗi cạnh</label>
                     <div className="relative">
-                        <input
-                            type="number"
+                        <NumberField
                             id="bleed"
-                            name="bleed"
                             value={params.bleed}
-                            onChange={handleChange}
-                            step="0.05"
+                            onCommit={(v) => onChange('bleed', v)}
+                            step={0.05}
                         />
                         <span className="unit">cm</span>
                     </div>
@@ -113,13 +142,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                     <div>
                         <label htmlFor="productQuantity">Số lượng cần in</label>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="productQuantity"
-                                name="productQuantity"
                                 value={params.productQuantity}
-                                onChange={handleChange}
-                                step="100"
+                                onCommit={(v) => onChange('productQuantity', v)}
+                                step={100}
                             />
                             <span className="unit">SP</span>
                         </div>
@@ -141,13 +168,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                 <div className="mb-4">
                     <label htmlFor="printContents">Số nội dung in</label>
                     <div className="relative">
-                        <input
-                            type="number"
+                        <NumberField
                             id="printContents"
-                            name="printContents"
                             value={params.printContents}
-                            onChange={handleChange}
-                            step="1"
+                            onCommit={(v) => onChange('printContents', v)}
+                            step={1}
                         />
                         <span className="unit">Nội dung</span>
                     </div>
@@ -175,6 +200,12 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         <option value="4color">In 4 màu (CMYK)</option>
                         <option value="1color">In 1 màu (Đen)</option>
                     </select>
+                    {params.printColorMode === '1color' && (
+                        <p className="mt-1 text-xs text-yellow-400">
+                            ⚠ In 1 màu đen chỉ in chữ &amp; đối tượng đen — KHÔNG in nền đen kín (full
+                            đen).
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -205,13 +236,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         <div>
                             <label htmlFor="customSheetW">Rộng (W)</label>
                             <div className="relative">
-                                <input
-                                    type="number"
+                                <NumberField
                                     id="customSheetW"
-                                    name="customSheetW"
                                     value={params.customSheetW}
-                                    onChange={handleChange}
-                                    step="1"
+                                    onCommit={(v) => onChange('customSheetW', v)}
+                                    step={1}
                                 />
                                 <span className="unit">cm</span>
                             </div>
@@ -219,13 +248,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         <div>
                             <label htmlFor="customSheetH">Cao (H)</label>
                             <div className="relative">
-                                <input
-                                    type="number"
+                                <NumberField
                                     id="customSheetH"
-                                    name="customSheetH"
                                     value={params.customSheetH}
-                                    onChange={handleChange}
-                                    step="1"
+                                    onCommit={(v) => onChange('customSheetH', v)}
+                                    step={1}
                                 />
                                 <span className="unit">cm</span>
                             </div>
@@ -308,58 +335,92 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                 </div>
                 {params.foilStamping === 'yes' && (
                     <div className="ml-4 mb-4 space-y-3 border-l-2 border-yellow-500/50 pl-4">
-                        <label className="flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                name="foilSpecialColor"
-                                checked={params.foilSpecialColor}
-                                onChange={handleChange}
-                                className="bg-gray-700 rounded mr-2"
-                            />
-                            <span>Nhũ màu đặc biệt</span>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                name="foilCustomSize"
-                                checked={params.foilCustomSize}
-                                onChange={handleChange}
-                                className="bg-gray-700 rounded mr-2"
-                            />
-                            <span>Kích thước ép kim khác sản phẩm</span>
-                        </label>
-                        {params.foilCustomSize && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="foilW">Rộng ép kim (W)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            id="foilW"
-                                            name="foilW"
-                                            value={params.foilW}
-                                            onChange={handleChange}
-                                            step="0.1"
-                                        />
-                                        <span className="unit">cm</span>
+                        <p className="text-xs text-gray-400">
+                            <span className="text-gray-300 font-semibold">Số lần ép</span> = số lần
+                            thay đổi vị trí ép (mỗi lần đặt máy dập 1 vị trí). VD: cùng khuôn ép 2 vị
+                            trí khác nhau = 2 lần; ép 2 mặt = 2 lần; ép 2 mặt × 2 vị trí/mặt = 4 lần.
+                            Mỗi lần ép thêm trên cùng khuôn tính 50% công. Khuôn / màu nhũ khác nhau
+                            → thêm khuôn mới.
+                        </p>
+                        {foilMolds.map((mold, index) => (
+                            <div
+                                key={index}
+                                className="rounded-md border border-gray-600 bg-gray-900/40 p-3 space-y-3"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-yellow-300">
+                                        Khuôn {index + 1}
+                                    </span>
+                                    {foilMolds.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => removeMold(index)}
+                                            className="text-xs text-red-400 hover:text-red-300"
+                                        >
+                                            ✕ Xóa
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label>Rộng ép kim (W)</label>
+                                        <div className="relative">
+                                            <NumberField
+                                                value={mold.w}
+                                                onCommit={(v) => updateMold(index, 'w', v)}
+                                                step={0.1}
+                                            />
+                                            <span className="unit">cm</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label>Cao ép kim (H)</label>
+                                        <div className="relative">
+                                            <NumberField
+                                                value={mold.h}
+                                                onCommit={(v) => updateMold(index, 'h', v)}
+                                                step={0.1}
+                                            />
+                                            <span className="unit">cm</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <label htmlFor="foilH">Cao ép kim (H)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            id="foilH"
-                                            name="foilH"
-                                            value={params.foilH}
-                                            onChange={handleChange}
-                                            step="0.1"
-                                        />
-                                        <span className="unit">cm</span>
+                                <div className="grid grid-cols-2 gap-4 items-end">
+                                    <div>
+                                        <label>Số lần ép</label>
+                                        <div className="relative">
+                                            <NumberField
+                                                value={mold.impressions}
+                                                onCommit={(v) =>
+                                                    updateMold(index, 'impressions', v)
+                                                }
+                                                step={1}
+                                                min={1}
+                                            />
+                                            <span className="unit">lần</span>
+                                        </div>
                                     </div>
+                                    <label className="flex items-center cursor-pointer pb-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!mold.special}
+                                            onChange={(e) =>
+                                                updateMold(index, 'special', e.target.checked)
+                                            }
+                                            className="bg-gray-700 rounded mr-2"
+                                        />
+                                        <span>Nhũ màu đặc biệt</span>
+                                    </label>
                                 </div>
                             </div>
-                        )}
+                        ))}
+                        <button
+                            type="button"
+                            onClick={addMold}
+                            className="w-full rounded-md border border-dashed border-yellow-500/60 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/10"
+                        >
+                            ＋ Thêm khuôn
+                        </button>
                     </div>
                 )}
                 <div className="border-t border-gray-600 pt-4">

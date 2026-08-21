@@ -1,12 +1,28 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
     getPrintableArea,
     getProfitMargin,
     calculatePrintContentSurcharge,
 } from '../../utils/calculator';
+import { calculateCustomerQuote } from '../../utils/customerQuote';
+import NumberField from '../common/NumberField';
 import { LargeSheetVisualizer, PrintSheetVisualizer } from './SheetVisualizer';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
+
+// Row 1 khoản chi phí — label trái, số phải, invoice-style.
+function QuoteRow({ label, value, color = 'text-white', prefix = '', hideIfZero = false }) {
+    if (hideIfZero && value === 0) return null;
+    return (
+        <div className="flex justify-between items-baseline border-b border-gray-700/40 pb-1.5">
+            <span className="text-sm text-gray-300">{label}</span>
+            <span className={`font-semibold ${color}`}>
+                {prefix}
+                {Math.abs(value).toLocaleString('vi-VN')} đ
+            </span>
+        </div>
+    );
+}
 
 export default function ResultPanel({
     results,
@@ -15,8 +31,8 @@ export default function ResultPanel({
     config,
     isCalculating,
     errorMsg,
-    finishingCustomerPrices: _finishingCustomerPrices,
-    dieCuttingCustomerPrice: _dieCuttingCustomerPrice,
+    finishingCustomerPrices,
+    dieCuttingCustomerPrice,
     holePunchingCost,
     creasingCost,
     mountingCost,
@@ -55,6 +71,37 @@ export default function ResultPanel({
     const mainResult = bestPreferredOption || absoluteBestOption;
     // Phương án đang hiển thị sơ đồ: ưu tiên phương án user chọn, mặc định là tốt nhất
     const displayResult = selectedResult || mainResult;
+
+    // displayQuote: quote báo khách cho phương án user đang chọn trong bảng so
+    // sánh (click row). Fallback về `quote` prop (main result) nếu compute fail.
+    // ⚠ MUST be called BEFORE any early return để giữ hook order stable.
+    const displayQuote = useMemo(() => {
+        if (!displayResult) return quote;
+        try {
+            return calculateCustomerQuote(
+                displayResult,
+                params,
+                finishingCustomerPrices || {
+                    holePunching: 0,
+                    creasing: 0,
+                    mounting: 0,
+                },
+                dieCuttingCustomerPrice || { moldCost: 0, laborCustomerPrice: 0 },
+                foilResult,
+                config
+            );
+        } catch {
+            return quote;
+        }
+    }, [
+        displayResult,
+        params,
+        finishingCustomerPrices,
+        dieCuttingCustomerPrice,
+        foilResult,
+        config,
+        quote,
+    ]);
 
     if (errorMsg || validResults.length === 0) {
         return (
@@ -106,6 +153,22 @@ export default function ResultPanel({
 
     const minPrice = finalTotalCost * (1 + getProfitMargin(finalTotalCost, config));
     const isShowingMinPrice = minPrice >= 300000;
+
+    // Đơn giá IN / trang — chỉ tính tiền giấy + tiền in (KHÔNG cán màng, KHÔNG
+    // gia công). Dùng khi admin cần báo giá "chỉ in" tách khỏi thành phẩm.
+    const printOnlyCostPerProduct =
+        (absoluteBestOption.paperCostPerProduct || 0) +
+        (absoluteBestOption.printCostPerProduct || 0);
+    const printOnlyTotalCost = productQuantity * printOnlyCostPerProduct;
+    const { surcharge: printOnlySurcharge } = calculatePrintContentSurcharge(
+        printOnlyTotalCost,
+        productQuantity,
+        printContents,
+        config
+    );
+    const printOnlyFinalCost = printOnlyTotalCost + printOnlySurcharge;
+    const printOnlyMinPrice =
+        printOnlyFinalCost * (1 + getProfitMargin(printOnlyFinalCost, config));
 
     const selectedPaperInfo = (config.PAPER_STOCK_DATA || [])[params.paperType];
 
@@ -175,11 +238,60 @@ export default function ResultPanel({
                             {absoluteBestOption.actualPrintH.toFixed(2)}
                         </p>
                     </div>
+                    <div>
+                        <p className="text-sm text-gray-400">Tổng trang A4</p>
+                        <p className="text-2xl font-semibold">
+                            {quote && !quote.error ? quote.totalA4Pages : '—'}
+                        </p>
+                        {quote &&
+                            !quote.error &&
+                            quote.totalPrintSheets != null &&
+                            quote.conversionFactor != null && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    = {quote.totalPrintSheets} tờ × {quote.conversionFactor} A4 ×{' '}
+                                    {quote.printSides} mặt
+                                </p>
+                            )}
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-400">Đơn giá TT / trang</p>
+                        <p className="text-2xl font-bold text-cyan-400">
+                            {quote && !quote.error && quote.totalA4PagesRaw > 0
+                                ? Math.round(minPrice / quote.totalA4PagesRaw).toLocaleString(
+                                      'vi-VN'
+                                  ) + ' đ/trang'
+                                : '—'}
+                        </p>
+                    </div>
                     <div className="md:col-span-2">
                         <p className="text-sm text-gray-400">SP / Tờ in</p>
                         <p className="text-2xl font-semibold">
                             {absoluteBestOption.productsPerSheet} sp
                         </p>
+                    </div>
+                    <div className="md:col-span-2">
+                        <p className="text-sm text-gray-400">Đơn giá IN / trang (chưa gia công)</p>
+                        {(() => {
+                            if (!quote || quote.error || !(quote.totalA4PagesRaw > 0)) {
+                                return <p className="text-2xl font-bold text-purple-400">—</p>;
+                            }
+                            const computed = Math.round(printOnlyMinPrice / quote.totalA4PagesRaw);
+                            const floor = config.PAPER_REFERENCE_CONFIG?.minPrintPricePerPage || 0;
+                            const isFloored = floor > 0 && computed < floor;
+                            const displayed = isFloored ? floor : computed;
+                            return (
+                                <p
+                                    className={`text-2xl font-bold ${isFloored ? 'text-orange-400' : 'text-purple-400'}`}
+                                >
+                                    {displayed.toLocaleString('vi-VN')} đ/trang
+                                    {isFloored && (
+                                        <span className="ml-2 text-xs text-orange-300 font-normal">
+                                            🔒 (sàn — thực tính {computed.toLocaleString('vi-VN')}đ)
+                                        </span>
+                                    )}
+                                </p>
+                            );
+                        })()}
                     </div>
                 </div>
 
@@ -208,46 +320,35 @@ export default function ResultPanel({
             </div>
 
             {/* Sticky bar — hiện khi scroll qua phần giá, có input chỉnh thông số */}
-            {showStickyBar && quote && !quote.error && (
+            {showStickyBar && displayQuote && !displayQuote.error && (
                 <div className="fixed top-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur border-b border-yellow-500/50 shadow-lg px-3 py-2">
                     <div className="max-w-screen-2xl mx-auto flex items-center gap-3 flex-wrap">
                         {/* Inputs */}
                         <div className="flex items-center gap-2 flex-wrap flex-1">
                             <div className="flex items-center gap-1">
                                 <label className="text-xs text-gray-500">SL:</label>
-                                <input
-                                    type="number"
+                                <NumberField
                                     value={params.productQuantity}
-                                    onChange={(e) => {
-                                        const v = parseInt(e.target.value, 10);
-                                        if (!isNaN(v)) onChange('productQuantity', v);
-                                    }}
+                                    onCommit={(v) => onChange('productQuantity', v)}
+                                    step={1}
                                     className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
                                 />
                             </div>
                             <div className="flex items-center gap-1">
                                 <label className="text-xs text-gray-500">W:</label>
-                                <input
-                                    type="number"
+                                <NumberField
                                     value={params.productW}
-                                    step="0.1"
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        if (!isNaN(v)) onChange('productW', v);
-                                    }}
+                                    onCommit={(v) => onChange('productW', v)}
+                                    step={0.1}
                                     className="w-16 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
                                 />
                             </div>
                             <div className="flex items-center gap-1">
                                 <label className="text-xs text-gray-500">H:</label>
-                                <input
-                                    type="number"
+                                <NumberField
                                     value={params.productH}
-                                    step="0.1"
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        if (!isNaN(v)) onChange('productH', v);
-                                    }}
+                                    onCommit={(v) => onChange('productH', v)}
+                                    step={0.1}
                                     className="w-16 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
                                 />
                             </div>
@@ -284,7 +385,7 @@ export default function ResultPanel({
                             <div className="text-center">
                                 <span className="text-xs text-gray-500 block">Giá</span>
                                 <span className="text-xl font-bold text-yellow-300">
-                                    {quote.totalCustomerCost.toLocaleString('vi-VN')} đ
+                                    {displayQuote.totalCustomerCost.toLocaleString('vi-VN')} đ
                                 </span>
                             </div>
                         </div>
@@ -292,8 +393,8 @@ export default function ResultPanel({
                 </div>
             )}
 
-            {/* Báo giá khách */}
-            {quote && (
+            {/* Báo giá khách — dùng displayQuote (theo row đang chọn trong bảng so sánh) */}
+            {displayQuote && (
                 <div
                     ref={priceSectionRef}
                     className="bg-gray-800 p-6 rounded-lg border border-yellow-500 mb-8 border-dashed"
@@ -301,39 +402,149 @@ export default function ResultPanel({
                     <h3 className="text-2xl font-bold text-yellow-300 mb-4 text-center border-b border-gray-700 pb-2">
                         Giá
                     </h3>
-                    {quote.error ? (
-                        <p className="text-center text-red-400">{quote.error}</p>
+                    {displayQuote.error ? (
+                        <p className="text-center text-red-400">{displayQuote.error}</p>
                     ) : (
                         <div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-center items-center mb-6">
+                            {/* Header: sheets + pages + unit price */}
+                            <div className="grid grid-cols-3 gap-4 text-center mb-4 pb-3 border-b border-gray-700">
+                                <div>
+                                    <p className="text-sm text-gray-400">Số tờ in</p>
+                                    <p className="text-2xl font-semibold">
+                                        {displayQuote.totalPrintSheets != null
+                                            ? `${displayQuote.totalPrintSheets.toLocaleString('vi-VN')} tờ`
+                                            : '—'}
+                                    </p>
+                                </div>
                                 <div>
                                     <p className="text-sm text-gray-400">Tổng trang A4</p>
-                                    <p className="text-2xl font-semibold">{quote.totalA4Pages}</p>
+                                    <p className="text-2xl font-semibold">
+                                        {displayQuote.totalA4Pages}
+                                    </p>
+                                    {displayQuote.totalPrintSheets != null &&
+                                        displayQuote.conversionFactor != null && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                = {displayQuote.totalPrintSheets} ×{' '}
+                                                {displayQuote.conversionFactor} A4 ×{' '}
+                                                {displayQuote.printSides} mặt
+                                            </p>
+                                        )}
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-400">Đơn giá in/trang</p>
-                                    <p className="text-xl font-semibold">{quote.unitPriceText}</p>
-                                </div>
-                                <div className="md:col-span-1">
-                                    <p className="text-sm text-gray-400">Tiền In + Cán Màng</p>
-                                    <p className="text-xl font-semibold text-green-400">
-                                        {quote.totalPrintCost.toLocaleString('vi-VN')} +{' '}
-                                        {quote.totalLaminationCost.toLocaleString('vi-VN')}
+                                    <p className="text-2xl font-semibold">
+                                        {displayQuote.unitPriceText}
                                     </p>
                                 </div>
-                                {quote.foilStampingCost > 0 && (
-                                    <div className="md:col-span-1">
-                                        <p className="text-sm text-gray-400">Ép Kim (nhũ)</p>
-                                        <p className="text-xl font-semibold text-yellow-400">
-                                            {quote.foilStampingCost.toLocaleString('vi-VN')}
-                                        </p>
-                                    </div>
+                            </div>
+
+                            {/* Invoice-style breakdown */}
+                            <div className="space-y-2 text-base mb-4">
+                                <QuoteRow
+                                    label="Tiền in"
+                                    value={displayQuote.totalPrintCost}
+                                    color="text-white"
+                                />
+                                <QuoteRow
+                                    label="Cán màng"
+                                    value={displayQuote.totalLaminationCost}
+                                    color="text-white"
+                                    hideIfZero
+                                />
+                                {displayQuote.totalPaperSurcharge > 0 && (
+                                    <QuoteRow
+                                        label="Phụ thu vật liệu (Decal)"
+                                        value={displayQuote.totalPaperSurcharge}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.totalArtPaperCustomerCost > 0 && (
+                                    <QuoteRow
+                                        label="Giấy mỹ thuật"
+                                        value={displayQuote.totalArtPaperCustomerCost}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.holePunchingCustomerPrice > 0 && (
+                                    <QuoteRow
+                                        label="Bấm lỗ"
+                                        value={displayQuote.holePunchingCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.creasingCustomerPrice > 0 && (
+                                    <QuoteRow
+                                        label="Cấn"
+                                        value={displayQuote.creasingCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.mountingCustomerPrice > 0 && (
+                                    <QuoteRow
+                                        label="Bồi carton"
+                                        value={displayQuote.mountingCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.dieCuttingMoldCustomerPrice > 0 && (
+                                    <QuoteRow
+                                        label="Khuôn bế"
+                                        value={displayQuote.dieCuttingMoldCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.dieCuttingLaborCustomerPrice > 0 && (
+                                    <QuoteRow
+                                        label="Công bế"
+                                        value={displayQuote.dieCuttingLaborCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.foilStampingCost > 0 && (
+                                    <QuoteRow
+                                        label="Ép kim (nhũ)"
+                                        value={displayQuote.foilStampingCost}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.variableDataCost > 0 && (
+                                    <QuoteRow
+                                        label="Dữ liệu biến đổi"
+                                        value={displayQuote.variableDataCost}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.customerSurcharge > 0 && (
+                                    <QuoteRow
+                                        label={`Phụ thu nội dung${displayQuote.customerSurchargeReason ? ` (${displayQuote.customerSurchargeReason})` : ''}`}
+                                        value={displayQuote.customerSurcharge}
+                                        color="text-yellow-400"
+                                    />
+                                )}
+                                {displayQuote.paperAdjustment > 0 && (
+                                    <QuoteRow
+                                        label={`Giảm giá giấy${displayQuote.paperAdjustmentReason ? ` (${displayQuote.paperAdjustmentReason})` : ''}`}
+                                        value={-displayQuote.paperAdjustment}
+                                        color="text-green-400"
+                                        prefix="−"
+                                        signAsNegative
+                                    />
+                                )}
+                                {displayQuote.paperAdjustment < 0 && (
+                                    <QuoteRow
+                                        label={`Phụ thu giấy cao cấp${displayQuote.paperAdjustmentReason ? ` (${displayQuote.paperAdjustmentReason})` : ''}`}
+                                        value={-displayQuote.paperAdjustment}
+                                        color="text-yellow-400"
+                                        prefix="+"
+                                    />
                                 )}
                             </div>
+
+                            {/* Tổng */}
                             <div className="text-center border-t border-gray-600 pt-4 mt-2">
                                 <p className="text-lg text-gray-300">Tổng Cộng Báo Khách</p>
                                 <p className="text-4xl font-bold text-yellow-300 mt-2">
-                                    {quote.totalCustomerCost.toLocaleString('vi-VN')} VNĐ
+                                    {displayQuote.totalCustomerCost.toLocaleString('vi-VN')} VNĐ
                                 </p>
                             </div>
                         </div>
@@ -515,22 +726,12 @@ export default function ResultPanel({
                 </div>
             </div>
 
-            {/* Ép kim — chi tiết + ước tính cuộn nhũ */}
+            {/* Ép kim — chi tiết theo TỪNG khuôn + ước tính cuộn nhũ */}
             {foilResult &&
-                foilResult.totalCost > 0 &&
-                foilResult.rollsInfo &&
+                foilResult.molds &&
+                foilResult.molds.length > 0 &&
                 (() => {
                     const cfg = config.EP_KIM_CONFIG;
-                    const H = params.foilCustomSize
-                        ? parseFloat(params.foilH) || 0
-                        : parseFloat(params.productH) || 0;
-                    const W = params.foilCustomSize
-                        ? parseFloat(params.foilW) || 0
-                        : parseFloat(params.productW) || 0;
-                    const qty = params.productQuantity;
-                    const ri = foilResult.rollsInfo;
-                    const best1 = ri.opt1.rolls <= ri.opt2.rolls;
-                    const best2 = ri.opt2.rolls <= ri.opt1.rolls;
 
                     const FoilOption = ({
                         num,
@@ -541,6 +742,7 @@ export default function ResultPanel({
                         isBest,
                         prodDispW,
                         prodDispH,
+                        qty,
                     }) => {
                         // Cuộn nhũ chạy ngang: chiều cuộn (foilW) = chiều cao sơ đồ, chiều mét tới (imprLen) = chiều ngang
                         const maxDim = Math.max(opt.imprLen, foilW);
@@ -638,22 +840,25 @@ export default function ResultPanel({
                                 Ép Kim (Nhũ) — Chi Tiết
                             </h2>
 
-                            {/* Bảng giá ép kim */}
+                            {/* Tổng hợp cả đơn */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-6 mt-4">
                                 <div>
-                                    <p className="text-xs text-gray-400">Diện tích tính giá</p>
+                                    <p className="text-xs text-gray-400">Số khuôn</p>
                                     <p className="text-lg font-semibold">
-                                        {foilResult.areaForCalc.toFixed(1)} cm²
+                                        {foilResult.molds.length}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400">Giá ép kim</p>
+                                    <p className="text-xs text-gray-400">Tổng công ép</p>
                                     <p className="text-lg font-semibold text-yellow-300">
                                         {foilResult.impressionPrice.toLocaleString('vi-VN')} đ
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400">Giá khuôn (gồm ship)</p>
+                                    <p className="text-xs text-gray-400">
+                                        Tổng khuôn (gồm ship{' '}
+                                        {foilResult.shipping.toLocaleString('vi-VN')}đ)
+                                    </p>
                                     <p className="text-lg font-semibold text-yellow-300">
                                         {foilResult.moldCost.toLocaleString('vi-VN')} đ
                                     </p>
@@ -666,40 +871,106 @@ export default function ResultPanel({
                                 </div>
                             </div>
 
-                            <p className="text-xs text-gray-500 text-center mb-1">
-                                Kích thước ép: {W} x {H} cm |{' '}
-                                {foilResult.isSmall
-                                    ? `Khuôn nhỏ (≤ ${cfg.thresholdW}x${cfg.thresholdH})`
-                                    : `Khuôn lớn (> ${cfg.thresholdW}x${cfg.thresholdH})`}{' '}
-                                | Giá / lượt:{' '}
-                                {foilResult.pricePerImpression.toLocaleString('vi-VN')} đ
-                            </p>
+                            {/* Chi tiết từng khuôn */}
+                            <div className="space-y-6">
+                                {foilResult.molds.map((mold, mi) => {
+                                    const ri = mold.rollsInfo;
+                                    const best1 = ri.opt1.rolls <= ri.opt2.rolls;
+                                    const best2 = ri.opt2.rolls <= ri.opt1.rolls;
+                                    const effQty =
+                                        (parseInt(params.productQuantity, 10) || 0) *
+                                        mold.impressions;
+                                    return (
+                                        <div
+                                            key={mi}
+                                            className="rounded-lg border border-gray-600 p-4"
+                                        >
+                                            <h3 className="text-lg font-semibold text-yellow-300 mb-3 text-center">
+                                                Khuôn {mi + 1}: {mold.w} x {mold.h} cm
+                                                {mold.special && (
+                                                    <span className="ml-2 text-xs text-orange-300">
+                                                        (nhũ màu đặc biệt)
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-3">
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Diện tích tính giá
+                                                    </p>
+                                                    <p className="text-base font-semibold">
+                                                        {mold.areaForCalc.toFixed(1)} cm²
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Số lần ép
+                                                    </p>
+                                                    <p className="text-base font-semibold">
+                                                        {mold.impressions} lần (×
+                                                        {mold.impressionFactor})
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Tiền công ép
+                                                    </p>
+                                                    <p className="text-base font-semibold text-yellow-300">
+                                                        {mold.impressionPrice.toLocaleString(
+                                                            'vi-VN'
+                                                        )}{' '}
+                                                        đ
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Tiền làm khuôn
+                                                    </p>
+                                                    <p className="text-base font-semibold text-yellow-300">
+                                                        {mold.makingCost.toLocaleString('vi-VN')} đ
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-gray-500 text-center mb-3">
+                                                {mold.isSmall
+                                                    ? `Khuôn nhỏ (≤ ${cfg.thresholdW}x${cfg.thresholdH})`
+                                                    : `Khuôn lớn (> ${cfg.thresholdW}x${cfg.thresholdH})`}{' '}
+                                                | Giá / lượt:{' '}
+                                                {mold.pricePerImpression.toLocaleString('vi-VN')} đ
+                                            </p>
 
-                            {/* Ước tính cuộn nhũ */}
-                            <h3 className="text-lg font-semibold text-gray-300 mt-6 mb-4 text-center">
-                                Ước Tính Số Cuộn Nhũ (Dài {cfg.foilRollLengthM}m)
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FoilOption
-                                    num={1}
-                                    title="Chạy theo chiều ngang"
-                                    desc={`Chiều cuộn = H+${cfg.foilPadWidth}cm. Mét tới = W+${cfg.foilPadLength}cm`}
-                                    opt={ri.opt1}
-                                    foilW={ri.opt1.foilWidth}
-                                    isBest={best1}
-                                    prodDispW={W}
-                                    prodDispH={H}
-                                />
-                                <FoilOption
-                                    num={2}
-                                    title="Chạy theo chiều dọc"
-                                    desc={`Chiều cuộn = W+${cfg.foilPadWidth}cm. Mét tới = H+${cfg.foilPadLength}cm`}
-                                    opt={ri.opt2}
-                                    foilW={ri.opt2.foilWidth}
-                                    isBest={best2}
-                                    prodDispW={H}
-                                    prodDispH={W}
-                                />
+                                            {/* Ước tính cuộn nhũ cho khuôn này */}
+                                            <h4 className="text-sm font-semibold text-gray-300 mt-4 mb-3 text-center">
+                                                Ước Tính Số Cuộn Nhũ (Dài {cfg.foilRollLengthM}m) —{' '}
+                                                {effQty} lượt
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FoilOption
+                                                    num={1}
+                                                    title="Chạy theo chiều ngang"
+                                                    desc={`Chiều cuộn = H+${cfg.foilPadWidth}cm. Mét tới = W+${cfg.foilPadLength}cm`}
+                                                    opt={ri.opt1}
+                                                    foilW={ri.opt1.foilWidth}
+                                                    isBest={best1}
+                                                    prodDispW={mold.w}
+                                                    prodDispH={mold.h}
+                                                    qty={effQty}
+                                                />
+                                                <FoilOption
+                                                    num={2}
+                                                    title="Chạy theo chiều dọc"
+                                                    desc={`Chiều cuộn = W+${cfg.foilPadWidth}cm. Mét tới = H+${cfg.foilPadLength}cm`}
+                                                    opt={ri.opt2}
+                                                    foilW={ri.opt2.foilWidth}
+                                                    isBest={best2}
+                                                    prodDispW={mold.h}
+                                                    prodDispH={mold.w}
+                                                    qty={effQty}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     );

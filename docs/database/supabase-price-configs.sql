@@ -43,7 +43,7 @@ comment on function public.is_admin() is
 create table if not exists public.price_configs (
     id              uuid        primary key default gen_random_uuid(),
     module          text        unique not null
-                                check (module in ('decal','small-print','large-print','uvdtf')),
+                                check (module in ('decal','small-print','large-print','uvdtf','catalogue','spiral','sticker','card','flyer','cheapdecal','ui-visibility')),
     current_version integer     not null default 1 check (current_version > 0),
     schema_version  text,
     data            jsonb       not null,
@@ -55,7 +55,7 @@ create table if not exists public.price_configs (
 comment on table public.price_configs is
     'Current price config cho moi module. 1 row / module (unique constraint tren cot module).';
 comment on column public.price_configs.module is
-    'Module key: decal | small-print | large-print | uvdtf.';
+    'Module key: decal | small-print | large-print | uvdtf | catalogue | spiral | sticker | card | flyer | cheapdecal | ui-visibility.';
 comment on column public.price_configs.current_version is
     'Tro toi version moi nhat trong price_config_versions.';
 comment on column public.price_configs.schema_version is
@@ -78,7 +78,7 @@ create trigger trg_price_configs_touch
 create table if not exists public.price_config_versions (
     id             uuid        primary key default gen_random_uuid(),
     module         text        not null
-                               check (module in ('decal','small-print','large-print','uvdtf')),
+                               check (module in ('decal','small-print','large-print','uvdtf','catalogue','spiral','sticker','card','flyer','cheapdecal','ui-visibility')),
     version        integer     not null check (version > 0),
     schema_version text,
     data           jsonb       not null,
@@ -105,7 +105,7 @@ create index if not exists idx_price_config_versions_module_created
 create table if not exists public.price_change_logs (
     id          uuid        primary key default gen_random_uuid(),
     module      text        not null
-                            check (module in ('decal','small-print','large-print','uvdtf')),
+                            check (module in ('decal','small-print','large-print','uvdtf','catalogue','spiral','sticker','card','flyer','cheapdecal','ui-visibility')),
     action      text        not null
                             check (action in ('create','update','rollback')),
     old_version integer,
@@ -254,7 +254,7 @@ begin
     v_user_id := auth.uid();
 
     -- 2. Validate module enum (CHECK constraint cua bang cung enforce, day la safety net)
-    if p_module not in ('decal','small-print','large-print','uvdtf') then
+    if p_module not in ('decal','small-print','large-print','uvdtf','catalogue','spiral','sticker','card','flyer','cheapdecal','ui-visibility') then
         raise exception 'invalid module: %', p_module
             using errcode = '22023';  -- invalid_parameter_value
     end if;

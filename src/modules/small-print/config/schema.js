@@ -162,5 +162,12 @@ export function validateSmallPrintConfig(config) {
         config.PAPER_STOCK_DATA.forEach((p, i) => validatePaperStock(p, i, errors));
     }
 
+    // Optional: giá 1 màu đen (config cũ chưa có vẫn hợp lệ).
+    for (const key of ['ONE_COLOR_DISCOUNT_PERCENT', 'ONE_COLOR_MIN_PRICE_PER_PAGE']) {
+        if (config[key] != null && typeof config[key] !== 'number') {
+            errors.push(`${key}: phải là number`);
+        }
+    }
+
     return { isValid: errors.length === 0, errors };
 }

@@ -286,10 +286,7 @@ describe('E2E-3: Full pipeline → customer quote (500 card visit C300 2 mặt)'
         dieCuttingType: 'none',
         moldType: 'simple',
         foilStamping: 'no',
-        foilCustomSize: false,
-        foilW: 5,
-        foilH: 5,
-        foilSpecialColor: false,
+        foilMolds: [{ w: 5, h: 5, special: false, impressions: 1 }],
     };
     const selectedPaper = config.PAPER_STOCK_DATA[3];
     const allResults = [];

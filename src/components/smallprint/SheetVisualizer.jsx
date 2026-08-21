@@ -92,11 +92,16 @@ export function LargeSheetVisualizer({
                             }}
                         >
                             <Tooltip text={`Tờ cắt: ${r.w} x ${r.h} cm`}>
-                                {isUsed && (
-                                    <span className="text-blue-100 font-bold drop-shadow-md text-sm sm:text-lg">
-                                        {i + 1}
-                                    </span>
-                                )}
+                                {/* Luôn đánh số MỌI ô cắt. isUsed chỉ dùng cho style
+                                    (nền + độ mờ chữ), KHÔNG gate việc render số —
+                                    xem docs/engine/sheet-visualizer-numbering.md */}
+                                <span
+                                    className={`font-bold drop-shadow-md text-sm sm:text-lg ${
+                                        isUsed ? 'text-blue-100' : 'text-gray-500'
+                                    }`}
+                                >
+                                    {i + 1}
+                                </span>
                             </Tooltip>
                         </div>
                     );

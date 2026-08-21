@@ -1,15 +1,7 @@
 // React 18+ auto JSX transform — không cần import React.
-export default function UvdtfInputPanel({ config, params, onChange }) {
-    const handleChange = (e) => {
-        const { name, value, type } = e.target;
-        let newValue = value;
-        if (type === 'number') {
-            newValue = parseFloat(value);
-            if (isNaN(newValue)) newValue = 0;
-        }
-        onChange(name, newValue);
-    };
+import NumberField from '../common/NumberField';
 
+export default function UvdtfInputPanel({ config, params, onChange }) {
     return (
         <div id="uvdtf-controls">
             <div className="input-group">
@@ -20,14 +12,12 @@ export default function UvdtfInputPanel({ config, params, onChange }) {
                     <div>
                         <label htmlFor="widthMM">Rộng W (mm)</label>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="widthMM"
-                                name="widthMM"
                                 value={params.widthMM}
-                                onChange={handleChange}
-                                step="1"
-                                min="1"
+                                onCommit={(v) => onChange('widthMM', v)}
+                                step={1}
+                                min={1}
                             />
                             <span className="unit">mm</span>
                         </div>
@@ -35,14 +25,12 @@ export default function UvdtfInputPanel({ config, params, onChange }) {
                     <div>
                         <label htmlFor="heightMM">Cao H (mm)</label>
                         <div className="relative">
-                            <input
-                                type="number"
+                            <NumberField
                                 id="heightMM"
-                                name="heightMM"
                                 value={params.heightMM}
-                                onChange={handleChange}
-                                step="1"
-                                min="1"
+                                onCommit={(v) => onChange('heightMM', v)}
+                                step={1}
+                                min={1}
                             />
                             <span className="unit">mm</span>
                         </div>
@@ -55,14 +43,12 @@ export default function UvdtfInputPanel({ config, params, onChange }) {
                     <span className="text-blue-400">2.</span> Số Lượng
                 </h2>
                 <div className="relative">
-                    <input
-                        type="number"
+                    <NumberField
                         id="quantity"
-                        name="quantity"
                         value={params.quantity}
-                        onChange={handleChange}
-                        step="1"
-                        min="1"
+                        onCommit={(v) => onChange('quantity', v)}
+                        step={1}
+                        min={1}
                     />
                     <span className="unit">tem</span>
                 </div>

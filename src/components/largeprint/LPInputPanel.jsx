@@ -1,12 +1,11 @@
 // React 18+ auto JSX transform — không cần import React.
+import NumberField from '../common/NumberField';
+
 export default function LPInputPanel({ config, params, onChange }) {
+    // Handler cho select + checkbox. Number field dùng NumberField shared.
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        let newValue = type === 'checkbox' ? checked : value;
-        if (type === 'number') {
-            newValue = parseFloat(value);
-            if (isNaN(newValue)) newValue = 0;
-        }
+        const newValue = type === 'checkbox' ? checked : value;
         onChange(name, newValue);
     };
 
@@ -76,54 +75,33 @@ export default function LPInputPanel({ config, params, onChange }) {
                                     </span>
                                     <div className="flex-1 grid grid-cols-3 gap-1">
                                         <div className="relative">
-                                            <input
-                                                type="number"
+                                            <NumberField
                                                 value={item.width}
-                                                step="1"
-                                                min="1"
-                                                onChange={(e) =>
-                                                    updateItem(
-                                                        idx,
-                                                        'width',
-                                                        parseFloat(e.target.value) || 0
-                                                    )
-                                                }
+                                                onCommit={(v) => updateItem(idx, 'width', v)}
+                                                step={1}
+                                                min={1}
                                                 className="!py-1 !px-2 !text-sm"
                                                 placeholder="W"
                                             />
                                             <span className="unit !text-xs">cm</span>
                                         </div>
                                         <div className="relative">
-                                            <input
-                                                type="number"
+                                            <NumberField
                                                 value={item.height}
-                                                step="1"
-                                                min="1"
-                                                onChange={(e) =>
-                                                    updateItem(
-                                                        idx,
-                                                        'height',
-                                                        parseFloat(e.target.value) || 0
-                                                    )
-                                                }
+                                                onCommit={(v) => updateItem(idx, 'height', v)}
+                                                step={1}
+                                                min={1}
                                                 className="!py-1 !px-2 !text-sm"
                                                 placeholder="H"
                                             />
                                             <span className="unit !text-xs">cm</span>
                                         </div>
                                         <div className="relative">
-                                            <input
-                                                type="number"
+                                            <NumberField
                                                 value={item.quantity}
-                                                step="1"
-                                                min="1"
-                                                onChange={(e) =>
-                                                    updateItem(
-                                                        idx,
-                                                        'quantity',
-                                                        parseInt(e.target.value, 10) || 1
-                                                    )
-                                                }
+                                                onCommit={(v) => updateItem(idx, 'quantity', v)}
+                                                step={1}
+                                                min={1}
                                                 className="!py-1 !px-2 !text-sm"
                                                 placeholder="SL"
                                             />
@@ -238,14 +216,12 @@ export default function LPInputPanel({ config, params, onChange }) {
                             {params.grommetsCheck && (
                                 <div className="ml-6">
                                     <div className="relative">
-                                        <input
-                                            type="number"
+                                        <NumberField
                                             id="grommetsCount"
-                                            name="grommetsCount"
                                             value={params.grommetsCount}
-                                            onChange={handleChange}
-                                            step="1"
-                                            min="0"
+                                            onCommit={(v) => onChange('grommetsCount', v)}
+                                            step={1}
+                                            min={0}
                                         />
                                         <span className="unit">khoen</span>
                                     </div>
