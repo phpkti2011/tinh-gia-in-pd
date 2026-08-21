@@ -1,8 +1,51 @@
 # Vercel Deploy Setup (P3-DEPLOY)
 
 > Ngày: 2026-06-01
-> Trạng thái: 🟡 Code config ready — chờ setup phía Vercel Dashboard
+> Trạng thái: 🟢 Git-integration ĐÃ nối + đang chạy production (cập nhật 2026-08-21).
 > Tiền đề: [P3-FMT](lint-prettier-setup.md) (`v3.4-prettier-formatted`), repo đã push GitHub
+
+## 0. QUICK DEPLOY — trạng thái thực tế (2026-08-21)
+
+**Vercel Git Integration ĐÃ nối** (`vercel git connect`). Từ nay **push `main` → Vercel tự build & deploy production**.
+
+### Cách deploy (làm thế này mỗi lần)
+```bash
+git add -A
+git commit -m "..."
+git push origin main          # → Vercel tự động deploy production (~30–60s)
+```
+Cách nhanh không qua git (deploy thẳng working tree, KHÔNG commit): `vercel --prod`.
+
+### Thông tin dự án (để không phải dò lại)
+| Mục | Giá trị |
+|---|---|
+| Vercel project | **`tinh-gia-in`** |
+| Vercel team (scope) | **`sale1inpd-8054s-projects`** (orgId `team_5xRbeXjKPwS0edIzwotFce7p`) |
+| Vercel projectId | `prj_Uv1aoGM09NcMCV1bpqhCJ19uuxUC` |
+| GitHub repo | **`phpkti2011/tinh-gia-in-pd`** · production branch **`main`** |
+| Vercel CLI account | `deadmanlonely-1310` (có team `sale1inpd`) |
+| URL tự cập nhật theo production | `tinh-gia-in.vercel.app`, `tinh-gia-in-tau.vercel.app` |
+| URL tùy chỉnh | `tinhgiainpd.vercel.app` — xem lưu ý domain bên dưới |
+
+### ⚠️ Lưu ý domain `tinhgiainpd.vercel.app`
+Đây là **alias tùy chỉnh**, KHÔNG tự động theo production. Từng bị "kẹt" ở bản cũ 134 ngày.
+- **Khắc phục bền vững**: Vercel Dashboard → project `tinh-gia-in` → **Settings → Domains** → đặt
+  `tinhgiainpd.vercel.app` gán cho nhánh **Production** (để tự theo mỗi lần deploy).
+- Hoặc sau mỗi deploy, trỏ lại thủ công:
+  `vercel alias set <deployment-url-mới> tinhgiainpd.vercel.app`.
+
+### Supabase (env — KHÔNG commit giá trị secret)
+- Biến env đã set sẵn trên Vercel (Production + Preview): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- Khi thêm module mới có config đám mây, nhớ thêm module key vào CHECK enum trong
+  [supabase-price-configs.sql](database/supabase-price-configs.sql) và **chạy migration trên Supabase live**.
+- **Đang treo**: chạy 1 lần SQL thêm enum `ui-visibility` (cho tính năng ẩn/hiện tile đồng bộ đám mây).
+
+### Ghi chú CI
+GitHub Actions CI hiện đỏ (3 test Supabase-WebSocket — lỗi môi trường Node, không phải lỗi code).
+KHÔNG chặn Vercel deploy (Vercel chỉ chạy `npm run build`). Có thể fix/skip sau nếu muốn CI xanh.
+
+---
+
 
 ## 1. Mục tiêu
 
