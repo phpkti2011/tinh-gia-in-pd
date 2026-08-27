@@ -185,6 +185,38 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
             c.FORMEX_DISCOUNT_TIERS.splice(idx, 1);
         });
 
+    // --- PRINT_DISCOUNT_TIERS helpers (giảm giá in theo diện tích) ---
+    const updatePrintTier = (idx, field, val) =>
+        updateConfig((c) => {
+            if (!c.PRINT_DISCOUNT_TIERS) c.PRINT_DISCOUNT_TIERS = [];
+            c.PRINT_DISCOUNT_TIERS[idx][field] = val;
+        });
+    const addPrintTier = () =>
+        updateConfig((c) => {
+            if (!c.PRINT_DISCOUNT_TIERS) c.PRINT_DISCOUNT_TIERS = [];
+            c.PRINT_DISCOUNT_TIERS.push({ minArea: 0, maxArea: Infinity, discount: 0 });
+        });
+    const delPrintTier = (idx) =>
+        updateConfig((c) => {
+            c.PRINT_DISCOUNT_TIERS.splice(idx, 1);
+        });
+
+    // --- STANDARD_SIZES helpers (khổ chuẩn chọn nhanh) ---
+    const updateStdSize = (idx, field, val) =>
+        updateConfig((c) => {
+            if (!c.STANDARD_SIZES) c.STANDARD_SIZES = [];
+            c.STANDARD_SIZES[idx][field] = val;
+        });
+    const addStdSize = () =>
+        updateConfig((c) => {
+            if (!c.STANDARD_SIZES) c.STANDARD_SIZES = [];
+            c.STANDARD_SIZES.push({ name: 'Khổ mới', width: 100, height: 100 });
+        });
+    const delStdSize = (idx) =>
+        updateConfig((c) => {
+            c.STANDARD_SIZES.splice(idx, 1);
+        });
+
     // --- FINISHING_PRICES helpers ---
     const updateFinishing = (field, val) =>
         updateConfig((c) => {
@@ -200,6 +232,8 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
     const lam = localConfig.LAMINATION_TYPES;
     const formex = localConfig.FORMEX_OPTIONS;
     const discTiers = localConfig.FORMEX_DISCOUNT_TIERS;
+    const printTiers = localConfig.PRINT_DISCOUNT_TIERS || [];
+    const stdSizes = localConfig.STANDARD_SIZES || [];
     const fin = localConfig.FINISHING_PRICES;
 
     return (
@@ -612,6 +646,130 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
                                             onClick={() => delDiscountTier(i)}
                                             className={btnDel}
                                         >
+                                            Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </section>
+
+                {/* ===== GIẢM GIÁ IN THEO DIỆN TÍCH ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
+                            Giảm giá in theo diện tích (m²)
+                        </h3>
+                        <button onClick={addPrintTier} className={btnAdd}>
+                            + Thêm bậc
+                        </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">
+                        Giảm % ĐƠN GIÁ IN khi tổng diện tích rơi vào bậc (không giảm vật liệu/cán).
+                        Để 0% = không giảm.
+                    </p>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-700">
+                                <th className={thCls}>Từ (m²)</th>
+                                <th className={thCls}>Đến (m²)</th>
+                                <th className={thCls}>Giảm (%)</th>
+                                <th className={thCls}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {printTiers.map((t, i) => (
+                                <tr key={i} className="border-b border-gray-700/50">
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={t.minArea}
+                                            step={1}
+                                            className={numCls}
+                                            onCommit={(v) => updatePrintTier(i, 'minArea', v)}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        {t.maxArea === Infinity ? (
+                                            <span className="text-gray-400 italic">∞</span>
+                                        ) : (
+                                            <NumInput
+                                                configValue={t.maxArea}
+                                                step={1}
+                                                className={numCls}
+                                                onCommit={(v) => updatePrintTier(i, 'maxArea', v)}
+                                            />
+                                        )}
+                                    </td>
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={parseFloat((t.discount * 100).toFixed(2))}
+                                            step={1}
+                                            className={numCls}
+                                            onCommit={(v) =>
+                                                updatePrintTier(i, 'discount', v / 100)
+                                            }
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <button onClick={() => delPrintTier(i)} className={btnDel}>
+                                            Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </section>
+
+                {/* ===== KHỔ CHUẨN ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
+                            Khổ chuẩn (chọn nhanh)
+                        </h3>
+                        <button onClick={addStdSize} className={btnAdd}>
+                            + Thêm khổ
+                        </button>
+                    </div>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-700">
+                                <th className={thCls}>Tên</th>
+                                <th className={thCls}>Rộng (cm)</th>
+                                <th className={thCls}>Cao (cm)</th>
+                                <th className={thCls}></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stdSizes.map((s, i) => (
+                                <tr key={i} className="border-b border-gray-700/50">
+                                    <td className={tdCls}>
+                                        <input
+                                            type="text"
+                                            defaultValue={s.name}
+                                            className={inputCls + ' max-w-[180px]'}
+                                            onBlur={(e) => updateStdSize(i, 'name', e.target.value)}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={s.width}
+                                            step={1}
+                                            className={numCls}
+                                            onCommit={(v) => updateStdSize(i, 'width', v)}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <NumInput
+                                            configValue={s.height}
+                                            step={1}
+                                            className={numCls}
+                                            onCommit={(v) => updateStdSize(i, 'height', v)}
+                                        />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <button onClick={() => delStdSize(i)} className={btnDel}>
                                             Xóa
                                         </button>
                                     </td>

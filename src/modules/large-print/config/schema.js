@@ -99,6 +99,31 @@ function validateFormexDiscountTier(tier, i, errors) {
     if (typeof tier.discount !== 'number') errors.push(`${prefix}.discount: phải là number`);
 }
 
+// PRINT_DISCOUNT_TIERS: mirror FORMEX_DISCOUNT_TIERS (optional).
+function validatePrintDiscountTier(tier, i, errors) {
+    const prefix = `PRINT_DISCOUNT_TIERS[${i}]`;
+    if (!isPlainObject(tier)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
+    if (typeof tier.minArea !== 'number') errors.push(`${prefix}.minArea: phải là number`);
+    if (typeof tier.maxArea !== 'number')
+        errors.push(`${prefix}.maxArea: phải là number (cho phép Infinity)`);
+    if (typeof tier.discount !== 'number') errors.push(`${prefix}.discount: phải là number`);
+}
+
+// STANDARD_SIZES: {name, width, height} in cm (optional).
+function validateStandardSize(s, i, errors) {
+    const prefix = `STANDARD_SIZES[${i}]`;
+    if (!isPlainObject(s)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
+    if (typeof s.name !== 'string') errors.push(`${prefix}.name: phải là string`);
+    if (typeof s.width !== 'number') errors.push(`${prefix}.width: phải là number`);
+    if (typeof s.height !== 'number') errors.push(`${prefix}.height: phải là number`);
+}
+
 function validateStandeeOption(s, i, errors) {
     const prefix = `STANDEE_OPTIONS[${i}]`;
     if (!isPlainObject(s)) {
@@ -188,6 +213,22 @@ export function validateLargePrintConfig(config) {
 
     if (Array.isArray(config.STANDEE_OPTIONS)) {
         config.STANDEE_OPTIONS.forEach((s, i) => validateStandeeOption(s, i, errors));
+    }
+
+    // Optional (thêm ở v1.1.0) — chỉ validate nếu có.
+    if (config.PRINT_DISCOUNT_TIERS != null) {
+        if (!Array.isArray(config.PRINT_DISCOUNT_TIERS)) {
+            errors.push('PRINT_DISCOUNT_TIERS: phải là array');
+        } else {
+            config.PRINT_DISCOUNT_TIERS.forEach((t, i) => validatePrintDiscountTier(t, i, errors));
+        }
+    }
+    if (config.STANDARD_SIZES != null) {
+        if (!Array.isArray(config.STANDARD_SIZES)) {
+            errors.push('STANDARD_SIZES: phải là array');
+        } else {
+            config.STANDARD_SIZES.forEach((s, i) => validateStandardSize(s, i, errors));
+        }
     }
 
     validateFinishingPrices(config.FINISHING_PRICES, errors);

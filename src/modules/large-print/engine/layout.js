@@ -6,11 +6,20 @@
 // Internal helpers: được export để pricing.js (cùng module) import,
 // nhưng KHÔNG re-export ra index.js (giữ private contract như bản gốc).
 
-// Tính giá 1 tấm trên 1 khổ cuộn cụ thể, trả về chi tiết
-export function calcItemOnRoll(printW, printH, rollOption, laminationTypeKey, config) {
+// Tính giá 1 tấm trên 1 khổ cuộn cụ thể, trả về chi tiết.
+// printDiscount (0–1): giảm % ĐƠN GIÁ IN theo bậc tổng diện tích (không giảm vật liệu/cán).
+export function calcItemOnRoll(
+    printW,
+    printH,
+    rollOption,
+    laminationTypeKey,
+    config,
+    printDiscount = 0
+) {
     const printedArea = printW * printH;
     const unprintedArea = (rollOption.width - printW) * printH;
-    const printCost = Math.max(printedArea * rollOption.printPrice, config.MIN_PRINT_PRICE || 0);
+    const rate = rollOption.printPrice * (1 - (printDiscount || 0));
+    const printCost = Math.max(printedArea * rate, config.MIN_PRINT_PRICE || 0);
     const materialWasteCost = unprintedArea * rollOption.materialPrice;
     let totalCost = printCost + materialWasteCost;
     let laminationChoice = null;
@@ -31,18 +40,25 @@ export function calcItemOnRoll(printW, printH, rollOption, laminationTypeKey, co
 }
 
 // Tối ưu 1 item (W, H) trên 1 khổ cuộn: thử cả 2 hướng xoay
-export function optimizeItemOnRoll(wM, hM, rollOption, laminationTypeKey, config) {
+export function optimizeItemOnRoll(
+    wM,
+    hM,
+    rollOption,
+    laminationTypeKey,
+    config,
+    printDiscount = 0
+) {
     let bestResult = null;
     let bestRotated = false;
     // Hướng gốc: W nằm ngang trên cuộn
     if (wM <= rollOption.width) {
-        const r = calcItemOnRoll(wM, hM, rollOption, laminationTypeKey, config);
+        const r = calcItemOnRoll(wM, hM, rollOption, laminationTypeKey, config, printDiscount);
         bestResult = r;
         bestRotated = false;
     }
     // Hướng xoay: H nằm ngang trên cuộn
     if (hM <= rollOption.width) {
-        const r = calcItemOnRoll(hM, wM, rollOption, laminationTypeKey, config);
+        const r = calcItemOnRoll(hM, wM, rollOption, laminationTypeKey, config, printDiscount);
         if (!bestResult || r.totalCost < bestResult.totalCost) {
             bestResult = r;
             bestRotated = true;

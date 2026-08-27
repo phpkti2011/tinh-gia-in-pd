@@ -16,10 +16,11 @@ function ReferenceTable({ config, size }) {
     const c = config.CHEAP_DECAL_CONFIG || {};
     const rows = c.priceTable?.[size];
     if (!rows) return null;
+    const sizeName = (c.sizes || []).find((s) => String(s.id) === String(size))?.name || size;
     return (
         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 mt-4">
             <h3 className="text-base font-semibold text-gray-300 mb-3 text-center border-b border-gray-700 pb-2">
-                Bảng giá tham khảo — Cỡ {size} (tròn · decal giấy · không cán)
+                Bảng giá tham khảo — {sizeName} (tròn · decal giấy · không cán)
             </h3>
             <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">

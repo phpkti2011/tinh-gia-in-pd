@@ -37,6 +37,15 @@ export function calculateLargePrint(params, config) {
         grandTotalArea += w * h * (item.quantity || 1);
     }
 
+    // Giảm % ĐƠN GIÁ IN theo bậc tổng diện tích (single-band, giống chiết khấu Formex).
+    let printDiscount = 0;
+    for (const tier of config.PRINT_DISCOUNT_TIERS || []) {
+        if (grandTotalArea >= tier.minArea && grandTotalArea < tier.maxArea) {
+            printDiscount = tier.discount || 0;
+            break;
+        }
+    }
+
     const formexCost = calculateFormexCost(grandTotalArea, formexTypeKey, config);
     const finishing = calculateFinishingCost(grandTotalArea, params, config);
 
@@ -66,7 +75,14 @@ export function calculateLargePrint(params, config) {
             const wM = item.width / 100,
                 hM = item.height / 100;
             const qty = item.quantity || 1;
-            const optimized = optimizeItemOnRoll(wM, hM, rollOption, laminationTypeKey, config);
+            const optimized = optimizeItemOnRoll(
+                wM,
+                hM,
+                rollOption,
+                laminationTypeKey,
+                config,
+                printDiscount
+            );
             if (!optimized) {
                 allFit = false;
                 break;
@@ -123,6 +139,7 @@ export function calculateLargePrint(params, config) {
         itemDetails: bestRollResult.itemDetails,
         totalPanels,
         formexCost,
+        printDiscount,
         standeeCost,
         standeeName,
         finishingCost: finishing.cost,

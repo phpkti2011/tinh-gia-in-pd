@@ -85,6 +85,25 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         { minArea: 10, maxArea: 20, discount: 0.15 },
         { minArea: 20, maxArea: Infinity, discount: 0.2 },
     ],
+    // Giảm % ĐƠN GIÁ IN theo bậc tổng diện tích (single-band). Mặc định 0% = không đổi giá;
+    // admin chỉnh % trong tab Cài đặt để bật giảm giá theo m².
+    PRINT_DISCOUNT_TIERS: [
+        { minArea: 5, maxArea: 10, discount: 0 },
+        { minArea: 10, maxArea: 20, discount: 0 },
+        { minArea: 20, maxArea: Infinity, discount: 0 },
+    ],
+    // Khổ chuẩn (cm) để chọn nhanh cho từng tấm. Admin thêm/sửa/bớt trong Cài đặt.
+    STANDARD_SIZES: [
+        { name: 'A0 (84×119)', width: 84, height: 119 },
+        { name: 'A1 (59×84)', width: 59, height: 84 },
+        { name: 'A2 (42×59)', width: 42, height: 59 },
+        { name: 'A3 (30×42)', width: 30, height: 42 },
+        { name: 'Standee 60×160', width: 60, height: 160 },
+        { name: 'Standee 80×180', width: 80, height: 180 },
+        { name: 'Poster 40×60', width: 40, height: 60 },
+        { name: 'Poster 50×70', width: 50, height: 70 },
+        { name: 'Poster 60×90', width: 60, height: 90 },
+    ],
     MIN_PRINT_PRICE: 30000,
     MIN_LAMINATION_PRICE: 15000,
     MIN_EDGE_TAPING_PRICE: 20000,

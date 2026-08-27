@@ -10,6 +10,6 @@
 
 export const LARGE_PRINT_MODULE_NAME = 'large-print';
 
-export const LARGE_PRINT_CONFIG_SCHEMA_VERSION = '1.0.0';
+export const LARGE_PRINT_CONFIG_SCHEMA_VERSION = '1.1.0';
 
-export const LARGE_PRINT_CONFIG_LAST_UPDATED = '2026-05-30';
+export const LARGE_PRINT_CONFIG_LAST_UPDATED = '2026-08-27';

@@ -79,7 +79,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'large-print',
                 VALID_LARGE,
-                '1.0.0',
+                '1.1.0',
                 null
             );
         });

@@ -9,13 +9,13 @@ export const CHEAP_DECAL_DEFAULT_CONFIG = {
     CHEAP_DECAL_CONFIG: {
         // Cỡ nhãn (1–7) + số nhãn trên 1 tờ in (thông tin).
         sizes: [
-            { id: '1', name: 'Cỡ 1', perSheet: 676 },
-            { id: '2', name: 'Cỡ 2', perSheet: 169 },
-            { id: '3', name: 'Cỡ 3', perSheet: 81 },
-            { id: '4', name: 'Cỡ 4', perSheet: 49 },
-            { id: '5', name: 'Cỡ 5', perSheet: 33 },
-            { id: '6', name: 'Cỡ 6', perSheet: 20 },
-            { id: '7', name: 'Cỡ 7', perSheet: 16 },
+            { id: '1', name: '1 cm', perSheet: 676 },
+            { id: '2', name: '2 cm', perSheet: 169 },
+            { id: '3', name: '3 cm', perSheet: 81 },
+            { id: '4', name: '4 cm', perSheet: 49 },
+            { id: '5', name: '5 cm', perSheet: 33 },
+            { id: '6', name: '6 cm', perSheet: 20 },
+            { id: '7', name: '7 cm', perSheet: 16 },
         ],
 
         // Mốc số lượng cố định.

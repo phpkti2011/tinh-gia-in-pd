@@ -400,7 +400,7 @@ describe('Case G: input invalid → return null', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // CASE H — Structural check: output có đủ các trường quan trọng
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Case H: structural — output có đủ 13 trường public', () => {
+describe('Case H: structural — output có đủ 14 trường public', () => {
     const params = {
         width: 100,
         height: 100,
@@ -416,13 +416,14 @@ describe('Case H: structural — output có đủ 13 trường public', () => {
     };
     const r = calculateLargePrint(params, config);
 
-    it('có đủ 13 trường public top-level', () => {
+    it('có đủ 14 trường public top-level', () => {
         const expectedKeys = [
             'totalCost',
             'rollWidth',
             'itemDetails',
             'totalPanels',
             'formexCost',
+            'printDiscount',
             'standeeCost',
             'standeeName',
             'finishingCost',
@@ -435,7 +436,7 @@ describe('Case H: structural — output có đủ 13 trường public', () => {
         for (const key of expectedKeys) {
             expect(r).toHaveProperty(key);
         }
-        expect(Object.keys(r).length).toBe(13);
+        expect(Object.keys(r).length).toBe(14);
     });
 
     it('itemDetails entry có đủ 11 trường', () => {
@@ -464,5 +465,48 @@ describe('Case H: structural — output có đủ 13 trường public', () => {
             printPrice: expect.any(Number),
             materialPrice: expect.any(Number),
         });
+    });
+});
+
+describe('Case I: giảm giá in theo bậc diện tích (PRINT_DISCOUNT_TIERS)', () => {
+    const params = {
+        materialTypeKey: 'pp_co_keo',
+        laminationTypeKey: 'none',
+        formexTypeKey: 'none',
+        edgeTaping: false,
+        grommetsCheck: false,
+        dieCutting: false,
+        standeeKey: 'none',
+        items: [{ width: 100, height: 100, quantity: 6 }], // 6 m² → rơi bậc 5–10
+    };
+
+    it('default 0% → không đổi giá; đặt 10% → chỉ giảm đơn giá in 10%', () => {
+        const base = calculateLargePrint(params, config); // default tiers = 0%
+        expect(base.printDiscount).toBe(0);
+
+        const cfg10 = JSON.parse(JSON.stringify(config));
+        cfg10.PRINT_DISCOUNT_TIERS = [
+            { minArea: 5, maxArea: 10, discount: 0.1 },
+            { minArea: 10, maxArea: 20, discount: 0.15 },
+            { minArea: 20, maxArea: Infinity, discount: 0.2 },
+        ];
+        const disc = calculateLargePrint(params, cfg10);
+        expect(disc.printDiscount).toBe(0.1);
+
+        // Tiền in (print) = printedArea × printPrice; phần vật liệu/cán KHÔNG đổi.
+        // base = print + waste; disc = print×0.9 + waste. Chênh lệch = print×0.1.
+        expect(disc.totalCost).toBeLessThan(base.totalCost);
+        // Giảm đúng 10% phần in: print = 6 m² × 120.000 = 720.000 → giảm 72.000.
+        expect(base.totalCost - disc.totalCost).toBe(72000);
+    });
+
+    it('diện tích < mọi bậc → discount 0 (100×100 = 1 m²)', () => {
+        const cfg10 = JSON.parse(JSON.stringify(config));
+        cfg10.PRINT_DISCOUNT_TIERS = [{ minArea: 5, maxArea: Infinity, discount: 0.2 }];
+        const r = calculateLargePrint(
+            { ...params, items: [{ width: 100, height: 100, quantity: 1 }] },
+            cfg10
+        );
+        expect(r.printDiscount).toBe(0);
     });
 });

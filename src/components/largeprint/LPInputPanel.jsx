@@ -26,6 +26,15 @@ export default function LPInputPanel({ config, params, onChange }) {
         onChange('items', [...items, { width: 100, height: 100, quantity: 1 }]);
     };
 
+    // Khổ chuẩn: chọn nhanh → set cả width + height của tấm đó.
+    const standardSizes = config.STANDARD_SIZES || [];
+    const applyPreset = (idx, w, h) => {
+        onChange(
+            'items',
+            items.map((it, i) => (i === idx ? { ...it, width: w, height: h } : it))
+        );
+    };
+
     const removeItem = (idx) => {
         if (items.length <= 1) return;
         onChange(
@@ -64,16 +73,41 @@ export default function LPInputPanel({ config, params, onChange }) {
                         </div>
                         <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                             {items.map((item, idx) => (
-                                <div
-                                    key={idx}
-                                    className="flex items-center gap-2 bg-gray-900/50 rounded p-2"
-                                >
-                                    <span
-                                        className={`text-xs font-bold ${colors[idx % colors.length]} w-4 shrink-0`}
-                                    >
-                                        {idx + 1}
-                                    </span>
-                                    <div className="flex-1 grid grid-cols-3 gap-1">
+                                <div key={idx} className="bg-gray-900/50 rounded p-2">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span
+                                            className={`text-xs font-bold ${colors[idx % colors.length]} w-4 shrink-0`}
+                                        >
+                                            {idx + 1}
+                                        </span>
+                                        {standardSizes.length > 0 && (
+                                            <select
+                                                value=""
+                                                onChange={(e) => {
+                                                    const s = standardSizes[e.target.value];
+                                                    if (s) applyPreset(idx, s.width, s.height);
+                                                }}
+                                                className="flex-1 bg-gray-800 border border-gray-700 rounded text-xs px-2 py-1 text-gray-200 focus:outline-none focus:border-blue-500"
+                                            >
+                                                <option value="">Khổ chuẩn…</option>
+                                                {standardSizes.map((s, si) => (
+                                                    <option key={si} value={si}>
+                                                        {s.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        {items.length > 1 && (
+                                            <button
+                                                onClick={() => removeItem(idx)}
+                                                className="text-red-500 hover:text-red-400 text-xs shrink-0"
+                                                title="Xóa"
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-1 pl-6">
                                         <div className="relative">
                                             <NumberField
                                                 value={item.width}
@@ -108,15 +142,6 @@ export default function LPInputPanel({ config, params, onChange }) {
                                             <span className="unit !text-xs">tấm</span>
                                         </div>
                                     </div>
-                                    {items.length > 1 && (
-                                        <button
-                                            onClick={() => removeItem(idx)}
-                                            className="text-red-500 hover:text-red-400 text-xs shrink-0"
-                                            title="Xóa"
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
                                 </div>
                             ))}
                         </div>
