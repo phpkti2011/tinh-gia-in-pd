@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { saveConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
+import { computeA4Factor } from '../../utils/customerQuote';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
+
+// Làm tròn 2 số lẻ cho hệ số quy đổi A4 tự tính (thân thiện, admin sửa được).
+const round2 = (f) => Math.round(f * 100) / 100;
 
 function NumInput({ configValue, onCommit, isPercentage = false, className, step }) {
     const displayNum = isPercentage ? parseFloat((configValue * 100).toFixed(2)) : configValue;
@@ -91,6 +95,69 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
             return newConfig;
         });
     };
+
+    // DECAL_SHEET_SIZES (khổ decal có sẵn tại kho) — add/del. W sửa qua updateNestedField,
+    // H qua updateDecalHeight (tự tính lại a4Factor), a4Factor sửa tay qua updateNestedField.
+    const addDecalSize = () =>
+        setLocalConfig((prev) => {
+            const f = computeA4Factor(33, prev);
+            return {
+                ...prev,
+                DECAL_SHEET_SIZES: [
+                    ...(prev.DECAL_SHEET_SIZES || []),
+                    { w: 32.2, h: 33, a4Factor: f != null ? round2(f) : 1.5 },
+                ],
+            };
+        });
+    const delDecalSize = (idx) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            DECAL_SHEET_SIZES: (prev.DECAL_SHEET_SIZES || []).filter((_, i) => i !== idx),
+        }));
+    // Đổi chiều cao khổ → tự tính lại hệ số quy đổi A4 theo công thức (giữ giá trị cũ nếu không suy ra được).
+    const updateDecalHeight = (idx, val) =>
+        setLocalConfig((prev) => {
+            const arr = [...(prev.DECAL_SHEET_SIZES || [])];
+            if (!arr[idx]) return prev;
+            const f = computeA4Factor(val, prev);
+            arr[idx] = { ...arr[idx], h: val, a4Factor: f != null ? round2(f) : arr[idx].a4Factor };
+            return { ...prev, DECAL_SHEET_SIZES: arr };
+        });
+
+    // Khi mở panel: tự điền a4Factor cho khổ chưa có (config cũ) bằng công thức, để không hiện 0.
+    useEffect(() => {
+        setLocalConfig((prev) => {
+            const arr = prev.DECAL_SHEET_SIZES || [];
+            let changed = false;
+            const next = arr.map((s) => {
+                if (typeof s.a4Factor === 'number' && s.a4Factor > 0) return s;
+                const f = computeA4Factor(s.h, prev);
+                if (f == null) return s;
+                changed = true;
+                return { ...s, a4Factor: round2(f) };
+            });
+            return changed ? { ...prev, DECAL_SHEET_SIZES: next } : prev;
+        });
+    }, []);
+
+    // STANDARD_SIZES (khổ chuẩn chọn nhanh) — add/edit/del.
+    const addStandardSize = () =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            STANDARD_SIZES: [...(prev.STANDARD_SIZES || []), { name: 'Khổ mới', w: 9, h: 5.5 }],
+        }));
+    const delStandardSize = (idx) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            STANDARD_SIZES: (prev.STANDARD_SIZES || []).filter((_, i) => i !== idx),
+        }));
+    const updateStandardName = (idx, name) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            STANDARD_SIZES: (prev.STANDARD_SIZES || []).map((s, i) =>
+                i === idx ? { ...s, name } : s
+            ),
+        }));
 
     // fi() là render function (không phải component) — tránh remount mỗi re-render
     const fi = (path, configValue, isPercentage, step, cls) => (
@@ -333,13 +400,25 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div className="relative">
                             <label className={labelCls}>% giảm giá khi in 1 màu đen</label>
-                            {fi('ONE_COLOR_DISCOUNT_PERCENT', localConfig.ONE_COLOR_DISCOUNT_PERCENT ?? 0, false, '1')}
+                            {fi(
+                                'ONE_COLOR_DISCOUNT_PERCENT',
+                                localConfig.ONE_COLOR_DISCOUNT_PERCENT ?? 0,
+                                false,
+                                '1'
+                            )}
                             <span className="absolute right-3 top-[32px] text-gray-500">%</span>
                         </div>
                         <div className="relative">
                             <label className={labelCls}>Sàn đơn giá in 1 màu đen</label>
-                            {fi('ONE_COLOR_MIN_PRICE_PER_PAGE', localConfig.ONE_COLOR_MIN_PRICE_PER_PAGE ?? 0, false, '100')}
-                            <span className="absolute right-3 top-[32px] text-gray-500">đ/trang</span>
+                            {fi(
+                                'ONE_COLOR_MIN_PRICE_PER_PAGE',
+                                localConfig.ONE_COLOR_MIN_PRICE_PER_PAGE ?? 0,
+                                false,
+                                '100'
+                            )}
+                            <span className="absolute right-3 top-[32px] text-gray-500">
+                                đ/trang
+                            </span>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -905,22 +984,109 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
 
                 {/* 13. Khổ decal kho */}
                 <section>
-                    <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
-                        Khổ Decal Có Sẵn Tại Kho
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {localConfig.DECAL_SHEET_SIZES.map((sheet, idx) => (
-                            <React.Fragment key={idx}>
-                                <div className="col-span-full font-semibold text-yellow-400 mt-2">
-                                    Khổ {idx + 1}: {sheet.w} x {sheet.h} cm
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-600">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                            Khổ Decal Có Sẵn Tại Kho
+                        </h3>
+                        <button
+                            onClick={addDecalSize}
+                            className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            + Thêm khổ
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {(localConfig.DECAL_SHEET_SIZES || []).map((sheet, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                                <div className="col-span-3">
+                                    <label className={labelCls}>Khổ {idx + 1} · Rộng (W)</label>
+                                    <div className="relative">
+                                        <NumInput
+                                            configValue={sheet.w}
+                                            step="0.1"
+                                            onCommit={(val) =>
+                                                updateNestedField(`DECAL_SHEET_SIZES.${idx}.w`, val)
+                                            }
+                                            className={inputClsPr}
+                                        />
+                                        <span className="absolute right-3 top-[32px] text-gray-500">
+                                            cm
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="relative">
+                                <div className="col-span-3">
+                                    <label className={labelCls}>Dài (H)</label>
+                                    <div className="relative">
+                                        <NumInput
+                                            configValue={sheet.h}
+                                            step="0.1"
+                                            onCommit={(val) => updateDecalHeight(idx, val)}
+                                            className={inputClsPr}
+                                        />
+                                        <span className="absolute right-3 top-[32px] text-gray-500">
+                                            cm
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="col-span-4">
+                                    <label className={labelCls}>Quy đổi A4 (trang/tờ)</label>
+                                    <NumInput
+                                        configValue={sheet.a4Factor ?? 0}
+                                        step="0.1"
+                                        onCommit={(val) =>
+                                            updateNestedField(
+                                                `DECAL_SHEET_SIZES.${idx}.a4Factor`,
+                                                val
+                                            )
+                                        }
+                                        className={inputCls}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <button
+                                        onClick={() => delDecalSize(idx)}
+                                        className="w-full px-2 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                        Xóa
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* 14. Khổ chuẩn (chọn nhanh) */}
+                <section>
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-600">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                            Khổ Chuẩn (chọn nhanh khổ thành phẩm)
+                        </h3>
+                        <button
+                            onClick={addStandardSize}
+                            className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            + Thêm khổ
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {(localConfig.STANDARD_SIZES || []).map((s, idx) => (
+                            <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                                <div className="col-span-5">
+                                    <label className={labelCls}>Tên</label>
+                                    <input
+                                        type="text"
+                                        defaultValue={s.name}
+                                        className={inputCls}
+                                        onBlur={(e) => updateStandardName(idx, e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-3 relative">
                                     <label className={labelCls}>Rộng (W)</label>
                                     <NumInput
-                                        configValue={sheet.w}
+                                        configValue={s.w}
                                         step="0.1"
                                         onCommit={(val) =>
-                                            updateNestedField(`DECAL_SHEET_SIZES.${idx}.w`, val)
+                                            updateNestedField(`STANDARD_SIZES.${idx}.w`, val)
                                         }
                                         className={inputClsPr}
                                     />
@@ -928,13 +1094,13 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                                         cm
                                     </span>
                                 </div>
-                                <div className="relative">
-                                    <label className={labelCls}>Dài (H)</label>
+                                <div className="col-span-3 relative">
+                                    <label className={labelCls}>Cao (H)</label>
                                     <NumInput
-                                        configValue={sheet.h}
+                                        configValue={s.h}
                                         step="0.1"
                                         onCommit={(val) =>
-                                            updateNestedField(`DECAL_SHEET_SIZES.${idx}.h`, val)
+                                            updateNestedField(`STANDARD_SIZES.${idx}.h`, val)
                                         }
                                         className={inputClsPr}
                                     />
@@ -942,7 +1108,15 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                                         cm
                                     </span>
                                 </div>
-                            </React.Fragment>
+                                <div className="col-span-1">
+                                    <button
+                                        onClick={() => delStandardSize(idx)}
+                                        className="w-full px-2 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                        Xóa
+                                    </button>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </section>

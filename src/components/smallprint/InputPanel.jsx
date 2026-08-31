@@ -100,6 +100,29 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         </div>
                     </div>
                 )}
+                {(config.STANDARD_SIZES || []).length > 0 && (
+                    <div className="mb-3">
+                        <label htmlFor="standardSize">Khổ chuẩn (chọn nhanh)</label>
+                        <select
+                            id="standardSize"
+                            value=""
+                            onChange={(e) => {
+                                const s = (config.STANDARD_SIZES || [])[e.target.value];
+                                if (s) {
+                                    onChange('productW', s.w);
+                                    onChange('productH', s.h);
+                                }
+                            }}
+                        >
+                            <option value="">Khổ chuẩn…</option>
+                            {(config.STANDARD_SIZES || []).map((s, i) => (
+                                <option key={i} value={i}>
+                                    {s.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label htmlFor="productW">Rộng (W)</label>
@@ -202,8 +225,8 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                     </select>
                     {params.printColorMode === '1color' && (
                         <p className="mt-1 text-xs text-yellow-400">
-                            ⚠ In 1 màu đen chỉ in chữ &amp; đối tượng đen — KHÔNG in nền đen kín (full
-                            đen).
+                            ⚠ In 1 màu đen chỉ in chữ &amp; đối tượng đen — KHÔNG in nền đen kín
+                            (full đen).
                         </p>
                     )}
                 </div>
@@ -337,10 +360,10 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                     <div className="ml-4 mb-4 space-y-3 border-l-2 border-yellow-500/50 pl-4">
                         <p className="text-xs text-gray-400">
                             <span className="text-gray-300 font-semibold">Số lần ép</span> = số lần
-                            thay đổi vị trí ép (mỗi lần đặt máy dập 1 vị trí). VD: cùng khuôn ép 2 vị
-                            trí khác nhau = 2 lần; ép 2 mặt = 2 lần; ép 2 mặt × 2 vị trí/mặt = 4 lần.
-                            Mỗi lần ép thêm trên cùng khuôn tính 50% công. Khuôn / màu nhũ khác nhau
-                            → thêm khuôn mới.
+                            thay đổi vị trí ép (mỗi lần đặt máy dập 1 vị trí). VD: cùng khuôn ép 2
+                            vị trí khác nhau = 2 lần; ép 2 mặt = 2 lần; ép 2 mặt × 2 vị trí/mặt = 4
+                            lần. Mỗi lần ép thêm trên cùng khuôn tính 50% công. Khuôn / màu nhũ khác
+                            nhau → thêm khuôn mới.
                         </p>
                         {foilMolds.map((mold, index) => (
                             <div

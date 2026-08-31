@@ -199,6 +199,7 @@ export function calculateDecalOptions(
                     numCuttableSheets: 'N/A',
                     cutSheetW: pressW,
                     cutSheetH: pressH,
+                    a4Factor: commonSheet.a4Factor,
                     cutSheetSize: `${pressW.toFixed(2)} x ${pressH.toFixed(2)}`,
                     printableArea: `${printableArea.w.toFixed(2)} x ${printableArea.h.toFixed(2)}`,
                     clicks,

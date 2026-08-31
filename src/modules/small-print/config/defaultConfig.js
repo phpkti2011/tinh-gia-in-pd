@@ -340,10 +340,23 @@ export const DEFAULT_CONFIG = {
         { w: 43.0, h: 65.0 },
         { w: 54.5, h: 79.0 },
     ],
+    // a4Factor = số trang A4 quy đổi cho mỗi tờ khổ này (admin nhập trong Cài đặt).
+    // Có giá trị > 0 → engine dùng trực tiếp, bỏ qua bảng A4_CONVERSION_RATES theo chiều cao.
     DECAL_SHEET_SIZES: [
-        { w: 32.2, h: 33.0 },
-        { w: 32.2, h: 35.0 },
-        { w: 33.0, h: 48.0 },
+        { w: 32.2, h: 33.0, a4Factor: 1.5 },
+        { w: 32.2, h: 35.0, a4Factor: 1.5 },
+        { w: 33.0, h: 48.0, a4Factor: 2.4 },
+    ],
+    // Khổ THÀNH PHẨM chuẩn (cm) để chọn nhanh ở ô kích thước sản phẩm. Admin sửa trong Cài đặt.
+    STANDARD_SIZES: [
+        { name: 'Danh thiếp 9×5.5', w: 9, h: 5.5 },
+        { name: 'Thẻ 8.6×5.4', w: 8.6, h: 5.4 },
+        { name: 'A7 7.4×10.5', w: 7.4, h: 10.5 },
+        { name: 'A6 10.5×14.8', w: 10.5, h: 14.8 },
+        { name: 'A5 14.8×21', w: 14.8, h: 21 },
+        { name: 'A4 21×29.7', w: 21, h: 29.7 },
+        { name: 'Postcard 10×15', w: 10, h: 15 },
+        { name: 'Postcard 13×18', w: 13, h: 18 },
     ],
     A4_CONVERSION_RATES: {
         21.2: 1,

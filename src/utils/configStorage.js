@@ -654,7 +654,8 @@ export function mergeDeep(target, source) {
                         key === 'clickTiers' ||
                         key === 'vkPoints' ||
                         key === 'COMMON_SHEET_SIZES' ||
-                        key === 'DECAL_SHEET_SIZES') &&
+                        key === 'DECAL_SHEET_SIZES' ||
+                        key === 'STANDARD_SIZES') &&
                     source[key].length > 0
                 ) {
                     output[key] = JSON.parse(JSON.stringify(source[key]));

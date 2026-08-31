@@ -5,6 +5,7 @@
 // quy đổi sang trang A4 + áp CUSTOMER_PRICE_TIERS.
 
 import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pricing.js';
+import { computeA4Factor } from './a4.js';
 
 export function calculateCustomerQuote(
     bestOption,
@@ -34,24 +35,17 @@ export function calculateCustomerQuote(
 
     const pressH = bestOption.cutSheetH;
 
-    const A4_REFERENCE_HEIGHT = 21.2;
-    const A4_CONVERSION_BASE_HEIGHT = 21.0;
-
     let conversionFactor;
-    const h_str = pressH.toFixed(1);
-
-    if (config.A4_CONVERSION_RATES[h_str]) {
-        conversionFactor = config.A4_CONVERSION_RATES[h_str];
-    } else if (pressH > 48) {
-        let a4PerSheet_1_side = 0;
-        if (pressH <= 76) a4PerSheet_1_side = 3;
-        else if (pressH <= 91) a4PerSheet_1_side = 4;
-        else a4PerSheet_1_side = 5;
-        conversionFactor = a4PerSheet_1_side;
-    } else if (pressH > A4_REFERENCE_HEIGHT) {
-        conversionFactor = pressH / A4_CONVERSION_BASE_HEIGHT;
+    if (typeof bestOption.a4Factor === 'number' && bestOption.a4Factor > 0) {
+        // Tỉ lệ quy đổi A4 nhập tay/đã lưu trên từng khổ decal (Cài đặt) → dùng trực tiếp.
+        conversionFactor = bestOption.a4Factor;
     } else {
-        return { error: `Lỗi cấu hình: Không có hệ số A4 cho khổ ${bestOption.cutSheetSize}` };
+        // Khổ cũ chưa có a4Factor → suy ra từ chiều cao bằng công thức chung (computeA4Factor).
+        const computed = computeA4Factor(pressH, config);
+        if (computed == null) {
+            return { error: `Lỗi cấu hình: Không có hệ số A4 cho khổ ${bestOption.cutSheetSize}` };
+        }
+        conversionFactor = computed;
     }
 
     const numCutSheets =

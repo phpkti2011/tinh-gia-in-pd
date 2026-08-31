@@ -32,3 +32,5 @@ export {
 } from './options.js';
 
 export { calculateCustomerQuote } from './quote.js';
+
+export { computeA4Factor } from './a4.js';
