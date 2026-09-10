@@ -65,9 +65,7 @@ export function calculateDieCuttingCosts(params, printSheetCount, isDecal, confi
         if (!BUILTIN_MOLD_TYPES.includes(moldType)) {
             // Khuôn tùy chỉnh (admin thêm qua Cài Đặt) — tra theo id, tính theo
             // pricingMode tự chọn lúc tạo khuôn. Không đụng tới switch bên dưới.
-            const custom = (config.DIE_CUTTING_CUSTOM_MOLDS || []).find(
-                (m) => m.id === moldType
-            );
+            const custom = (config.DIE_CUTTING_CUSTOM_MOLDS || []).find((m) => m.id === moldType);
             if (custom) {
                 if (custom.pricingMode === 'flat') {
                     moldCost = custom.price || 0;

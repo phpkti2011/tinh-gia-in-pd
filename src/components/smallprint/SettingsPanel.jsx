@@ -272,8 +272,8 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                             )}
                             <span className="absolute right-3 top-[32px] text-gray-500">VNĐ</span>
                             <p className="mt-1 text-xs text-gray-500">
-                                Chỉ dùng để engine chọn khổ/máy in tối ưu — không ảnh hưởng giá
-                                cán màng báo khách (xem bảng "Giá cán màng (báo khách)" bên dưới).
+                                Chỉ dùng để engine chọn khổ/máy in tối ưu — không ảnh hưởng giá cán
+                                màng báo khách (xem bảng "Giá cán màng (báo khách)" bên dưới).
                             </p>
                         </div>
                     </div>
@@ -1018,9 +1018,7 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                 {/* 10c. Khuôn bế tùy chỉnh */}
                 <section>
                     <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-600">
-                        <h3 className="text-lg font-semibold text-cyan-400">
-                            Khuôn Bế Tùy Chỉnh
-                        </h3>
+                        <h3 className="text-lg font-semibold text-cyan-400">Khuôn Bế Tùy Chỉnh</h3>
                         <button
                             onClick={addCustomMold}
                             className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
@@ -1030,8 +1028,8 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                     </div>
                     {(localConfig.DIE_CUTTING_CUSTOM_MOLDS || []).length === 0 && (
                         <p className="text-gray-500 text-sm">
-                            Chưa có khuôn tùy chỉnh nào. Bấm "+ Thêm khuôn" để tạo khuôn mới ngoài
-                            5 loại có sẵn ở trên.
+                            Chưa có khuôn tùy chỉnh nào. Bấm "+ Thêm khuôn" để tạo khuôn mới ngoài 5
+                            loại có sẵn ở trên.
                         </p>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
