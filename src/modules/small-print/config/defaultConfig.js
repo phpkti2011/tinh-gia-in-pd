@@ -147,6 +147,12 @@ export const DEFAULT_CONFIG = {
         bag: { threshold_area: 1376, small_price: 300000, large_price: 500000 },
         tag: { threshold_w: 10, threshold_h: 6, price_per_cm2: 700, hole_price: 10000 },
     },
+    // Danh mục khuôn bế tùy chỉnh (admin tự thêm) — bổ sung song song 5 loại cố định
+    // ở trên. Mỗi khuôn tự chọn 1 trong 3 cách tính giá (pricingMode):
+    //   'flat'      → price
+    //   'threshold' → threshold_area (cm²) + small_price/large_price
+    //   'per_area'  → price_per_cm2 (giá = W×H sản phẩm × price_per_cm2)
+    DIE_CUTTING_CUSTOM_MOLDS: [],
     DIE_CUTTING_LABOR_CONFIG: {
         cost_tiers: [
             { max_qty: 500, price: 100000, type: 'package' },

@@ -70,7 +70,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('decalConfig → decal + DECAL_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 3 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.0.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.6.0', null);
         });
 
         it('largePrintConfig → large-print + LARGE_PRINT_CONFIG_SCHEMA_VERSION', async () => {
@@ -99,7 +99,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('Save thành công gọi Supabase với đúng 4 RPC args', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.0.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.6.0', null);
         });
     });
 

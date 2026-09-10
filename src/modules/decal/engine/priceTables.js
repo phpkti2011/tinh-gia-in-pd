@@ -4,6 +4,13 @@
 // KHÔNG đổi behavior. Pure functions, không React/DOM/IO.
 
 import { calculateSingleStickerPrice, calculateSheetPrice } from './pricing.js';
+import { findPrintSheet } from './layout.js';
+
+// Loại các vật liệu KHÔNG có ở khổ đang chọn (unavailableMaterials của khổ).
+function filterAvailable(materials, config, sheetW, sheetH) {
+    const off = findPrintSheet(config, sheetW, sheetH)?.unavailableMaterials || [];
+    return off.length ? materials.filter((m) => !off.includes(m)) : materials;
+}
 
 // Generate full price table for single sticker mode
 export function generateSinglePriceTable(
@@ -14,10 +21,14 @@ export function generateSinglePriceTable(
     config,
     customQuantity
 ) {
-    const decalsToDisplay =
+    const decalsToDisplay = filterAvailable(
         decalType === 'Decal giấy' || decalType === 'Decal nhựa'
             ? ['Decal giấy', 'Decal nhựa']
-            : [decalType];
+            : [decalType],
+        config,
+        sheetW,
+        sheetH
+    );
     const quantities = Array.from({ length: 20 }, (_, i) => (i + 1) * 100);
     const rows = [];
 
@@ -101,10 +112,14 @@ export function generateSheetPriceTable(
     config,
     customQuantity
 ) {
-    const decalsToDisplay =
+    const decalsToDisplay = filterAvailable(
         decalType === 'Decal giấy' || decalType === 'Decal nhựa'
             ? ['Decal giấy', 'Decal nhựa']
-            : [decalType];
+            : [decalType],
+        config,
+        sheetW,
+        sheetH
+    );
     const quantities = Array.from({ length: 20 }, (_, i) => (i + 1) * 100);
     const rows = [];
 

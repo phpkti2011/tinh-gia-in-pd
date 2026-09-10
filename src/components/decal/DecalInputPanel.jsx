@@ -53,38 +53,36 @@ export default function DecalInputPanel({ config, params, onChange }) {
     const decalTypes = Object.keys(config.decalCosts);
 
     return (
-        <div className="lg:col-span-1" id="decal-controls">
-            {/* Mode toggle */}
-            <div className="input-group">
-                <div className="flex gap-1">
-                    <button
-                        type="button"
-                        onClick={() => onChange('mode', 'single')}
-                        className={`flex-1 py-2 px-3 text-sm font-semibold rounded-l-lg transition ${
-                            isSingleMode
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                        }`}
-                    >
-                        Tính Giá Tem Lẻ
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onChange('mode', 'sheet')}
-                        className={`flex-1 py-2 px-3 text-sm font-semibold rounded-r-lg transition ${
-                            !isSingleMode
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                        }`}
-                    >
-                        Tính Giá Tờ Sticker
-                    </button>
-                </div>
+        <div id="decal-controls">
+            {/* Mode toggle — gọn, không bọc .input-group để đỡ 1 lớp đệm */}
+            <div className="flex gap-1 mb-4">
+                <button
+                    type="button"
+                    onClick={() => onChange('mode', 'single')}
+                    className={`flex-1 py-2 px-3 text-sm font-semibold rounded-l-lg transition ${
+                        isSingleMode
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                >
+                    Tính Giá Tem Lẻ
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onChange('mode', 'sheet')}
+                    className={`flex-1 py-2 px-3 text-sm font-semibold rounded-r-lg transition ${
+                        !isSingleMode
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                >
+                    Tính Giá Tờ Sticker
+                </button>
             </div>
 
             {/* Print sheet size */}
             <div className="input-group">
-                <h2 className="!text-base !mb-2">
+                <h2>
                     <span className="text-blue-400">1.</span> Khổ In
                 </h2>
                 <div className="mb-3">
@@ -132,16 +130,18 @@ export default function DecalInputPanel({ config, params, onChange }) {
                 )}
             </div>
 
-            {/* === SINGLE MODE === */}
-            {isSingleMode && (
-                <>
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">2.</span> Kích Thước Tem
-                        </h2>
+            {/* Thông Số Sản Phẩm — gộp kích thước/số lượng/loại/hình dạng (hoặc tương đương ở chế độ tờ) */}
+            <div className="input-group">
+                <h2>
+                    <span className="text-blue-400">2.</span> Thông Số Sản Phẩm
+                </h2>
+
+                {/* === SINGLE MODE === */}
+                {isSingleMode && (
+                    <>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
-                                <label htmlFor="stickerW">Rộng (W)</label>
+                                <label htmlFor="stickerW">Rộng tem (W)</label>
                                 <div className="relative">
                                     <NumberField
                                         id="stickerW"
@@ -153,7 +153,7 @@ export default function DecalInputPanel({ config, params, onChange }) {
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="stickerH">Cao (H)</label>
+                                <label htmlFor="stickerH">Cao tem (H)</label>
                                 <div className="relative">
                                     <NumberField
                                         id="stickerH"
@@ -165,77 +165,67 @@ export default function DecalInputPanel({ config, params, onChange }) {
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">3.</span> Số Lượng Tùy Chỉnh
-                        </h2>
-                        <div className="relative">
-                            <NumberField
-                                id="customQuantity"
-                                value={params.customQuantity}
-                                onCommit={(v) => onChange('customQuantity', v)}
-                                step={1}
-                                min={1}
-                            />
-                            <span className="unit">tem</span>
-                        </div>
-                    </div>
-
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">4.</span> Loại Decal
-                        </h2>
-                        <select
-                            id="decalType"
-                            name="decalType"
-                            value={params.decalType}
-                            onChange={handleChange}
-                        >
-                            {decalTypes.map((type) => (
-                                <option key={type} value={type}>
-                                    {type}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">5.</span> Hình Dạng
-                        </h2>
-                        <div className="flex gap-1">
-                            {[
-                                { value: 'rectangle', label: 'Chữ Nhật' },
-                                { value: 'circle', label: 'Tròn' },
-                                { value: 'oval', label: 'Oval' },
-                            ].map((opt) => (
-                                <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => onChange('shape', opt.value)}
-                                    className={`flex-1 py-1.5 px-2 text-xs font-medium rounded transition ${
-                                        params.shape === opt.value
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                    }`}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label htmlFor="customQuantity">SL tùy chỉnh</label>
+                                <div className="relative">
+                                    <NumberField
+                                        id="customQuantity"
+                                        value={params.customQuantity}
+                                        onCommit={(v) => onChange('customQuantity', v)}
+                                        step={1}
+                                        min={1}
+                                    />
+                                    <span className="unit">tem</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="decalType">Loại Decal</label>
+                                <select
+                                    id="decalType"
+                                    name="decalType"
+                                    value={params.decalType}
+                                    onChange={handleChange}
                                 >
-                                    {opt.label}
-                                </button>
-                            ))}
+                                    {decalTypes.map((type) => (
+                                        <option key={type} value={type}>
+                                            {type}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                </>
-            )}
 
-            {/* === SHEET MODE === */}
-            {!isSingleMode && (
-                <>
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">2.</span> Kích Thước Tờ Sticker
-                        </h2>
+                        <div>
+                            <label>Hình Dạng</label>
+                            <div className="flex gap-1">
+                                {[
+                                    { value: 'rectangle', label: 'Chữ Nhật' },
+                                    { value: 'circle', label: 'Tròn' },
+                                    { value: 'oval', label: 'Oval' },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => onChange('shape', opt.value)}
+                                        className={`flex-1 py-1.5 px-2 text-xs font-medium rounded transition ${
+                                            params.shape === opt.value
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* === SHEET MODE === */}
+                {!isSingleMode && (
+                    <>
                         <div className="mb-3">
                             <label htmlFor="sheetSizeKey">Khổ tờ sticker</label>
                             <select
@@ -253,7 +243,7 @@ export default function DecalInputPanel({ config, params, onChange }) {
                             </select>
                         </div>
                         {isSheetSizeCustom && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-3 mb-3">
                                 <div>
                                     <label htmlFor="customSheetW">Rộng (W)</label>
                                     <div className="relative">
@@ -280,78 +270,113 @@ export default function DecalInputPanel({ config, params, onChange }) {
                                 </div>
                             </div>
                         )}
-                    </div>
 
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">3.</span> Số Sticker / Tờ
-                        </h2>
-                        <div className="relative">
-                            <NumberField
-                                id="sheetStickerCount"
-                                value={params.sheetStickerCount}
-                                onCommit={(v) => onChange('sheetStickerCount', v)}
-                                step={1}
-                                min={1}
-                            />
-                            <span className="unit">sticker</span>
+                        <div className="grid grid-cols-2 gap-3 mb-1">
+                            <div>
+                                <label htmlFor="sheetStickerCount">Số Sticker/Tờ</label>
+                                <div className="relative">
+                                    <NumberField
+                                        id="sheetStickerCount"
+                                        value={params.sheetStickerCount}
+                                        onCommit={(v) => onChange('sheetStickerCount', v)}
+                                        step={1}
+                                        min={1}
+                                    />
+                                    <span className="unit">sticker</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="sheetCustomQuantity">SL Tờ Tùy Chỉnh</label>
+                                <div className="relative">
+                                    <NumberField
+                                        id="sheetCustomQuantity"
+                                        value={params.sheetCustomQuantity}
+                                        onCommit={(v) => onChange('sheetCustomQuantity', v)}
+                                        step={1}
+                                        min={1}
+                                    />
+                                    <span className="unit">tờ</span>
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mb-3">
                             Số sticker trên mỗi tờ (dùng tính phụ phí bế demi)
                         </p>
-                    </div>
 
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">4.</span> Số Lượng Tờ Tùy Chỉnh
-                        </h2>
-                        <div className="relative">
-                            <NumberField
-                                id="sheetCustomQuantity"
-                                value={params.sheetCustomQuantity}
-                                onCommit={(v) => onChange('sheetCustomQuantity', v)}
-                                step={1}
-                                min={1}
-                            />
-                            <span className="unit">tờ</span>
+                        <div className="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label htmlFor="sheetDecalType">Loại Decal</label>
+                                <select
+                                    id="sheetDecalType"
+                                    name="sheetDecalType"
+                                    value={params.sheetDecalType}
+                                    onChange={handleChange}
+                                >
+                                    {decalTypes.map((type) => (
+                                        <option key={type} value={type}>
+                                            {type}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="sheetLamination">Cán Màng</label>
+                                <label className="flex items-center cursor-pointer text-sm h-[42px]">
+                                    <input
+                                        id="sheetLamination"
+                                        type="checkbox"
+                                        name="sheetLamination"
+                                        checked={params.sheetLamination}
+                                        onChange={handleChange}
+                                        className="bg-gray-700 rounded mr-2"
+                                    />
+                                    <span>Có cán màng</span>
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    </>
+                )}
+            </div>
 
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">5.</span> Loại Decal
-                        </h2>
-                        <select
-                            id="sheetDecalType"
-                            name="sheetDecalType"
-                            value={params.sheetDecalType}
-                            onChange={handleChange}
-                        >
-                            {decalTypes.map((type) => (
-                                <option key={type} value={type}>
-                                    {type}
-                                </option>
-                            ))}
-                        </select>
+            {/* Chiết khấu (áp cho cả bảng giá) */}
+            <div className="input-group">
+                <h2>
+                    <span className="text-blue-400">3.</span> Chiết Khấu
+                </h2>
+                <div className="flex flex-wrap gap-1 mb-2">
+                    {[0, 5, 10, 15, 20, 25].map((v) => {
+                        const active = (parseFloat(params.discountPercent) || 0) === v;
+                        return (
+                            <button
+                                key={v}
+                                type="button"
+                                onClick={() => onChange('discountPercent', v)}
+                                className={`flex-1 min-w-[44px] py-1.5 px-2 text-sm font-medium rounded transition ${
+                                    active
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                }`}
+                            >
+                                {v === 0 ? 'Không' : `${v}%`}
+                            </button>
+                        );
+                    })}
+                </div>
+                <div>
+                    <label htmlFor="discountPercent">Tùy nhập (%)</label>
+                    <div className="relative">
+                        <NumberField
+                            id="discountPercent"
+                            value={params.discountPercent}
+                            onCommit={(v) => onChange('discountPercent', v)}
+                            step={1}
+                            min={0}
+                            max={100}
+                        />
+                        <span className="unit">%</span>
                     </div>
-
-                    <div className="input-group">
-                        <h2 className="!text-base !mb-2">
-                            <span className="text-blue-400">6.</span> Cán Màng
-                        </h2>
-                        <label className="flex items-center cursor-pointer text-sm">
-                            <input
-                                type="checkbox"
-                                name="sheetLamination"
-                                checked={params.sheetLamination}
-                                onChange={handleChange}
-                                className="bg-gray-700 rounded mr-2"
-                            />
-                            <span>Có cán màng</span>
-                        </label>
-                    </div>
-                </>
-            )}
+                </div>
+            </div>
         </div>
     );
 }

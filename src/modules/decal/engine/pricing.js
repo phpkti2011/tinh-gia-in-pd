@@ -1,14 +1,15 @@
 // Decal engine — pricing helpers + public pricing API.
 //
 // Tách từ src/utils/decalCalculator.js ở TASK-0004.
-// TASK-0006: calculateSingleStickerPrice đã align với Excel reference
-//   - base = progressive(ceil) + (ceil − raw) × priceOfTierContaining(ceil)  (Formula A)
-//   - lam  = laminationCost × raw  (raw sheet count, không ceil)
-//   - decalExtra: GIỮ ceil (chưa có Excel reference cho Decal nhựa — fix sau)
-// calculateSheetPrice CHƯA fix — vẫn dùng integer ceil như cũ.
+// TASK-DECAL-WHOLESHEET: tính NGUYÊN TỜ (ceil) cho toàn bộ (in + vật liệu + cán màng),
+//   giống mô hình plugin 4.0.0 — revert Formula A (tờ lẻ) của TASK-0006.
+//   Khổ giấy in khác gốc → nhân (1 + percent/100) lên TOÀN BỘ giá mỗi tờ, trong đó
+//   percent lấy từ khổ khớp trong config.printSheetSizes (khổ gốc = 0%).
 // Xem docs/pricing-rules/decal-reference-cases.md cho chi tiết.
 //
 // Pure functions: chỉ phụ thuộc input + config object.
+
+import { findPrintSheet } from './layout.js';
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -31,12 +32,10 @@ function calculateProgressivePrice(numSheets, config) {
     return totalCost;
 }
 
-// Price multiplier for non-base sheet sizes
-function getPriceMultiplier(sheetW, sheetH, config) {
-    const baseArea = config.basePrintWidth * config.basePrintHeight;
-    const currentArea = sheetW * sheetH;
-    if (baseArea <= 0 || currentArea <= 0 || baseArea === currentArea) return 1;
-    return (currentArea / baseArea) * config.areaConversionFactor;
+// % tăng giá của khổ giấy in khớp (so với khổ gốc). Không khớp (khổ tùy chọn) → 0%.
+function getSizePercent(config, sheetW, sheetH) {
+    const size = findPrintSheet(config, sheetW, sheetH);
+    return size && typeof size.percent === 'number' ? size.percent : 0;
 }
 
 // Get demi cut surcharge percent
@@ -47,25 +46,29 @@ function getDemiCutSurchargePercent(stickerCount, config) {
     return config.demiCutSurchargeTiers[config.demiCutSurchargeTiers.length - 1]?.percent || 0;
 }
 
-// TASK-0006: Tìm giá tier mà một sheet count rơi vào (= tier marginal).
-// Dùng cho Formula A: cộng fractional adjustment ở tier hiện đang ở.
-function findTierPriceAt(sheetCount, config) {
-    for (const tier of config.progressiveTiers) {
-        if (sheetCount <= tier.upTo) return tier.price;
-    }
-    return config.progressiveTiers[config.progressiveTiers.length - 1]?.price || 0;
+// Áp chiết khấu % cho 1 dòng giá, chặn theo giá sàn/tờ (không giảm dưới sàn, không tăng giá gốc).
+//   floorTotal = sheets × minPricePerSheet
+//   final = max(base×(1−d/100), min(base, floorTotal))
+//   floored = true khi mức giảm bị chặn ở sàn (d>0 và giảm thô < final).
+export function applyDiscount(base, sheets, discountPercent, minPricePerSheet) {
+    const d = Number(discountPercent) || 0;
+    const min = Number(minPricePerSheet) || 0;
+    const n = Number(sheets) || 0;
+    if (d <= 0) return { price: base, floored: false };
+    const floorTotal = n * min;
+    const rawDiscount = base * (1 - d / 100);
+    const final = Math.max(rawDiscount, Math.min(base, floorTotal));
+    return { price: final, floored: rawDiscount < final - 1e-6 };
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-// Calculate price for single sticker mode
-// TASK-0006: align với Excel reference cho Case C (19.500 tem 100×70).
-//   base = progressive(ceil) + (ceil − raw) × priceOfTierContaining(ceil)
-//   lam  = laminationCost × raw
-//   decalExtra = decalCost × ceil  (chưa có Excel ref cho Decal nhựa — fix sau)
-// Khi raw integer (ceil = raw): fractional adjustment = 0 → identical với old.
+// Calculate price for single sticker mode — NGUYÊN TỜ (ceil) cho toàn bộ.
+//   sheets   = ceil(quantity / stickersPerSheet)
+//   giá tờ   = progressive(sheets) + vật liệu×sheets + cán×sheets
+//   × (1 + percent/100)  — percent theo khổ giấy in (khổ gốc = 0%).
 export function calculateSingleStickerPrice(
     quantity,
     decalType,
@@ -76,26 +79,17 @@ export function calculateSingleStickerPrice(
     config
 ) {
     if (stickersPerSheet <= 0) return 0;
-    const rawSheets = quantity / stickersPerSheet;
-    const ceilSheets = Math.ceil(rawSheets);
-    const multiplier = getPriceMultiplier(sheetW, sheetH, config);
+    const sheets = Math.ceil(quantity / stickersPerSheet);
 
-    // Formula A: progressive(ceil) + (ceil − raw) × marginal tier price.
-    const progressiveBase = calculateProgressivePrice(ceilSheets, config);
-    const fractionalAdjustment = (ceilSheets - rawSheets) * findTierPriceAt(ceilSheets, config);
-    const baseCost = progressiveBase + fractionalAdjustment;
-    const scaled = baseCost * multiplier;
+    const printCost = calculateProgressivePrice(sheets, config);
+    const materialCost = (config.decalCosts[decalType] || 0) * sheets;
+    const lamCost = isLaminated ? config.laminationCost * sheets : 0;
 
-    // decalExtra GIỮ ceil — chờ Excel ref cho Decal nhựa (xem decal-reference-cases.md).
-    const decalExtra = (config.decalCosts[decalType] || 0) * ceilSheets;
-
-    // lam dùng RAW theo Excel ref: 2437,5 × 500 = 1.218.750 (Case C).
-    const lamCost = isLaminated ? config.laminationCost * rawSheets : 0;
-
-    return scaled + decalExtra + lamCost;
+    const percent = getSizePercent(config, sheetW, sheetH);
+    return (printCost + materialCost + lamCost) * (1 + percent / 100);
 }
 
-// Calculate price for sticker sheet mode
+// Calculate price for sticker sheet mode — NGUYÊN TỜ + % khổ + phụ phí bế demi.
 export function calculateSheetPrice(
     quantity,
     decalType,
@@ -108,12 +102,14 @@ export function calculateSheetPrice(
 ) {
     if (sheetsPerPrintSheet <= 0) return 0;
     const numPrintSheets = Math.ceil(quantity / sheetsPerPrintSheet);
-    const multiplier = getPriceMultiplier(sheetW, sheetH, config);
-    const baseCost = calculateProgressivePrice(numPrintSheets, config);
-    const scaled = baseCost * multiplier;
-    const decalExtra = (config.decalCosts[decalType] || 0) * numPrintSheets;
+
+    const printCost = calculateProgressivePrice(numPrintSheets, config);
+    const materialCost = (config.decalCosts[decalType] || 0) * numPrintSheets;
     const lamCost = isLaminated ? config.laminationCost * numPrintSheets : 0;
-    const totalPrintCost = scaled + decalExtra + lamCost;
+
+    const percent = getSizePercent(config, sheetW, sheetH);
+    const sheetPrice = (printCost + materialCost + lamCost) * (1 + percent / 100);
+
     const surchargePercent = getDemiCutSurchargePercent(stickersOnSheet, config);
-    return totalPrintCost * (1 + surchargePercent / 100);
+    return sheetPrice * (1 + surchargePercent / 100);
 }

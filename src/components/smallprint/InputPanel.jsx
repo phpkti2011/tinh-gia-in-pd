@@ -475,6 +475,15 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                                 <option value="box">Hộp</option>
                                 <option value="bag">Túi giấy</option>
                                 <option value="tag">Tag treo</option>
+                                {(config.DIE_CUTTING_CUSTOM_MOLDS || []).length > 0 && (
+                                    <optgroup label="Khuôn tùy chỉnh">
+                                        {config.DIE_CUTTING_CUSTOM_MOLDS.map((m) => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                )}
                             </select>
                             {params.moldType === 'tag' && (
                                 <div id="tagHoleOption">

@@ -11,13 +11,39 @@ export const DECAL_DEFAULT_CONFIG = {
     basePrintWidth: 330,
     basePrintHeight: 330,
     areaConversionFactor: 0.35,
+    // Lề mặc định (fallback khi tính không kèm máy). Lề thực tế lấy theo MÁY (machines) bên dưới.
     marginShortSide: 28,
     marginLongSide: 50,
     stickerGap: 2,
     laminationCost: 500,
+    // Máy bế — mỗi máy có vùng bế (lề) riêng 4 cạnh (trên/dưới/trái/phải, mm) → số tem/tờ khác →
+    // số tờ & giá khác. Avitech vùng bế rộng hơn Graptech → lề NHỎ hơn → nhiều tem/tờ hơn.
+    // Số mẫu (tách đôi tổng lề cũ) — admin chỉnh số thật từng cạnh trong Cài đặt.
+    machines: [
+        { name: 'Graptech', marginTop: 25, marginBottom: 25, marginLeft: 14, marginRight: 14 },
+        { name: 'Avitech', marginTop: 19, marginBottom: 19, marginLeft: 10, marginRight: 10 },
+    ],
+    // percent = % tăng giá so với khổ gốc 330×330 (0 = gốc).
+    // minPriceByMaterial = giá sàn mỗi tờ in theo TỪNG loại decal ({} = mọi vật liệu 0 = không sàn).
+    // unavailableMaterials = danh sách loại decal KHÔNG có ở khổ này (loại khỏi bảng giá). [] = có tất cả.
+    //   Chiết khấu không giảm dưới giá sàn. Admin sửa trong Cài đặt (ma trận vật liệu × khổ).
     printSheetSizes: [
-        { label: '330 x 330 mm', w: 330, h: 330 },
-        { label: '330 x 480 mm', w: 330, h: 480 },
+        {
+            label: '330 x 330 mm (gốc)',
+            w: 330,
+            h: 330,
+            percent: 0,
+            minPriceByMaterial: {},
+            unavailableMaterials: [],
+        },
+        {
+            label: '330 x 480 mm',
+            w: 330,
+            h: 480,
+            percent: 0,
+            minPriceByMaterial: {},
+            unavailableMaterials: [],
+        },
     ],
     demiCutSurchargeTiers: [
         { upTo: 20, percent: 20 },

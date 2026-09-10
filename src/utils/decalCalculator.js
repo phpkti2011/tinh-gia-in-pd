@@ -14,4 +14,5 @@ export {
     calculateSheetPrice,
     generateSinglePriceTable,
     generateSheetPriceTable,
+    applyDiscount,
 } from '../modules/decal/engine/index.js';

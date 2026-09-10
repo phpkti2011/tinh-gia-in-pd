@@ -2,16 +2,16 @@
 //
 // LỊCH SỬ:
 //   - TASK-0003: tạo Cases A–E (khoá behavior current).
-//   - TASK-0006: cập nhật A, B, C, D theo Excel reference (Formula A).
-//                Case E giữ nguyên (raw integer → fractional adjustment = 0).
-//                Case C ĐÃ KHỚP Excel target 7.810.450đ.
+//   - TASK-0006: A, B, C, D theo Excel reference (Formula A, tờ lẻ).
+//   - TASK-DECAL-WHOLESHEET: REVERT Formula A → tính NGUYÊN TỜ (ceil) toàn bộ,
+//                giống plugin 4.0.0. Đã cập nhật lại kỳ vọng A, B, C, D.
 //
-// Formula A (TASK-0006, áp cho calculateSingleStickerPrice):
-//   rawSheets   = quantity / stickersPerSheet
-//   ceilSheets  = Math.ceil(rawSheets)
-//   base        = progressive(ceilSheets) + (ceilSheets − rawSheets) × priceOfTierContaining(ceilSheets)
-//   lam         = laminationCost × rawSheets       (raw, không ceil)
-//   decalExtra  = decalCost × ceilSheets           (vẫn ceil — chờ Excel ref cho Decal nhựa)
+// Công thức hiện tại (calculateSingleStickerPrice):
+//   sheets   = Math.ceil(quantity / stickersPerSheet)          // NGUYÊN TỜ
+//   print    = progressive(sheets)
+//   material = decalCost × sheets
+//   lam      = laminationCost × sheets                         // cũng ceil
+//   total    = (print + material + lam) × (1 + percent/100)    // percent theo khổ giấy (gốc = 0%)
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -23,18 +23,14 @@ import { DECAL_DEFAULT_CONFIG } from '../../src/config/decalConfig.js';
 const config = DECAL_DEFAULT_CONFIG;
 
 // ---------------------------------------------------------------------------
-// CASE A — đơn nhỏ, không cán màng  [updated TASK-0006]
-// Input: tem 50×90mm, decal giấy, 500 cái, print sheet 330×330mm
+// CASE A — đơn nhỏ, không cán màng  [WHOLESHEET]
+// Input: tem 50×90mm, decal giấy, 500 cái, print sheet 330×330mm (gốc, 0%)
 // Layout: count=15 (5×3, vertical)  — KHÔNG đổi
-// Pricing (Formula A):
-//   rawSheets = 500/15 = 33,333...
-//   ceil = 34, frac = 0,667
+// Pricing (nguyên tờ):
+//   sheets = ceil(500/15) = 34
 //   progressive(34) = 448.000
-//   tier@34 = tier 6 (upTo=40, price=4.500)
-//   base = 448.000 + 0,667 × 4.500 ≈ 451.000
-//   decalExtra = 0 (Decal giấy)
-//   lam = 0 (no lam)
-//   TOTAL ≈ 451.000
+//   material = 0 (Decal giấy), lam = 0 (no lam), percent = 0
+//   TOTAL = 448.000
 // ---------------------------------------------------------------------------
 describe('Case A: tem 50×90mm, 500 cái, Decal giấy, KHÔNG cán màng', () => {
     const stickerW = 50,
@@ -81,20 +77,20 @@ describe('Case A: tem 50×90mm, 500 cái, Decal giấy, KHÔNG cán màng', () =
         expect(sheetCount).toBe(34);
     });
 
-    it('tổng tiền ≈ 451.000đ (TASK-0006 Formula A: 448k + 0,667×4500)', () => {
-        expect(total).toBeCloseTo(451000, 2);
+    it('tổng tiền = 448.000đ (nguyên tờ: progressive(34))', () => {
+        expect(total).toBe(448000);
     });
 
-    it('đơn giá (suy ra) ≈ 902đ/con', () => {
-        expect(unitPrice).toBeCloseTo(902, 2);
+    it('đơn giá (suy ra) = 896đ/con', () => {
+        expect(unitPrice).toBeCloseTo(896, 2);
     });
 });
 
 // ---------------------------------------------------------------------------
-// CASE B — cùng input như A nhưng CÓ cán màng  [updated TASK-0006]
-// base = 451.000 (như A)
-// lam (raw) = 500/15 × 500 = 16.666,67
-// TOTAL ≈ 467.667
+// CASE B — cùng input như A nhưng CÓ cán màng  [WHOLESHEET]
+// base = 448.000 (như A)
+// lam (nguyên tờ) = ceil(34) × 500 = 17.000
+// TOTAL = 465.000
 // ---------------------------------------------------------------------------
 describe('Case B: tem 50×90mm, 500 cái, Decal giấy, CÓ cán màng', () => {
     const stickerW = 50,
@@ -131,38 +127,34 @@ describe('Case B: tem 50×90mm, 500 cái, Decal giấy, CÓ cán màng', () => {
         config
     );
 
-    it('tổng tiền có cán ≈ 467.666,67đ', () => {
-        expect(priceLam).toBeCloseTo(467666.67, 2);
+    it('tổng tiền có cán = 465.000đ', () => {
+        expect(priceLam).toBe(465000);
     });
 
-    it('phí cán màng ≈ 16.666,67đ (= raw 33,333 × 500đ, KHÔNG ceil)', () => {
-        expect(priceLam - priceNoLam).toBeCloseTo(
-            (quantity / layout.count) * config.laminationCost,
-            6
+    it('phí cán màng = 17.000đ (= ceil 34 tờ × 500đ)', () => {
+        expect(priceLam - priceNoLam).toBe(
+            Math.ceil(quantity / layout.count) * config.laminationCost
         );
-        expect(priceLam - priceNoLam).toBeCloseTo(16666.67, 2);
+        expect(priceLam - priceNoLam).toBe(17000);
     });
 
-    it('đơn giá có cán ≈ 935,33đ/con', () => {
-        expect(priceLam / quantity).toBeCloseTo(935.33, 2);
+    it('đơn giá có cán = 930đ/con', () => {
+        expect(priceLam / quantity).toBeCloseTo(930, 2);
     });
 });
 
 // ---------------------------------------------------------------------------
-// CASE C — đơn lớn (Excel reference target)  [updated TASK-0006]
-// Input: tem 100×70mm, decal giấy, 19.500 cái, có cán, print 330×330
-// Layout: count=8 (4×2 horizontal)
-// Pricing (Formula A):
-//   raw = 19500/8 = 2.437,5
-//   ceil = 2.438, frac = 0,5
-//   progressive(2438) = 6.590.600
-//   tier@2438 = tier 18 (upTo=Infinity, price=2.200)
-//   base = 6.590.600 + 0,5 × 2.200 = 6.591.700  ✓ Excel
-//   lam (raw) = 2.437,5 × 500 = 1.218.750  ✓ Excel
-//   TOTAL = 7.810.450  ✓ Excel
-//   đơn giá round = 401  ✓ Excel
+// CASE C — đơn lớn  [WHOLESHEET + xếp HỖN HỢP]
+// Input: tem 100×70mm, decal giấy, 19.500 cái, có cán, print 330×330 (gốc, 0%)
+// Layout: xếp hỗn hợp → count=10 (khối chính 4×2 xoay ngang + 2 con ở dải đáy)
+// Pricing (nguyên tờ):
+//   sheets = ceil(19500/10) = 1.950
+//   base   = progressive(1950) = 5.517.000
+//   lam    = 1.950 × 500 = 975.000
+//   TOTAL  = 6.492.000
+//   đơn giá round = 333  (6.492.000 / 19.500 = 332,92)
 // ---------------------------------------------------------------------------
-describe('Case C [Excel reference]: tem 100×70mm, 19.500 cái, có cán 500đ/tờ', () => {
+describe('Case C: tem 100×70mm, 19.500 cái, có cán 500đ/tờ', () => {
     const stickerW = 100,
         stickerH = 70;
     const printSheetW = 330,
@@ -179,13 +171,10 @@ describe('Case C [Excel reference]: tem 100×70mm, 19.500 cái, có cán 500đ/t
         config
     );
 
-    it('số con/tờ = 8 (4×2, tem xoay ngang)', () => {
-        expect(layout.count).toBe(8);
-        expect(layout.cols).toBe(4);
-        expect(layout.rows).toBe(2);
-        expect(layout.orientation).toBe('horizontal');
-        expect(layout.itemW).toBe(70);
-        expect(layout.itemH).toBe(100);
+    it('số con/tờ = 10 (xếp hỗn hợp: 4×2 + 2 con dải đáy)', () => {
+        expect(layout.count).toBe(10);
+        expect(layout.type).toBe('packed');
+        expect(layout.blocks.length).toBeGreaterThan(1);
     });
 
     const sheetCount = Math.ceil(quantity / layout.count);
@@ -208,36 +197,38 @@ describe('Case C [Excel reference]: tem 100×70mm, 19.500 cái, có cán 500đ/t
         config
     );
 
-    it('số tờ in hiển thị = ceil(19500/8) = 2.438', () => {
-        expect(sheetCount).toBe(2438);
+    it('số tờ in hiển thị = ceil(19500/10) = 1.950', () => {
+        expect(sheetCount).toBe(1950);
     });
 
-    it('thành tiền cơ bản = 6.591.700đ (Excel exact)', () => {
-        expect(priceNoLam).toBe(6591700);
+    it('thành tiền cơ bản = 5.517.000đ (nguyên tờ)', () => {
+        expect(priceNoLam).toBe(5517000);
     });
 
-    it('phí cán màng = 1.218.750đ (= raw 2.437,5 × 500đ)', () => {
-        expect(priceLam - priceNoLam).toBe(1218750);
-        expect(priceLam - priceNoLam).toBe((quantity / layout.count) * config.laminationCost);
+    it('phí cán màng = 975.000đ (= ceil 1.950 tờ × 500đ)', () => {
+        expect(priceLam - priceNoLam).toBe(975000);
+        expect(priceLam - priceNoLam).toBe(
+            Math.ceil(quantity / layout.count) * config.laminationCost
+        );
     });
 
-    it('tổng tiền (có cán) = 7.810.450đ (Excel exact)', () => {
-        expect(priceLam).toBe(7810450);
+    it('tổng tiền (có cán) = 6.492.000đ', () => {
+        expect(priceLam).toBe(6492000);
     });
 
-    it('đơn giá round = 401đ/con (Excel)', () => {
-        expect(Math.round(priceLam / quantity)).toBe(401);
-        // 7.810.450 / 19.500 = 400,5358... → round = 401
-        expect(priceLam / quantity).toBeCloseTo(400.5359, 3);
+    it('đơn giá round = 333đ/con', () => {
+        expect(Math.round(priceLam / quantity)).toBe(333);
+        // 6.492.000 / 19.500 = 332,92... → round = 333
+        expect(priceLam / quantity).toBeCloseTo(332.92, 2);
     });
 });
 
 // ---------------------------------------------------------------------------
-// CASE D — cross-check decalCost (Decal nhựa)  [updated TASK-0006]
-// Base Decal giấy ≈ 451.000 (như Case A)
-// decalExtra Decal nhựa = 1200 × ceil(34) = 40.800  (VẪN CEIL — chờ Excel ref)
-// → diff nhựa − giấy = 40.800 (không đổi)
-// → Decal nhựa ≈ 491.800
+// CASE D — cross-check decalCost (Decal nhựa)  [WHOLESHEET]
+// Base Decal giấy = 448.000 (như Case A)
+// material Decal nhựa = 1200 × ceil(34) = 40.800
+// → diff nhựa − giấy = 40.800
+// → Decal nhựa = 488.800
 // ---------------------------------------------------------------------------
 describe('Case D: cross-check phụ thu loại decal (Decal nhựa vs Decal giấy)', () => {
     const stickerW = 50,
@@ -278,12 +269,12 @@ describe('Case D: cross-check phụ thu loại decal (Decal nhựa vs Decal gi�
         expect(priceNhua - priceGiay).toBe(34 * config.decalCosts['Decal nhựa']);
     });
 
-    it('Decal giấy ≈ 451.000đ', () => {
-        expect(priceGiay).toBeCloseTo(451000, 2);
+    it('Decal giấy = 448.000đ', () => {
+        expect(priceGiay).toBe(448000);
     });
 
-    it('Decal nhựa ≈ 491.800đ', () => {
-        expect(priceNhua).toBeCloseTo(491800, 2);
+    it('Decal nhựa = 488.800đ', () => {
+        expect(priceNhua).toBe(488800);
     });
 });
 

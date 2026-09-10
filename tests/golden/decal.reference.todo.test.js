@@ -1,12 +1,9 @@
-// REFERENCE TESTS — Excel target cho calculateSingleStickerPrice.
+// REFERENCE TESTS — case lớn cho calculateSingleStickerPrice.
 //
 // LỊCH SỬ:
-//   - TASK-0003.5: tạo dưới dạng describe.skip (target Excel, current code chưa khớp).
-//   - TASK-0006: UN-SKIP — sau khi áp Formula A vào pricing.js, các assertion
-//                target dưới đây ĐÃ PASS với engine hiện tại.
-//
-// File này giữ lại để document case Excel reference cho Case C, tách rời với
-// decal.golden.test.js (vốn cover thêm A, B, D, E). Cả 2 cùng pass.
+//   - TASK-0003.5: tạo dưới dạng describe.skip (target Excel).
+//   - TASK-0006: UN-SKIP theo Formula A (tờ lẻ) — khớp Excel 7.810.450đ.
+//   - TASK-DECAL-WHOLESHEET: revert về NGUYÊN TỜ (như 4.0.0) → cập nhật lại kỳ vọng.
 //
 // Chi tiết phân tích: docs/pricing-rules/decal-reference-cases.md
 
@@ -20,15 +17,15 @@ import { DECAL_DEFAULT_CONFIG } from '../../src/config/decalConfig.js';
 const config = DECAL_DEFAULT_CONFIG;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXCEL REFERENCE: tem 100×70mm × 19.500 cái, Decal giấy, cán 500đ/tờ
+// NGUYÊN TỜ + XẾP HỖN HỢP: tem 100×70mm × 19.500 cái, Decal giấy, cán 500đ/tờ
 // Target:
-//   - 8 con/tờ; 2.438 tờ
-//   - base = 6.591.700đ  (Formula A: progressive(2438) + 0,5 × 2.200)
-//   - lam  = 1.218.750đ  (= raw 2.437,5 × 500)
-//   - tổng = 7.810.450đ
-//   - đơn giá round = 401đ
+//   - 10 con/tờ (xếp hỗn hợp); 1.950 tờ
+//   - base = 5.517.000đ  (progressive(1950))
+//   - lam  = 975.000đ  (= ceil 1.950 × 500)
+//   - tổng = 6.492.000đ
+//   - đơn giá round = 333đ
 // ─────────────────────────────────────────────────────────────────────────────
-describe('[Excel reference] tem 100×70mm × 19.500 cái có cán màng — TASK-0006 đã align', () => {
+describe('[nguyên tờ + hỗn hợp] tem 100×70mm × 19.500 cái có cán màng', () => {
     const stickerW = 100,
         stickerH = 70;
     const printSheetW = 330,
@@ -64,27 +61,27 @@ describe('[Excel reference] tem 100×70mm × 19.500 cái có cán màng — TASK
         config
     );
 
-    it('số con/tờ = 8', () => {
-        expect(layout.count).toBe(8);
+    it('số con/tờ = 10 (xếp hỗn hợp)', () => {
+        expect(layout.count).toBe(10);
     });
 
-    it('số tờ in = 2.438', () => {
-        expect(sheetCount).toBe(2438);
+    it('số tờ in = 1.950', () => {
+        expect(sheetCount).toBe(1950);
     });
 
-    it('thành tiền cơ bản = 6.591.700đ (Excel)', () => {
-        expect(priceNoLam).toBe(6591700);
+    it('thành tiền cơ bản = 5.517.000đ (nguyên tờ)', () => {
+        expect(priceNoLam).toBe(5517000);
     });
 
-    it('phụ phí cán màng = 1.218.750đ (Excel — raw 2.437,5 × 500)', () => {
-        expect(priceLam - priceNoLam).toBe(1218750);
+    it('phụ phí cán màng = 975.000đ (= ceil 1.950 × 500)', () => {
+        expect(priceLam - priceNoLam).toBe(975000);
     });
 
-    it('tổng tiền = 7.810.450đ (Excel)', () => {
-        expect(priceLam).toBe(7810450);
+    it('tổng tiền = 6.492.000đ', () => {
+        expect(priceLam).toBe(6492000);
     });
 
-    it('đơn giá round = 401đ (Excel)', () => {
-        expect(Math.round(priceLam / quantity)).toBe(401);
+    it('đơn giá round = 333đ', () => {
+        expect(Math.round(priceLam / quantity)).toBe(333);
     });
 });

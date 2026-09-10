@@ -11,6 +11,6 @@
 
 export const DECAL_MODULE_NAME = 'decal';
 
-export const DECAL_CONFIG_SCHEMA_VERSION = '1.0.0';
+export const DECAL_CONFIG_SCHEMA_VERSION = '1.6.0';
 
-export const DECAL_CONFIG_LAST_UPDATED = '2026-05-28';
+export const DECAL_CONFIG_LAST_UPDATED = '2026-09-07';

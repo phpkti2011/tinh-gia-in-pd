@@ -33,6 +33,65 @@ function validateProgressiveTier(tier, index, errors) {
     }
 }
 
+function validatePrintSheet(size, index, errors) {
+    const prefix = `printSheetSizes[${index}]`;
+    if (!size || typeof size !== 'object') {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
+    if (typeof size.w !== 'number') errors.push(`${prefix}.w: phải là number`);
+    if (typeof size.h !== 'number') errors.push(`${prefix}.h: phải là number`);
+    // percent/marginShort/marginLong là optional — nếu có phải là number.
+    for (const f of ['percent', 'marginShort', 'marginLong']) {
+        if (size[f] != null && typeof size[f] !== 'number') {
+            errors.push(`${prefix}.${f}: phải là number`);
+        }
+    }
+    // minPriceByMaterial (optional): object {<tên decal>: number}.
+    if (size.minPriceByMaterial != null) {
+        if (typeof size.minPriceByMaterial !== 'object' || Array.isArray(size.minPriceByMaterial)) {
+            errors.push(`${prefix}.minPriceByMaterial: phải là object`);
+        } else {
+            for (const [k, v] of Object.entries(size.minPriceByMaterial)) {
+                if (typeof v !== 'number') {
+                    errors.push(`${prefix}.minPriceByMaterial['${k}']: phải là number`);
+                }
+            }
+        }
+    }
+    // unavailableMaterials (optional): array of string (loại decal không có ở khổ này).
+    if (size.unavailableMaterials != null) {
+        if (!Array.isArray(size.unavailableMaterials)) {
+            errors.push(`${prefix}.unavailableMaterials: phải là array`);
+        } else if (size.unavailableMaterials.some((m) => typeof m !== 'string')) {
+            errors.push(`${prefix}.unavailableMaterials: mỗi phần tử phải là string`);
+        }
+    }
+}
+
+function validateMachine(m, index, errors) {
+    const prefix = `machines[${index}]`;
+    if (!m || typeof m !== 'object') {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
+    if (typeof m.name !== 'string' || m.name === '') errors.push(`${prefix}.name: phải là string`);
+    // Chấp nhận cả 4-cạnh (marginTop/Bottom/Left/Right) lẫn kiểu cũ (marginShort/marginLong).
+    // Field lề nào CÓ thì phải là number.
+    for (const f of [
+        'marginTop',
+        'marginBottom',
+        'marginLeft',
+        'marginRight',
+        'marginShort',
+        'marginLong',
+    ]) {
+        if (m[f] != null && typeof m[f] !== 'number') {
+            errors.push(`${prefix}.${f}: phải là number`);
+        }
+    }
+}
+
 function validateSurchargeTier(tier, index, errors) {
     const prefix = `demiCutSurchargeTiers[${index}]`;
     if (!tier || typeof tier !== 'object') {
@@ -78,6 +137,24 @@ export function validateDecalConfig(config) {
         errors.push('demiCutSurchargeTiers: array rỗng');
     } else {
         config.demiCutSurchargeTiers.forEach((t, i) => validateSurchargeTier(t, i, errors));
+    }
+
+    // 3b. printSheetSizes (array of {label, w, h, percent?})
+    if (config.printSheetSizes != null) {
+        if (!Array.isArray(config.printSheetSizes)) {
+            errors.push('printSheetSizes: phải là array');
+        } else {
+            config.printSheetSizes.forEach((s, i) => validatePrintSheet(s, i, errors));
+        }
+    }
+
+    // 3c. machines (array of {name, marginShort, marginLong}) — optional
+    if (config.machines != null) {
+        if (!Array.isArray(config.machines)) {
+            errors.push('machines: phải là array');
+        } else {
+            config.machines.forEach((m, i) => validateMachine(m, i, errors));
+        }
     }
 
     // 4. decalCosts (object {[name]: number})

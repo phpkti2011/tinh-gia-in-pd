@@ -61,60 +61,81 @@ export function calculateDieCuttingCosts(params, printSheetCount, isDecal, confi
         const cfg = config.DIE_CUTTING_MOLD_COST_CONFIG;
         if (!cfg) return { moldCost: 0, laborCost: 0, laborCustomerPrice: 0 };
 
-        switch (moldType) {
-            case 'simple':
-                if (!cfg.simple) break;
-                if (productW > cfg.simple.base_size || productH > cfg.simple.base_size) {
-                    const largerW = Math.max(productW, cfg.simple.base_size);
-                    const largerH = Math.max(productH, cfg.simple.base_size);
-                    if (cfg.simple.base_size > 0) {
-                        moldCost =
-                            (cfg.simple.base_price /
-                                (cfg.simple.base_size * cfg.simple.base_size)) *
-                            (largerW * largerH);
+        const BUILTIN_MOLD_TYPES = ['simple', 'envelope', 'box', 'bag', 'tag'];
+        if (!BUILTIN_MOLD_TYPES.includes(moldType)) {
+            // Khuôn tùy chỉnh (admin thêm qua Cài Đặt) — tra theo id, tính theo
+            // pricingMode tự chọn lúc tạo khuôn. Không đụng tới switch bên dưới.
+            const custom = (config.DIE_CUTTING_CUSTOM_MOLDS || []).find(
+                (m) => m.id === moldType
+            );
+            if (custom) {
+                if (custom.pricingMode === 'flat') {
+                    moldCost = custom.price || 0;
+                } else if (custom.pricingMode === 'threshold') {
+                    moldCost =
+                        productW * productH > custom.threshold_area
+                            ? custom.large_price
+                            : custom.small_price;
+                } else if (custom.pricingMode === 'per_area') {
+                    moldCost = productW * productH * (custom.price_per_cm2 || 0);
+                }
+            }
+        } else {
+            switch (moldType) {
+                case 'simple':
+                    if (!cfg.simple) break;
+                    if (productW > cfg.simple.base_size || productH > cfg.simple.base_size) {
+                        const largerW = Math.max(productW, cfg.simple.base_size);
+                        const largerH = Math.max(productH, cfg.simple.base_size);
+                        if (cfg.simple.base_size > 0) {
+                            moldCost =
+                                (cfg.simple.base_price /
+                                    (cfg.simple.base_size * cfg.simple.base_size)) *
+                                (largerW * largerH);
+                        }
+                    } else {
+                        moldCost = cfg.simple.base_price;
                     }
-                } else {
-                    moldCost = cfg.simple.base_price;
+                    break;
+                case 'envelope':
+                    if (!cfg.envelope) break;
+                    moldCost =
+                        productW * productH > cfg.envelope.threshold_area
+                            ? cfg.envelope.large_price
+                            : cfg.envelope.small_price;
+                    break;
+                case 'box':
+                    if (!cfg.box) break;
+                    moldCost =
+                        productW * productH > cfg.box.threshold_area
+                            ? cfg.box.large_price
+                            : cfg.box.small_price;
+                    break;
+                case 'bag':
+                    if (!cfg.bag) break;
+                    moldCost =
+                        productW * productH > cfg.bag.threshold_area
+                            ? cfg.bag.large_price
+                            : cfg.bag.small_price;
+                    break;
+                case 'tag': {
+                    // P3-LINT.1: wrap với {} để tránh no-case-declarations error.
+                    // const trong case không có braces leak ra ngoài → ESLint best practice.
+                    if (!cfg.tag) break;
+                    const spacing = 0.4; // 4mm
+                    const pressW = 32.2;
+                    const numAcross =
+                        productW + spacing > 0
+                            ? Math.floor((pressW + spacing) / (productW + spacing))
+                            : 0;
+                    const numDown = 3;
+                    const numOnMold = numAcross * numDown;
+                    moldCost = productW * productH * numOnMold * cfg.tag.price_per_cm2;
+                    if (tagHasHole) {
+                        moldCost += cfg.tag.hole_price * numOnMold;
+                    }
+                    break;
                 }
-                break;
-            case 'envelope':
-                if (!cfg.envelope) break;
-                moldCost =
-                    productW * productH > cfg.envelope.threshold_area
-                        ? cfg.envelope.large_price
-                        : cfg.envelope.small_price;
-                break;
-            case 'box':
-                if (!cfg.box) break;
-                moldCost =
-                    productW * productH > cfg.box.threshold_area
-                        ? cfg.box.large_price
-                        : cfg.box.small_price;
-                break;
-            case 'bag':
-                if (!cfg.bag) break;
-                moldCost =
-                    productW * productH > cfg.bag.threshold_area
-                        ? cfg.bag.large_price
-                        : cfg.bag.small_price;
-                break;
-            case 'tag': {
-                // P3-LINT.1: wrap với {} để tránh no-case-declarations error.
-                // const trong case không có braces leak ra ngoài → ESLint best practice.
-                if (!cfg.tag) break;
-                const spacing = 0.4; // 4mm
-                const pressW = 32.2;
-                const numAcross =
-                    productW + spacing > 0
-                        ? Math.floor((pressW + spacing) / (productW + spacing))
-                        : 0;
-                const numDown = 3;
-                const numOnMold = numAcross * numDown;
-                moldCost = productW * productH * numOnMold * cfg.tag.price_per_cm2;
-                if (tagHasHole) {
-                    moldCost += cfg.tag.hole_price * numOnMold;
-                }
-                break;
             }
         }
 

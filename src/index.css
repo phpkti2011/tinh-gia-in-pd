@@ -65,4 +65,16 @@
     .calculating-indicator {
         transition: opacity 0.3s ease;
     }
+
+    /* Ẩn nút mũi tên lên/xuống của input number (Chrome/Safari/Edge + Firefox).
+       Lý do: nút này đi kèm hành vi cuộn chuột làm nhảy số khi hover, dễ gây
+       sai số liệu — xem thêm listener chặn cuộn chuột ở src/main.jsx. */
+    input[type='number']::-webkit-inner-spin-button,
+    input[type='number']::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    input[type='number'] {
+        -moz-appearance: textfield;
+    }
 }

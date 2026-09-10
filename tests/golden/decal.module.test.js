@@ -2,7 +2,9 @@
 //
 // LỊCH SỬ:
 //   - TASK-0004: tạo 5 assertion verify module + shim.
-//   - TASK-0006: cập nhật 2 assertion behavior (Case A: 448k→451k; Case C: 7.809.600→7.810.450).
+//   - TASK-0006: Formula A (tờ lẻ) — Case A 451k, Case C 7.810.450.
+//   - TASK-DECAL-WHOLESHEET: revert về nguyên tờ — Case A 448k, Case C 7.809.600.
+//   - TASK-DECAL-MIXED: xếp hỗn hợp (guillotine) — Case C 8→10 con/tờ, tổng 6.492.000.
 //
 // Mục tiêu:
 //   1. Verify import trực tiếp từ src/modules/decal/engine/ hoạt động.
@@ -41,16 +43,16 @@ describe('TASK-0004: module path mới + compatibility shim', () => {
         expect(Array.isArray(DECAL_DEFAULT_CONFIG.progressiveTiers)).toBe(true);
     });
 
-    it('[TASK-0006] behavior identical: Case A qua module mới ≈ 451.000đ (Formula A)', () => {
+    it('[WHOLESHEET] behavior identical: Case A qua module mới = 448.000đ', () => {
         const args = [500, 'Decal giấy', false, 15, 330, 330, DECAL_DEFAULT_CONFIG];
         const fromNew = newPath.calculateSingleStickerPrice(...args);
         const fromOld = oldPath.calculateSingleStickerPrice(...args);
         expect(fromNew).toBe(fromOld);
-        // Cũng đảm bảo giá trị ≈ baseline mới sau TASK-0006
-        expect(fromNew).toBeCloseTo(451000, 2);
+        // Nguyên tờ: progressive(ceil(500/15)=34) = 448.000
+        expect(fromNew).toBe(448000);
     });
 
-    it('[TASK-0006] behavior identical: Case C (19.500 tem) qua module mới = 7.810.450đ (Excel)', () => {
+    it('[WHOLESHEET+MIXED] behavior identical: Case C (19.500 tem) qua module mới = 6.492.000đ', () => {
         const layout = newPath.calculateStickersPerSheet(
             100,
             70,
@@ -68,7 +70,7 @@ describe('TASK-0004: module path mới + compatibility shim', () => {
             330,
             DECAL_DEFAULT_CONFIG
         );
-        expect(layout.count).toBe(8);
-        expect(price).toBe(7810450); // Excel target — exact match
+        expect(layout.count).toBe(10); // xếp hỗn hợp
+        expect(price).toBe(6492000); // nguyên tờ: 5.517.000 + 1.950×500
     });
 });

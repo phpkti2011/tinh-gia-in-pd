@@ -44,32 +44,25 @@ describe('Case F: layout sticker sheet A6 (100×145) trên print 330×330', () =
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CASE G — calculateSheetPrice  [unchanged TASK-0006: calculateSheetPrice CHƯA fix]
+// CASE G — calculateSheetPrice  [WHOLESHEET]
 // 100 sticker sheet A6, 20 sticker/sheet, Decal giấy
-//   numPrintSheets = ceil(100/4) = 25 (integer → không có fractional issue)
-//   multiplier = (100×145) / (330×330) × 0.35
-//   baseCost = progressive(25) = 405,000
-//   surcharge = 20% (tier upTo=20)
-//   noLam   = (405000 × multiplier + 0)      × 1.2
-//   withLam = (405000 × multiplier + 25×500) × 1.2   ← lam vẫn ceil (chưa fix G)
-//   diff = 25 × 500 × 1.2 = 15,000
+//   numPrintSheets = ceil(100/4) = 25
+//   baseCost = progressive(25) = 405.000
+//   percent = 0 (khổ không khớp → 0%), surcharge demi = 20% (tier upTo=20)
+//   noLam   = (405.000 + 0)        × 1.2 = 486.000
+//   withLam = (405.000 + 25×500)   × 1.2 = 501.000
+//   diff = 25 × 500 × 1.2 = 15.000
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case G: calculateSheetPrice 100 sheet A6 với 20 sticker/sheet', () => {
     const noLam = calculateSheetPrice(100, 'Decal giấy', false, 4, 20, 100, 145, config);
     const withLam = calculateSheetPrice(100, 'Decal giấy', true, 4, 20, 100, 145, config);
 
-    const expectedX = 405000 * (14500 / 108900) * 0.35;
-    const expectedNoLam = expectedX * 1.2;
-    const expectedWithLam = (expectedX + 25 * 500) * 1.2;
-
-    it('giá không cán ≈ 22.648,76đ', () => {
-        expect(noLam).toBeCloseTo(expectedNoLam, 6);
-        expect(noLam).toBeCloseTo(22648.76, 1);
+    it('giá không cán = 486.000đ (progressive(25) × 1.2 demi)', () => {
+        expect(noLam).toBe(486000);
     });
 
-    it('giá có cán ≈ 37.648,76đ', () => {
-        expect(withLam).toBeCloseTo(expectedWithLam, 6);
-        expect(withLam).toBeCloseTo(37648.76, 1);
+    it('giá có cán = 501.000đ', () => {
+        expect(withLam).toBe(501000);
     });
 
     it('chênh lam − no_lam = 15.000đ (25 tờ × 500đ × 1.2)', () => {
@@ -78,22 +71,19 @@ describe('Case G: calculateSheetPrice 100 sheet A6 với 20 sticker/sheet', () =
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CASE H — generateSinglePriceTable  [updated TASK-0006]
-// stickersPerSheet=15, decalType='Decal giấy', sheet 330×330, customQty=0
+// CASE H — generateSinglePriceTable  [WHOLESHEET]
+// stickersPerSheet=15, decalType='Decal giấy', sheet 330×330 (gốc, 0%), customQty=0
 //   80 rows (20 qty × 2 type × 2 lam)
 //   row[0] = qty=100, 'Decal giấy', lam=true
-//     raw = 100/15 = 6,666...
-//     ceil = 7, frac = 1/3
+//     sheets = ceil(100/15) = 7
 //     progressive(7) = 240.000
-//     tier@7 = tier 3 (upTo=10, price=20.000)
-//     base = 240.000 + (1/3) × 20.000 = 246.666,67
-//     decalExtra (Decal giấy) = 0
-//     lam (raw) = 6,666... × 500 = 3.333,33
-//     TOTAL = 250.000 (math exact, JS float ~249.999,99)
+//     material (Decal giấy) = 0
+//     lam = 7 × 500 = 3.500
+//     TOTAL = 243.500
 //   row[2] = qty=100, 'Decal nhựa', lam=true
-//     base + lam giống row[0] = 250.000
-//     decalExtra (Decal nhựa, ceil) = 7 × 1.200 = 8.400
-//     TOTAL = 258.400
+//     base + lam giống row[0] = 243.500
+//     material (Decal nhựa) = 7 × 1.200 = 8.400
+//     TOTAL = 251.900
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case H: generateSinglePriceTable với 15 con/tờ', () => {
     const rows = generateSinglePriceTable(15, 'Decal giấy', 330, 330, config, 0);
@@ -102,24 +92,23 @@ describe('Case H: generateSinglePriceTable với 15 con/tờ', () => {
         expect(rows.length).toBe(80);
     });
 
-    it('dòng đầu (Decal giấy, có cán) ≈ 250.000đ', () => {
+    it('dòng đầu (Decal giấy, có cán) = 243.500đ', () => {
         expect(rows[0].quantity).toBe(100);
         expect(rows[0].decalType).toBe('Decal giấy');
         expect(rows[0].laminated).toBe(true);
-        expect(rows[0].price).toBeCloseTo(250000, 2);
+        expect(rows[0].price).toBe(243500);
     });
 
     it('customQuantity=0 → không sinh row isCustom', () => {
         expect(rows.every((r) => !r.isCustom)).toBe(true);
     });
 
-    it('dòng thứ 3 (Decal nhựa, có cán) ≈ 258.400đ (+ 8.400 = 1.200 × ceil 7)', () => {
+    it('dòng thứ 3 (Decal nhựa, có cán) = 251.900đ (+ 8.400 = 1.200 × ceil 7)', () => {
         // qty=100 cycle 4 rows: [giấy+lam, giấy+nolam, nhựa+lam, nhựa+nolam]
         expect(rows[2].decalType).toBe('Decal nhựa');
         expect(rows[2].laminated).toBe(true);
-        // decalExtra Decal nhựa vẫn dùng ceil → diff 8.400 vẫn đúng
         expect(rows[2].price - rows[0].price).toBeCloseTo(8400, 6);
-        expect(rows[2].price).toBeCloseTo(258400, 2);
+        expect(rows[2].price).toBe(251900);
     });
 });
 

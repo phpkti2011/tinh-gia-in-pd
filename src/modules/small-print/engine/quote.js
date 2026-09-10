@@ -61,6 +61,10 @@ export function calculateCustomerQuote(
 
     if (pressH > 48) {
         totalA4Pages = conversionFactor * totalPrintSheets * printSides;
+        // Số tờ vật lý quy đổi A4 — KHÔNG nhân printSides. Cán màng phủ lên
+        // mặt giấy vật lý (không phụ thuộc số mặt IN), khác với totalA4Pages
+        // (dùng để tính tiền in + chọn tier, có nhân printSides).
+        const physicalA4Pages = conversionFactor * totalPrintSheets;
         const tier = config.CUSTOMER_PRICE_TIERS.find(
             (t) => totalA4Pages >= t.min && totalA4Pages <= t.max
         );
@@ -70,7 +74,7 @@ export function calculateCustomerQuote(
             if (tier.type === 'per_page') {
                 const rate = printRateFor(tier.print, true);
                 totalPrintCost = totalA4Pages * rate;
-                totalLaminationCost = hasLam ? totalA4Pages * tier.laminate * lamSides : 0;
+                totalLaminationCost = hasLam ? physicalA4Pages * tier.laminate * lamSides : 0;
                 unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             } else {
                 totalPrintCost = printRateFor(tier.print, false);
@@ -88,6 +92,9 @@ export function calculateCustomerQuote(
             totalA4Pages++;
         }
 
+        // Số tờ vật lý quy đổi A4 — KHÔNG nhân printSides (xem giải thích ở nhánh pressH > 48).
+        const physicalA4Pages = Math.ceil(totalPrintSheets * conversionFactor);
+
         const tier = config.CUSTOMER_PRICE_TIERS.find(
             (t) => totalA4Pages >= t.min && totalA4Pages <= t.max
         );
@@ -100,7 +107,7 @@ export function calculateCustomerQuote(
         if (tier.type === 'per_page') {
             const rate = printRateFor(tier.print, true);
             totalPrintCost = totalA4Pages * rate;
-            totalLaminationCost = hasLam2 ? totalA4Pages * tier.laminate * lamSides2 : 0;
+            totalLaminationCost = hasLam2 ? physicalA4Pages * tier.laminate * lamSides2 : 0;
             unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         } else {
             totalPrintCost = printRateFor(tier.print, false);

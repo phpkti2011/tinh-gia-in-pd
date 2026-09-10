@@ -159,6 +159,42 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
             ),
         }));
 
+    // DIE_CUTTING_CUSTOM_MOLDS (danh mục khuôn bế tùy chỉnh) — add/del/update.
+    // id sinh 1 lần lúc thêm, dùng làm value cho moldType ở InputPanel — không đổi
+    // khi sửa tên, để lựa chọn khuôn của đơn hàng đang nhập không bị mất.
+    const genMoldId = () => 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const addCustomMold = () =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            DIE_CUTTING_CUSTOM_MOLDS: [
+                ...(prev.DIE_CUTTING_CUSTOM_MOLDS || []),
+                {
+                    id: genMoldId(),
+                    name: 'Khuôn mới',
+                    pricingMode: 'flat',
+                    price: 100000,
+                    threshold_area: 0,
+                    small_price: 0,
+                    large_price: 0,
+                    price_per_cm2: 0,
+                },
+            ],
+        }));
+    const delCustomMold = (idx) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            DIE_CUTTING_CUSTOM_MOLDS: (prev.DIE_CUTTING_CUSTOM_MOLDS || []).filter(
+                (_, i) => i !== idx
+            ),
+        }));
+    const updateCustomMoldField = (idx, field, value) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            DIE_CUTTING_CUSTOM_MOLDS: (prev.DIE_CUTTING_CUSTOM_MOLDS || []).map((m, i) =>
+                i === idx ? { ...m, [field]: value } : m
+            ),
+        }));
+
     // fi() là render function (không phải component) — tránh remount mỗi re-render
     const fi = (path, configValue, isPercentage, step, cls) => (
         <NumInput
@@ -229,12 +265,16 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                             <span className="absolute right-3 top-[32px] text-gray-500">VNĐ</span>
                         </div>
                         <div className="relative">
-                            <label className={labelCls}>Giá Cán Màng / m tới</label>
+                            <label className={labelCls}>Giá màng cuộn / m dài (nội bộ)</label>
                             {fi(
                                 'LAMINATION_CONFIG.PRICE_PER_METER',
                                 localConfig.LAMINATION_CONFIG.PRICE_PER_METER
                             )}
                             <span className="absolute right-3 top-[32px] text-gray-500">VNĐ</span>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Chỉ dùng để engine chọn khổ/máy in tối ưu — không ảnh hưởng giá
+                                cán màng báo khách (xem bảng "Giá cán màng (báo khách)" bên dưới).
+                            </p>
                         </div>
                     </div>
                 </section>
@@ -428,7 +468,7 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                                     <th className="text-left py-2 pr-4">Số trang A4</th>
                                     <th className="text-left py-2 pr-4">Loại</th>
                                     <th className="text-left py-2 pr-4">Giá in</th>
-                                    <th className="text-left py-2">Giá cán màng</th>
+                                    <th className="text-left py-2">Giá cán màng (báo khách)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -828,6 +868,293 @@ export default function SettingsPanel({ config, onSave, onCancel }) {
                                 </div>
                             );
                         })}
+                    </div>
+                </section>
+
+                {/* 10b. Bế khuôn - giá khuôn theo hình dạng */}
+                <section>
+                    <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
+                        Giá Khuôn Bế (theo hình dạng)
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="space-y-2 p-3 bg-gray-900/50 rounded">
+                            <div className="text-gray-300 text-xs font-medium">
+                                Hình dạng đơn giản
+                            </div>
+                            <div className="relative">
+                                <label className={labelCls}>Ngưỡng cạnh cơ bản</label>
+                                {fi(
+                                    'DIE_CUTTING_MOLD_COST_CONFIG.simple.base_size',
+                                    localConfig.DIE_CUTTING_MOLD_COST_CONFIG.simple.base_size,
+                                    false,
+                                    '1',
+                                    inputClsSm
+                                )}
+                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                    cm
+                                </span>
+                            </div>
+                            <div className="relative">
+                                <label className={labelCls}>Giá cơ bản</label>
+                                {fi(
+                                    'DIE_CUTTING_MOLD_COST_CONFIG.simple.base_price',
+                                    localConfig.DIE_CUTTING_MOLD_COST_CONFIG.simple.base_price,
+                                    false,
+                                    '1000',
+                                    inputClsSm
+                                )}
+                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                    đ
+                                </span>
+                            </div>
+                        </div>
+                        {[
+                            { key: 'envelope', label: 'Bao thư' },
+                            { key: 'box', label: 'Hộp' },
+                            { key: 'bag', label: 'Túi giấy' },
+                        ].map(({ key, label }) => (
+                            <div key={key} className="space-y-2 p-3 bg-gray-900/50 rounded">
+                                <div className="text-gray-300 text-xs font-medium">{label}</div>
+                                <div className="relative">
+                                    <label className={labelCls}>Ngưỡng diện tích</label>
+                                    {fi(
+                                        `DIE_CUTTING_MOLD_COST_CONFIG.${key}.threshold_area`,
+                                        localConfig.DIE_CUTTING_MOLD_COST_CONFIG[key]
+                                            .threshold_area,
+                                        false,
+                                        '1',
+                                        inputClsSm
+                                    )}
+                                    <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                        cm²
+                                    </span>
+                                </div>
+                                <div className="relative">
+                                    <label className={labelCls}>Giá khuôn nhỏ</label>
+                                    {fi(
+                                        `DIE_CUTTING_MOLD_COST_CONFIG.${key}.small_price`,
+                                        localConfig.DIE_CUTTING_MOLD_COST_CONFIG[key].small_price,
+                                        false,
+                                        '1000',
+                                        inputClsSm
+                                    )}
+                                    <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                        đ
+                                    </span>
+                                </div>
+                                <div className="relative">
+                                    <label className={labelCls}>Giá khuôn lớn</label>
+                                    {fi(
+                                        `DIE_CUTTING_MOLD_COST_CONFIG.${key}.large_price`,
+                                        localConfig.DIE_CUTTING_MOLD_COST_CONFIG[key].large_price,
+                                        false,
+                                        '1000',
+                                        inputClsSm
+                                    )}
+                                    <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                        đ
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="space-y-2 p-3 bg-gray-900/50 rounded">
+                            <div className="text-gray-300 text-xs font-medium">Tag treo</div>
+                            <div className="relative">
+                                <label className={labelCls}>Ngưỡng W</label>
+                                {fi(
+                                    'DIE_CUTTING_MOLD_COST_CONFIG.tag.threshold_w',
+                                    localConfig.DIE_CUTTING_MOLD_COST_CONFIG.tag.threshold_w,
+                                    false,
+                                    '1',
+                                    inputClsSm
+                                )}
+                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                    cm
+                                </span>
+                            </div>
+                            <div className="relative">
+                                <label className={labelCls}>Ngưỡng H</label>
+                                {fi(
+                                    'DIE_CUTTING_MOLD_COST_CONFIG.tag.threshold_h',
+                                    localConfig.DIE_CUTTING_MOLD_COST_CONFIG.tag.threshold_h,
+                                    false,
+                                    '1',
+                                    inputClsSm
+                                )}
+                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                    cm
+                                </span>
+                            </div>
+                            <div className="relative">
+                                <label className={labelCls}>Đơn giá / cm²</label>
+                                {fi(
+                                    'DIE_CUTTING_MOLD_COST_CONFIG.tag.price_per_cm2',
+                                    localConfig.DIE_CUTTING_MOLD_COST_CONFIG.tag.price_per_cm2,
+                                    false,
+                                    '10',
+                                    inputClsSm
+                                )}
+                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                    đ
+                                </span>
+                            </div>
+                            <div className="relative">
+                                <label className={labelCls}>Phụ thu đục lỗ</label>
+                                {fi(
+                                    'DIE_CUTTING_MOLD_COST_CONFIG.tag.hole_price',
+                                    localConfig.DIE_CUTTING_MOLD_COST_CONFIG.tag.hole_price,
+                                    false,
+                                    '1000',
+                                    inputClsSm
+                                )}
+                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                    đ
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 10c. Khuôn bế tùy chỉnh */}
+                <section>
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-600">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                            Khuôn Bế Tùy Chỉnh
+                        </h3>
+                        <button
+                            onClick={addCustomMold}
+                            className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            + Thêm khuôn
+                        </button>
+                    </div>
+                    {(localConfig.DIE_CUTTING_CUSTOM_MOLDS || []).length === 0 && (
+                        <p className="text-gray-500 text-sm">
+                            Chưa có khuôn tùy chỉnh nào. Bấm "+ Thêm khuôn" để tạo khuôn mới ngoài
+                            5 loại có sẵn ở trên.
+                        </p>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {(localConfig.DIE_CUTTING_CUSTOM_MOLDS || []).map((mold, idx) => (
+                            <div key={mold.id} className="space-y-2 p-3 bg-gray-900/50 rounded">
+                                <div className="flex items-center justify-between">
+                                    <input
+                                        type="text"
+                                        value={mold.name}
+                                        onChange={(e) =>
+                                            updateCustomMoldField(idx, 'name', e.target.value)
+                                        }
+                                        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm flex-1 mr-2"
+                                    />
+                                    <button
+                                        onClick={() => delCustomMold(idx)}
+                                        className="text-red-400 hover:text-red-300 text-xs font-medium"
+                                    >
+                                        Xóa
+                                    </button>
+                                </div>
+                                <div className="relative">
+                                    <label className={labelCls}>Cách tính giá</label>
+                                    <select
+                                        value={mold.pricingMode}
+                                        onChange={(e) =>
+                                            updateCustomMoldField(
+                                                idx,
+                                                'pricingMode',
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
+                                    >
+                                        <option value="flat">Giá cố định</option>
+                                        <option value="threshold">Theo ngưỡng diện tích</option>
+                                        <option value="per_area">Đơn giá / cm²</option>
+                                    </select>
+                                </div>
+                                {mold.pricingMode === 'flat' && (
+                                    <div className="relative">
+                                        <label className={labelCls}>Giá</label>
+                                        <NumInput
+                                            configValue={mold.price}
+                                            step="1000"
+                                            onCommit={(val) =>
+                                                updateCustomMoldField(idx, 'price', val)
+                                            }
+                                            className={inputClsSm}
+                                        />
+                                        <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                            đ
+                                        </span>
+                                    </div>
+                                )}
+                                {mold.pricingMode === 'threshold' && (
+                                    <>
+                                        <div className="relative">
+                                            <label className={labelCls}>Ngưỡng diện tích</label>
+                                            <NumInput
+                                                configValue={mold.threshold_area}
+                                                step="1"
+                                                onCommit={(val) =>
+                                                    updateCustomMoldField(
+                                                        idx,
+                                                        'threshold_area',
+                                                        val
+                                                    )
+                                                }
+                                                className={inputClsSm}
+                                            />
+                                            <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                                cm²
+                                            </span>
+                                        </div>
+                                        <div className="relative">
+                                            <label className={labelCls}>Giá nhỏ</label>
+                                            <NumInput
+                                                configValue={mold.small_price}
+                                                step="1000"
+                                                onCommit={(val) =>
+                                                    updateCustomMoldField(idx, 'small_price', val)
+                                                }
+                                                className={inputClsSm}
+                                            />
+                                            <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                                đ
+                                            </span>
+                                        </div>
+                                        <div className="relative">
+                                            <label className={labelCls}>Giá lớn</label>
+                                            <NumInput
+                                                configValue={mold.large_price}
+                                                step="1000"
+                                                onCommit={(val) =>
+                                                    updateCustomMoldField(idx, 'large_price', val)
+                                                }
+                                                className={inputClsSm}
+                                            />
+                                            <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                                đ
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+                                {mold.pricingMode === 'per_area' && (
+                                    <div className="relative">
+                                        <label className={labelCls}>Đơn giá / cm²</label>
+                                        <NumInput
+                                            configValue={mold.price_per_cm2}
+                                            step="10"
+                                            onCommit={(val) =>
+                                                updateCustomMoldField(idx, 'price_per_cm2', val)
+                                            }
+                                            className={inputClsSm}
+                                        />
+                                        <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                            đ
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </section>
 

@@ -59,6 +59,7 @@ import {
     calculateSheetsPerPrintSheet,
     generateSinglePriceTable,
     generateSheetPriceTable,
+    applyDiscount,
 } from './utils/decalCalculator';
 import { calculateUvDtf } from './utils/uvdtfCalculator';
 import { calculateCatalogue } from './utils/catalogueCalculator';
@@ -688,6 +689,7 @@ function DecalModule({ onBack }) {
         customQuantity: 0,
         decalType: 'Decal giấy',
         shape: 'rectangle',
+        discountPercent: 0,
         sheetSizeKey: '0',
         customSheetW: 210,
         customSheetH: 297,
@@ -715,6 +717,38 @@ function DecalModule({ onBack }) {
     const calculateAll = useCallback(() => {
         if (!config) return;
         try {
+            // Danh sách máy bế (mỗi máy lề vùng bế riêng → số con/tờ khác). Rỗng → 1 máy mặc định.
+            const machines =
+                Array.isArray(config.machines) && config.machines.length > 0
+                    ? config.machines
+                    : [
+                          {
+                              name: 'Mặc định',
+                              marginShort: config.marginShortSide,
+                              marginLong: config.marginLongSide,
+                          },
+                      ];
+
+            // Chiết khấu % (báo giá). Giá sàn/tờ theo (khổ đang chọn × loại decal của dòng).
+            const discountPercent = parseFloat(params.discountPercent) || 0;
+            const selectedSize = (config.printSheetSizes || []).find(
+                (s) => s.w === params.printSheetW && s.h === params.printSheetH
+            );
+            const floorByMaterial = selectedSize?.minPriceByMaterial || {};
+            // Gắn finalPrice + floored vào từng dòng bảng giá (giữ price gốc để hiển thị).
+            const withDiscount = (priceTable, count) =>
+                priceTable.map((row) => {
+                    const sheets = count > 0 ? Math.ceil(row.quantity / count) : 0;
+                    const minPrice = floorByMaterial[row.decalType] || 0;
+                    const { price, floored } = applyDiscount(
+                        row.price,
+                        sheets,
+                        discountPercent,
+                        minPrice
+                    );
+                    return { ...row, finalPrice: price, floored };
+                });
+
             if (params.mode === 'single') {
                 const w = params.stickerW,
                     h = params.stickerH;
@@ -722,30 +756,41 @@ function DecalModule({ onBack }) {
                     setResult(null);
                     return;
                 }
-                const layout = calculateStickersPerSheet(
-                    w,
-                    h,
-                    params.printSheetW,
-                    params.printSheetH,
-                    params.shape,
-                    config
-                );
-                if (layout.count <= 0) {
+                const perMachine = machines
+                    .map((m) => {
+                        const layout = calculateStickersPerSheet(
+                            w,
+                            h,
+                            params.printSheetW,
+                            params.printSheetH,
+                            params.shape,
+                            config,
+                            m
+                        );
+                        if (layout.count <= 0) return null;
+                        const priceTable = generateSinglePriceTable(
+                            layout.count,
+                            params.decalType,
+                            params.printSheetW,
+                            params.printSheetH,
+                            config,
+                            parseInt(params.customQuantity) || 0
+                        );
+                        return {
+                            name: m.name,
+                            layout,
+                            priceTable: withDiscount(priceTable, layout.count),
+                        };
+                    })
+                    .filter(Boolean);
+                if (perMachine.length === 0) {
                     setResult(null);
                     return;
                 }
-                const priceTable = generateSinglePriceTable(
-                    layout.count,
-                    params.decalType,
-                    params.printSheetW,
-                    params.printSheetH,
-                    config,
-                    parseInt(params.customQuantity) || 0
-                );
                 setResult({
                     mode: 'single',
-                    layout,
-                    priceTable,
+                    machines: perMachine,
+                    discountPercent,
                     sheetW: params.printSheetW,
                     sheetH: params.printSheetH,
                 });
@@ -770,31 +815,42 @@ function DecalModule({ onBack }) {
                     setResult(null);
                     return;
                 }
-                const sheetsLayout = calculateSheetsPerPrintSheet(
-                    shW,
-                    shH,
-                    params.printSheetW,
-                    params.printSheetH,
-                    config
-                );
-                if (sheetsLayout.count <= 0) {
+                const perMachine = machines
+                    .map((m) => {
+                        const sheetsLayout = calculateSheetsPerPrintSheet(
+                            shW,
+                            shH,
+                            params.printSheetW,
+                            params.printSheetH,
+                            config,
+                            m
+                        );
+                        if (sheetsLayout.count <= 0) return null;
+                        const priceTable = generateSheetPriceTable(
+                            sheetsLayout.count,
+                            stickerCount,
+                            params.sheetDecalType,
+                            params.printSheetW,
+                            params.printSheetH,
+                            config,
+                            parseInt(params.sheetCustomQuantity) || 0
+                        );
+                        return {
+                            name: m.name,
+                            layout: { ...sheetsLayout, itemW: shW, itemH: shH },
+                            sheetsPerPrintSheet: sheetsLayout.count,
+                            priceTable: withDiscount(priceTable, sheetsLayout.count),
+                        };
+                    })
+                    .filter(Boolean);
+                if (perMachine.length === 0) {
                     setResult(null);
                     return;
                 }
-                const priceTable = generateSheetPriceTable(
-                    sheetsLayout.count,
-                    stickerCount,
-                    params.sheetDecalType,
-                    params.printSheetW,
-                    params.printSheetH,
-                    config,
-                    parseInt(params.sheetCustomQuantity) || 0
-                );
                 setResult({
                     mode: 'sheet',
-                    layout: { ...sheetsLayout, itemW: shW, itemH: shH },
-                    sheetsPerPrintSheet: sheetsLayout.count,
-                    priceTable,
+                    machines: perMachine,
+                    discountPercent,
                     sheetW: params.printSheetW,
                     sheetH: params.printSheetH,
                 });
@@ -848,14 +904,18 @@ function DecalModule({ onBack }) {
                 </nav>
             </div>
             {activeTab === 'main' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <DecalInputPanel config={config} params={params} onChange={handleChange} />
-                    <DecalResultPanel
-                        result={result}
-                        params={params}
-                        config={config}
-                        isCalculating={isCalculating}
-                    />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <DecalInputPanel config={config} params={params} onChange={handleChange} />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <DecalResultPanel
+                            result={result}
+                            params={params}
+                            config={config}
+                            isCalculating={isCalculating}
+                        />
+                    </div>
                 </div>
             )}
             {activeTab === 'settings' && (
