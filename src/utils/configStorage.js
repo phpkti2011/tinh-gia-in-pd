@@ -12,6 +12,7 @@ import {
     MODULE_VISIBILITY_DEFAULT_CONFIG,
     validateModuleVisibilityConfig,
     MODULE_VISIBILITY_SCHEMA_VERSION,
+    mergeModuleLabels,
 } from '../config/moduleVisibilityConfig';
 import { restoreInfinity } from './restoreInfinity.js';
 import { validateDecalConfig, DECAL_CONFIG_SCHEMA_VERSION } from '../modules/decal/config/index.js';
@@ -150,6 +151,14 @@ function deepValidateCheapDecal(data, source) {
         return false;
     }
     return true;
+}
+
+// MODULE_LABELS phải merge theo từng module id VÀ từng field, trong khi merge backward-compat
+// bên dưới chỉ merge nông cấp 1 (`{ ...default, ...saved }`). Nếu payload đã lưu thiếu 1 id
+// (client cũ, hoặc module mới thêm sau) thì cả cụm default bị thay → undefined chui xuống UI.
+function withMergedModuleLabels(moduleName, cfg) {
+    if (moduleName !== 'moduleVisibilityConfig') return cfg;
+    return { ...cfg, MODULE_LABELS: mergeModuleLabels(cfg.MODULE_LABELS) };
 }
 
 // Deep schema validation cho cấu hình hiển thị tile (moduleVisibilityConfig).
@@ -361,7 +370,10 @@ export async function loadConfigFromCloud(moduleName) {
                 } else {
                     // Merge với default để backward-compat: config lưu trước khi
                     // add key mới (vd PAPER_REFERENCE_CONFIG) → key mới lấy từ default.
-                    const merged = { ...restoreInfinity(defaultCfg), ...supaData };
+                    const merged = withMergedModuleLabels(moduleName, {
+                        ...restoreInfinity(defaultCfg),
+                        ...supaData,
+                    });
                     localStorage.setItem(mod.key, JSON.stringify(merged));
                     return merged;
                 }
@@ -433,7 +445,10 @@ export async function loadConfigFromCloud(moduleName) {
                     // skip — fallback default
                 } else {
                     // Merge với default để backward-compat: key mới lấy từ default.
-                    return { ...restoreInfinity(defaultCfg), ...parsed };
+                    return withMergedModuleLabels(moduleName, {
+                        ...restoreInfinity(defaultCfg),
+                        ...parsed,
+                    });
                 }
             }
         }
@@ -637,6 +652,31 @@ function isObject(item) {
     return item && typeof item === 'object' && !Array.isArray(item);
 }
 
+// Danh sách array được GHI ĐÈ NGUYÊN KHỐI thay vì giữ bản default. Array nào
+// không có tên ở đây mà default cũng là array thì bản admin lưu sẽ bị BỎ QUA —
+// admin xoá 1 dòng sẽ thấy dòng đó quay lại. Thêm key mới vào đây mỗi khi mở
+// thêm một bảng array cho admin sửa trong tab Cài Đặt.
+const REPLACE_WHOLE_ARRAY_KEYS = new Set([
+    'CUSTOMER_PRICE_TIERS',
+    'PROFIT_MARGIN_TIERS',
+    'cost_tiers',
+    'customer_tiers',
+    'tiers',
+    'clickTiers',
+    'customerA4Tiers',
+    'vkPoints',
+    'COMMON_SHEET_SIZES',
+    'DECAL_SHEET_SIZES',
+    'STANDARD_SIZES',
+    'STANDARD_LARGE_SHEET_SIZES',
+    'ART_PAPER_LARGE_SHEET_SIZES',
+    'PAPER_STOCK_DATA',
+    'DIE_CUTTING_CUSTOM_MOLDS',
+    'CUSTOM_FINISHING_TYPES',
+    'printSheetSizes',
+    'machines',
+]);
+
 export function mergeDeep(target, source) {
     let output = Object.assign({}, target);
     if (isObject(target) && isObject(source)) {
@@ -645,21 +685,7 @@ export function mergeDeep(target, source) {
                 if (!(key in target)) Object.assign(output, { [key]: source[key] });
                 else output[key] = mergeDeep(target[key], source[key]);
             } else if (Array.isArray(source[key])) {
-                if (
-                    (key === 'CUSTOMER_PRICE_TIERS' ||
-                        key === 'PROFIT_MARGIN_TIERS' ||
-                        key === 'cost_tiers' ||
-                        key === 'customer_tiers' ||
-                        key === 'tiers' ||
-                        key === 'clickTiers' ||
-                        key === 'vkPoints' ||
-                        key === 'COMMON_SHEET_SIZES' ||
-                        key === 'DECAL_SHEET_SIZES' ||
-                        key === 'STANDARD_SIZES' ||
-                        key === 'printSheetSizes' ||
-                        key === 'machines') &&
-                    source[key].length > 0
-                ) {
+                if (REPLACE_WHOLE_ARRAY_KEYS.has(key) && source[key].length > 0) {
                     output[key] = JSON.parse(JSON.stringify(source[key]));
                 } else if (Array.isArray(target[key])) {
                     output[key] = JSON.parse(JSON.stringify(target[key]));
@@ -1028,6 +1054,7 @@ export function loadModuleVisibilityConfig() {
                         ...MODULE_VISIBILITY_DEFAULT_CONFIG.MODULE_VISIBILITY,
                         ...parsed.MODULE_VISIBILITY,
                     },
+                    MODULE_LABELS: mergeModuleLabels(parsed.MODULE_LABELS),
                 };
             }
         }

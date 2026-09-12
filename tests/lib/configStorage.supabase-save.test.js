@@ -32,6 +32,7 @@ import { DECAL_DEFAULT_CONFIG } from '../../src/config/decalConfig.js';
 import { DEFAULT_CONFIG } from '../../src/config/defaultConfig.js';
 import { LARGE_PRINT_DEFAULT_CONFIG } from '../../src/config/largePrintConfig.js';
 import { UVDTF_DEFAULT_CONFIG } from '../../src/config/uvdtfConfig.js';
+import { MODULE_VISIBILITY_DEFAULT_CONFIG } from '../../src/config/moduleVisibilityConfig.js';
 
 // Valid configs — dùng default trực tiếp (preserve Infinity, pass schema validator).
 // LƯU Ý: KHÔNG JSON-roundtrip vì JSON.stringify(Infinity) = "null" → schema reject.
@@ -40,6 +41,7 @@ const VALID_DECAL = DECAL_DEFAULT_CONFIG;
 const VALID_PRINT = DEFAULT_CONFIG;
 const VALID_LARGE = LARGE_PRINT_DEFAULT_CONFIG;
 const VALID_UVDTF = UVDTF_DEFAULT_CONFIG;
+const VALID_UI = MODULE_VISIBILITY_DEFAULT_CONFIG;
 // JSON-roundtripped versions (Infinity → null) cho localStorage comparison
 const VALID_DECAL_AS_JSON = JSON.parse(JSON.stringify(VALID_DECAL));
 const INVALID = { someRandomKey: 1 };
@@ -92,6 +94,47 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('uvdtfConfig', VALID_UVDTF);
             expect(mockSaveSupabase).toHaveBeenCalledWith('uvdtf', VALID_UVDTF, '1.0.0', null);
+        });
+
+        it('moduleVisibilityConfig → ui-visibility + MODULE_VISIBILITY_SCHEMA_VERSION', async () => {
+            mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
+            await saveConfigToCloud('moduleVisibilityConfig', VALID_UI);
+            // Literal cố ý. 1.1.0: thêm MODULE_LABELS (admin đổi tên module trên tile).
+            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', VALID_UI, '1.1.0', null);
+        });
+    });
+
+    describe('ui-visibility — hiển thị + tên module dùng chung 1 payload', () => {
+        it('gửi CẢ MODULE_VISIBILITY lẫn MODULE_LABELS (payload thay toàn bộ)', async () => {
+            mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 2 });
+            await saveConfigToCloud('moduleVisibilityConfig', VALID_UI);
+
+            const sent = mockSaveSupabase.mock.calls.at(-1)[1];
+            expect(sent.MODULE_VISIBILITY).toBeTruthy();
+            expect(sent.MODULE_LABELS.small.title).toBe('In KTS Khổ Nhỏ');
+        });
+
+        it('config cũ chưa có MODULE_LABELS vẫn lưu được (backward-compat)', async () => {
+            mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 2 });
+            const legacy = { MODULE_VISIBILITY: { small: true, card: false } };
+            const res = await saveConfigToCloud('moduleVisibilityConfig', legacy);
+
+            expect(res.cloud).toBe(true);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', legacy, '1.1.0', null);
+        });
+
+        it('tên module sai kiểu → chặn trước Supabase, không ghi localStorage', async () => {
+            const bad = {
+                MODULE_VISIBILITY: { small: true },
+                MODULE_LABELS: { small: { title: 123 } },
+            };
+            const res = await saveConfigToCloud('moduleVisibilityConfig', bad);
+
+            expect(res.local).toBe(false);
+            expect(res.cloud).toBe(false);
+            expect(res.error).toContain('MODULE_LABELS.small.title');
+            expect(mockSaveSupabase).not.toHaveBeenCalled();
+            expect(localStorage.getItem('moduleVisibilityConfig')).toBeNull();
         });
     });
 

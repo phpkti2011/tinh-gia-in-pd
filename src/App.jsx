@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import InputPanel from './components/smallprint/InputPanel';
 import ResultPanel from './components/smallprint/ResultPanel';
 import SettingsPanel from './components/smallprint/SettingsPanel';
@@ -49,6 +49,7 @@ import {
     calculatePerSheetOptions,
     calculateDecalOptions,
     calculateFinishingCost,
+    calculateCustomFinishingCost,
     calculateDieCuttingCosts,
     calculateFoilStamping,
 } from './utils/calculator';
@@ -71,6 +72,12 @@ import { calculateCheapDecal } from './utils/cheapDecalCalculator';
 import AdminGate from './auth/AdminGate';
 import { useAuth } from './auth/useAuth';
 import { useUserRole } from './auth/useUserRole';
+import ModuleTile from './components/home/ModuleTile';
+import {
+    MODULE_VISIBILITY_DEFAULT_CONFIG,
+    MODULE_VISIBILITY_DEFAULT_LABELS,
+    mergeModuleLabels,
+} from './config/moduleVisibilityConfig';
 
 // P2-05.6: Apps Script cloud sync ĐÃ ĐƯỢC REMOVE hoàn toàn:
 //   - src/utils/cloudSync.js: deleted.
@@ -79,13 +86,14 @@ import { useUserRole } from './auth/useUserRole';
 // Cloud source duy nhất: Supabase (qua configStorage → priceConfigStore →
 // Supabase RPC + Auth JWT + RLS admin check).
 
-// Danh sách tile module (data-driven). Class Tailwind giữ literal để JIT không purge.
+// Danh sách tile module (data-driven) — CHỈ phần trình bày + thứ tự hiển thị.
+// Tên/mô tả/tiêu đề nằm ở MODULE_LABELS (src/config/moduleVisibilityConfig.js) vì admin sửa được.
+// Vẫn lấy thứ tự lưới từ mảng này, KHÔNG suy từ Object.keys(MODULE_LABELS) — payload cũ trên cloud
+// có thể thiếu id hoặc sai thứ tự. Class Tailwind giữ literal để JIT không purge.
 const MODULES = [
     {
         id: 'small',
         icon: '🖨',
-        title: 'In KTS Khổ Nhỏ',
-        desc: 'In laser kỹ thuật số trên giấy couche, bristol, ford, decal... Tối ưu hóa xếp hình, tính giá vốn & báo giá khách hàng.',
         border: 'hover:border-blue-500',
         titleHover: 'group-hover:text-blue-400',
         link: 'text-blue-400',
@@ -93,8 +101,6 @@ const MODULES = [
     {
         id: 'large',
         icon: '🖼',
-        title: 'In Khổ Lớn',
-        desc: 'In phun khổ lớn trên PP, decal, backlit, bạt hiflex... Tự động tối ưu khổ cuộn, cán màng, bồi formex.',
         border: 'hover:border-green-500',
         titleHover: 'group-hover:text-green-400',
         link: 'text-green-400',
@@ -102,8 +108,6 @@ const MODULES = [
     {
         id: 'decal',
         icon: '🏷',
-        title: 'Tính Giá Decal',
-        desc: 'Tính giá tem lẻ & tờ sticker. Mô phỏng xếp tem, bảng giá lũy tiến, bế demi, cán màng tự động.',
         border: 'hover:border-purple-500',
         titleHover: 'group-hover:text-purple-400',
         link: 'text-purple-400',
@@ -111,8 +115,6 @@ const MODULES = [
     {
         id: 'uvdtf',
         icon: '✨',
-        title: 'In UV DTF',
-        desc: 'Tính giá in UV DTF theo mét tới. Tự động xoay tối ưu, mô phỏng xếp hình trên cuộn.',
         border: 'hover:border-orange-500',
         titleHover: 'group-hover:text-orange-400',
         link: 'text-orange-400',
@@ -120,8 +122,6 @@ const MODULES = [
     {
         id: 'catalogue',
         icon: '📚',
-        title: 'Catalogue Bấm Kim',
-        desc: 'Tính giá catalogue/brochure bấm kim (gấp lồng). Tự tính số tờ in, quy đổi trang A4 & dùng chung bảng giá In KTS.',
         border: 'hover:border-red-500',
         titleHover: 'group-hover:text-red-400',
         link: 'text-red-400',
@@ -129,8 +129,6 @@ const MODULES = [
     {
         id: 'spiral',
         icon: '📒',
-        title: 'Sổ Đóng Lò Xo',
-        desc: 'Tính giá sổ/notebook đóng lò xo. In từng tờ, tách bìa/ruột, chọn 1-2 mặt & dùng chung bảng giá In KTS.',
         border: 'hover:border-teal-500',
         titleHover: 'group-hover:text-teal-400',
         link: 'text-teal-400',
@@ -138,8 +136,6 @@ const MODULES = [
     {
         id: 'sticker',
         icon: '🏷️',
-        title: 'Tính Giá Tờ Sticker',
-        desc: 'Báo giá tờ sticker theo khổ (10x10 / A6 / A5 / A4) & số lượng. Bậc giá, phụ phí cán màng, số sticker, nội dung & vẽ đường cắt.',
         border: 'hover:border-pink-500',
         titleHover: 'group-hover:text-pink-400',
         link: 'text-pink-400',
@@ -147,8 +143,6 @@ const MODULES = [
     {
         id: 'card',
         icon: '💳',
-        title: 'Tính Giá Thẻ Nhựa',
-        desc: 'Báo giá thẻ nhựa / thẻ gỗ theo loại thẻ & số lượng. Chip Mifare/NFC, add-on, nhóm khách trực tiếp / đại lý.',
         border: 'hover:border-indigo-500',
         titleHover: 'group-hover:text-indigo-400',
         link: 'text-indigo-400',
@@ -156,8 +150,6 @@ const MODULES = [
     {
         id: 'flyer',
         icon: '📄',
-        title: 'Tính Giá Tờ Rơi',
-        desc: 'Báo giá tờ rơi A5/A4 theo số lượng. Loại giấy, in 1/2 mặt, cán màng, cấn gấp & số nội dung.',
         border: 'hover:border-amber-500',
         titleHover: 'group-hover:text-amber-400',
         link: 'text-amber-400',
@@ -165,65 +157,55 @@ const MODULES = [
     {
         id: 'cheapdecal',
         icon: '🔖',
-        title: 'Decal Nhãn Giá Rẻ',
-        desc: 'Báo giá nhanh decal nhãn theo cỡ & số lượng (500/1000/2000). Hình tròn/vuông, decal giấy/nhựa, cán màng, lấy trong ngày.',
         border: 'hover:border-rose-500',
         titleHover: 'group-hover:text-rose-400',
         link: 'text-rose-400',
     },
 ];
 
-function ModuleTile({ mod, onSelect, isAdmin, visible, onToggle }) {
-    return (
-        <div className="relative h-full">
-            <button
-                onClick={() => onSelect(mod.id)}
-                className={`w-full h-full bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 ${mod.border} rounded-xl p-8 text-left transition-all duration-200 group ${isAdmin && !visible ? 'opacity-60' : ''}`}
-            >
-                <div className="text-4xl mb-4">{mod.icon}</div>
-                <h2 className={`text-2xl font-bold text-white ${mod.titleHover} mb-2`}>
-                    {mod.title}
-                </h2>
-                <p className="text-gray-400 text-sm">{mod.desc}</p>
-                <div
-                    className={`mt-4 ${mod.link} text-sm font-medium group-hover:translate-x-2 transition-transform`}
-                >
-                    Mở công cụ →
-                </div>
-            </button>
-            {isAdmin && (
-                <button
-                    onClick={() => onToggle(mod.id)}
-                    title={visible ? 'Đang hiện — bấm để ẩn' : 'Đang ẩn — bấm để hiện'}
-                    className={`absolute top-3 right-3 z-10 px-2.5 py-1 rounded text-xs font-semibold ${
-                        visible
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
-                    }`}
-                >
-                    {visible ? 'Hiện' : 'Ẩn'}
-                </button>
-            )}
-        </div>
-    );
-}
-
-function HomePage({ onSelect, isAdmin, visibility, onSaveVisibility }) {
-    const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'cloud' | 'local'
-    const vis = visibility || {};
+function HomePage({ onSelect, isAdmin, uiConfig, onSaveUiConfig }) {
+    // null | 'saving' | 'cloud' | 'local' | 'error'
+    const [saveStatus, setSaveStatus] = useState(null);
+    const [saveError, setSaveError] = useState(null);
+    const vis = uiConfig.MODULE_VISIBILITY || {};
+    const labels = uiConfig.MODULE_LABELS || MODULE_VISIBILITY_DEFAULT_LABELS;
     // Người dùng thường: chỉ tile đang hiện. Admin: thấy hết (tile ẩn để mờ + nút toggle).
     const shown = MODULES.filter((m) => isAdmin || vis[m.id] !== false);
 
-    const handleToggle = async (id) => {
-        const newMap = { ...vis, [id]: !(vis[id] !== false) };
+    // Payload ui-visibility bị THAY TOÀN BỘ mỗi lần lưu, nên luôn gửi cả 2 key — nếu chỉ gửi
+    // MODULE_VISIBILITY thì mỗi lần bấm Ẩn/Hiện sẽ xoá sạch tên module admin đã đặt.
+    const persist = async (next) => {
         setSaveStatus('saving');
+        setSaveError(null);
         try {
-            const res = await onSaveVisibility(newMap);
+            const res = await onSaveUiConfig(next);
+            if (res?.error || res?.local === false) {
+                setSaveStatus('error');
+                setSaveError(res?.error || 'Không lưu được');
+                return;
+            }
             setSaveStatus(res?.cloud ? 'cloud' : 'local');
-        } catch {
-            setSaveStatus('local');
+        } catch (e) {
+            setSaveStatus('error');
+            setSaveError(e?.message || 'Không lưu được');
         }
     };
+
+    const handleToggle = (id) =>
+        persist({
+            ...uiConfig,
+            MODULE_VISIBILITY: { ...vis, [id]: !(vis[id] !== false) },
+        });
+
+    // patch chỉ chứa field có nội dung → field bỏ trống quay về giá trị mặc định.
+    const handleSaveLabel = (id, patch) =>
+        persist({
+            ...uiConfig,
+            MODULE_LABELS: {
+                ...labels,
+                [id]: { ...MODULE_VISIBILITY_DEFAULT_LABELS[id], ...patch },
+            },
+        });
 
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-screen-xl">
@@ -242,13 +224,16 @@ function HomePage({ onSelect, isAdmin, visibility, onSaveVisibility }) {
                         )}
                         {saveStatus === 'local' && (
                             <span className="text-yellow-400">
-                                ✓ Đã lưu trên máy này — đám mây chưa đồng bộ (cần chạy SQL enum
-                                ‘ui-visibility’)
+                                ✓ Đã lưu trên máy này — đám mây chưa đồng bộ (xem
+                                docs/database/migration-ui-visibility-enum.sql)
                             </span>
+                        )}
+                        {saveStatus === 'error' && (
+                            <span className="text-red-400">✗ Không lưu được: {saveError}</span>
                         )}
                         {!saveStatus && (
                             <span className="text-gray-500">
-                                Bấm nút Hiện/Ẩn trên góc tile để bật/tắt hiển thị với người dùng.
+                                Bấm ✎ để đổi tên module, Hiện/Ẩn để bật tắt hiển thị với người dùng.
                             </span>
                         )}
                     </p>
@@ -260,10 +245,12 @@ function HomePage({ onSelect, isAdmin, visibility, onSaveVisibility }) {
                     <ModuleTile
                         key={m.id}
                         mod={m}
+                        label={labels[m.id] || MODULE_VISIBILITY_DEFAULT_LABELS[m.id]}
                         onSelect={onSelect}
                         isAdmin={isAdmin}
                         visible={vis[m.id] !== false}
                         onToggle={handleToggle}
+                        onSaveLabel={handleSaveLabel}
                     />
                 ))}
             </div>
@@ -271,7 +258,7 @@ function HomePage({ onSelect, isAdmin, visibility, onSaveVisibility }) {
     );
 }
 
-function SmallPrintModule({ onBack }) {
+function SmallPrintModule({ onBack, heading }) {
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
     const [params, setParams] = useState({
@@ -291,6 +278,7 @@ function SmallPrintModule({ onBack }) {
         laminationType: 'none',
         creasingType: 'none',
         holePunchingType: 'none',
+        customFinishingType: 'none',
         dieCuttingType: 'none',
         moldType: 'simple',
         tagHasHole: false,
@@ -429,6 +417,15 @@ function SmallPrintModule({ onBack }) {
                     params.mountingType,
                     config.MOUNTING_CONFIG?.[params.mountingType]
                 );
+            const {
+                cost: customFinishingCost,
+                customerPrice: customFinishingCustomerPrice,
+                label: customFinishingLabel,
+            } = calculateCustomFinishingCost(
+                totalQuantity,
+                params.customFinishingType,
+                config.CUSTOM_FINISHING_TYPES
+            );
             const { moldCost, laborCost, laborCustomerPrice } = calculateDieCuttingCosts(
                 params,
                 totalPrintSheets,
@@ -439,6 +436,7 @@ function SmallPrintModule({ onBack }) {
                 holePunching: holePunchingCustomerPrice,
                 creasing: creasingCustomerPrice,
                 mounting: mountingCustomerPrice,
+                customFinishing: customFinishingCustomerPrice,
             };
             const dieCuttingCustomerPrice = { moldCost, laborCustomerPrice };
             const foilResult = calculateFoilStamping(params, config);
@@ -457,6 +455,8 @@ function SmallPrintModule({ onBack }) {
                 holePunchingCost,
                 creasingCost,
                 mountingCost,
+                customFinishingCost,
+                customFinishingLabel,
                 moldCost,
                 laborCost,
                 finishingCustomerPrices,
@@ -492,7 +492,7 @@ function SmallPrintModule({ onBack }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    In KTS Khổ Nhỏ — Tính Giá & Báo Giá
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.small.heading}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Nhập thông số - Hệ thống sẽ tự động tính toán phương án hiệu quả nhất.
@@ -551,7 +551,7 @@ function SmallPrintModule({ onBack }) {
     );
 }
 
-function LargePrintModule({ onBack }) {
+function LargePrintModule({ onBack, heading }) {
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
     const [params, setParams] = useState({
@@ -618,7 +618,7 @@ function LargePrintModule({ onBack }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    In Khổ Lớn — Tư Vấn & Tính Giá
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.large.heading}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Nhập kích thước & vật liệu - Hệ thống tự động tìm phương án tối ưu.
@@ -677,7 +677,7 @@ function LargePrintModule({ onBack }) {
     );
 }
 
-function DecalModule({ onBack }) {
+function DecalModule({ onBack, heading }) {
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
     const [params, setParams] = useState({
@@ -882,7 +882,9 @@ function DecalModule({ onBack }) {
                 >
                     ← Trang chủ
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá In Decal</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.decal.heading}
+                </h1>
                 <p className="text-gray-400 mt-2">
                     Chọn loại sản phẩm và khổ in để bắt đầu báo giá.
                 </p>
@@ -935,7 +937,7 @@ function DecalModule({ onBack }) {
     );
 }
 
-function UvdtfModule({ onBack }) {
+function UvdtfModule({ onBack, heading }) {
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
     const [params, setParams] = useState({ widthMM: 50, heightMM: 90, quantity: 1000 });
@@ -984,7 +986,9 @@ function UvdtfModule({ onBack }) {
                 >
                     ← Trang chủ
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá In UV DTF</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.uvdtf.heading}
+                </h1>
                 <p className="text-gray-400 mt-2">
                     Khổ vật liệu {config.materialWidthCM}cm · Vùng in {config.printableWidthCM}cm
                 </p>
@@ -1033,7 +1037,7 @@ function UvdtfModule({ onBack }) {
     );
 }
 
-function CatalogueModule({ onBack }) {
+function CatalogueModule({ onBack, heading }) {
     // Dùng chung printConfig (In KTS) cho bảng giá; catalogueConfig chỉ giữ STAPLE_CONFIG.
     const [printConfig, setPrintConfig] = useState(null);
     const [catalogueConfig, setCatalogueConfig] = useState(null);
@@ -1107,7 +1111,7 @@ function CatalogueModule({ onBack }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    Tính Giá Catalogue Bấm Kim
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.catalogue.heading}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Gấp lồng bấm kim · số trang chia hết cho 4 · dùng chung giá In KTS Khổ Nhỏ
@@ -1164,7 +1168,7 @@ function CatalogueModule({ onBack }) {
     );
 }
 
-function SpiralModule({ onBack }) {
+function SpiralModule({ onBack, heading }) {
     // Dùng chung printConfig (In KTS); spiralConfig chỉ giữ SPIRAL_CONFIG.
     const [printConfig, setPrintConfig] = useState(null);
     const [spiralConfig, setSpiralConfig] = useState(null);
@@ -1241,7 +1245,7 @@ function SpiralModule({ onBack }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    Tính Giá Sổ Đóng Lò Xo
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.spiral.heading}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     In từng tờ · tách bìa/ruột · chọn 1-2 mặt · dùng chung giá In KTS Khổ Nhỏ
@@ -1298,7 +1302,7 @@ function SpiralModule({ onBack }) {
     );
 }
 
-function StickerModule({ onBack }) {
+function StickerModule({ onBack, heading }) {
     // Module độc lập — bảng giá riêng (stickerConfig), không dùng chung module khác.
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
@@ -1355,7 +1359,9 @@ function StickerModule({ onBack }) {
                 >
                     ← Trang chủ
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá Tờ Sticker</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.sticker.heading}
+                </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá theo khổ tờ & số lượng · phụ phí cán màng, số sticker, nội dung, vẽ cắt
                 </p>
@@ -1411,7 +1417,7 @@ function StickerModule({ onBack }) {
     );
 }
 
-function CardModule({ onBack }) {
+function CardModule({ onBack, heading }) {
     // Module độc lập — bảng giá riêng (cardConfig).
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
@@ -1466,7 +1472,9 @@ function CardModule({ onBack }) {
                 >
                     ← Trang chủ
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá Thẻ Nhựa</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.card.heading}
+                </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá theo loại thẻ & số lượng · chip / add-on · nhóm khách trực tiếp / đại lý
                 </p>
@@ -1518,7 +1526,7 @@ function CardModule({ onBack }) {
     );
 }
 
-function FlyerModule({ onBack }) {
+function FlyerModule({ onBack, heading }) {
     // Module độc lập — bảng giá riêng (flyerConfig).
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
@@ -1576,7 +1584,9 @@ function FlyerModule({ onBack }) {
                 >
                     ← Trang chủ
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Tính Giá Tờ Rơi</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.flyer.heading}
+                </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá theo khổ & số lượng · giấy · in 1/2 mặt · cán màng · cấn gấp · nội dung
                 </p>
@@ -1628,7 +1638,7 @@ function FlyerModule({ onBack }) {
     );
 }
 
-function CheapDecalModule({ onBack }) {
+function CheapDecalModule({ onBack, heading }) {
     // Module độc lập — bảng giá riêng (cheapDecalConfig).
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
@@ -1685,7 +1695,9 @@ function CheapDecalModule({ onBack }) {
                 >
                     ← Trang chủ
                 </button>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Decal Nhãn Giá Rẻ</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.cheapdecal.heading}
+                </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá nhanh theo cỡ & số lượng · hình · vật liệu · cán màng · lấy trong ngày
                 </p>
@@ -1817,47 +1829,69 @@ function App() {
     const { user } = useAuth();
     const { isAdmin } = useUserRole(user);
 
-    // Hiển thị tile: default (sync) → cloud override. Default all-visible → không ẩn nhầm khi tải.
-    const [visibility, setVisibility] = useState(
-        () => loadModuleVisibilityConfig().MODULE_VISIBILITY
-    );
+    // Hiển thị + tên tile: default (sync) → cloud override. Default all-visible → không ẩn nhầm
+    // khi tải. Giữ chung 1 state vì cả 2 nằm trong cùng payload 'ui-visibility'.
+    const [uiConfig, setUiConfig] = useState(loadModuleVisibilityConfig);
+    // Admin có thể bấm sửa tên trước khi cloud trả về; đừng đè mất bản nháp/vừa lưu của họ.
+    const uiEditedRef = useRef(false);
+    // Giá trị hiện tại cho saveUiConfig (callback stable, không muốn re-tạo mỗi lần state đổi).
+    const uiConfigRef = useRef(uiConfig);
+    uiConfigRef.current = uiConfig;
+
     useEffect(() => {
         loadConfigFromCloud('moduleVisibilityConfig').then((c) => {
-            if (c?.MODULE_VISIBILITY) setVisibility(c.MODULE_VISIBILITY);
+            if (!c || uiEditedRef.current) return;
+            setUiConfig({
+                MODULE_VISIBILITY: {
+                    ...MODULE_VISIBILITY_DEFAULT_CONFIG.MODULE_VISIBILITY,
+                    ...c.MODULE_VISIBILITY,
+                },
+                MODULE_LABELS: mergeModuleLabels(c.MODULE_LABELS),
+            });
         });
     }, []);
 
-    const saveVisibility = useCallback(async (map) => {
-        setVisibility(map);
-        return await saveConfigToCloud('moduleVisibilityConfig', { MODULE_VISIBILITY: map });
+    const saveUiConfig = useCallback(async (next) => {
+        uiEditedRef.current = true;
+        const prev = uiConfigRef.current;
+        setUiConfig(next); // optimistic
+        const res = await saveConfigToCloud('moduleVisibilityConfig', next);
+        // Validation fail → saveConfigToCloud trả về trước cả bước ghi localStorage, không có gì
+        // được lưu cả. Rollback để UI không hiển thị tên mà thực tế đã mất khi tải lại.
+        if (res?.error || res?.local === false) setUiConfig(prev);
+        return res;
     }, []);
 
     const content = (() => {
+        const home = () => setCurrentModule('home');
+        // Optional chaining + default prop ở component: payload cloud cũ có thể thiếu id.
+        const heading = (id) => uiConfig.MODULE_LABELS?.[id]?.heading;
+
         if (currentModule === 'small')
-            return <SmallPrintModule onBack={() => setCurrentModule('home')} />;
+            return <SmallPrintModule onBack={home} heading={heading('small')} />;
         if (currentModule === 'large')
-            return <LargePrintModule onBack={() => setCurrentModule('home')} />;
+            return <LargePrintModule onBack={home} heading={heading('large')} />;
         if (currentModule === 'decal')
-            return <DecalModule onBack={() => setCurrentModule('home')} />;
+            return <DecalModule onBack={home} heading={heading('decal')} />;
         if (currentModule === 'uvdtf')
-            return <UvdtfModule onBack={() => setCurrentModule('home')} />;
+            return <UvdtfModule onBack={home} heading={heading('uvdtf')} />;
         if (currentModule === 'catalogue')
-            return <CatalogueModule onBack={() => setCurrentModule('home')} />;
+            return <CatalogueModule onBack={home} heading={heading('catalogue')} />;
         if (currentModule === 'spiral')
-            return <SpiralModule onBack={() => setCurrentModule('home')} />;
+            return <SpiralModule onBack={home} heading={heading('spiral')} />;
         if (currentModule === 'sticker')
-            return <StickerModule onBack={() => setCurrentModule('home')} />;
-        if (currentModule === 'card') return <CardModule onBack={() => setCurrentModule('home')} />;
+            return <StickerModule onBack={home} heading={heading('sticker')} />;
+        if (currentModule === 'card') return <CardModule onBack={home} heading={heading('card')} />;
         if (currentModule === 'flyer')
-            return <FlyerModule onBack={() => setCurrentModule('home')} />;
+            return <FlyerModule onBack={home} heading={heading('flyer')} />;
         if (currentModule === 'cheapdecal')
-            return <CheapDecalModule onBack={() => setCurrentModule('home')} />;
+            return <CheapDecalModule onBack={home} heading={heading('cheapdecal')} />;
         return (
             <HomePage
                 onSelect={setCurrentModule}
                 isAdmin={isAdmin}
-                visibility={visibility}
-                onSaveVisibility={saveVisibility}
+                uiConfig={uiConfig}
+                onSaveUiConfig={saveUiConfig}
             />
         );
     })();

@@ -38,7 +38,11 @@ Cách nhanh không qua git (deploy thẳng working tree, KHÔNG commit): `vercel
 - Biến env đã set sẵn trên Vercel (Production + Preview): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 - Khi thêm module mới có config đám mây, nhớ thêm module key vào CHECK enum trong
   [supabase-price-configs.sql](database/supabase-price-configs.sql) và **chạy migration trên Supabase live**.
-- **Đang treo**: chạy 1 lần SQL thêm enum `ui-visibility` (cho tính năng ẩn/hiện tile đồng bộ đám mây).
+- **Đang treo**: chạy 1 lần [migration-ui-visibility-enum.sql](database/migration-ui-visibility-enum.sql)
+  để thêm enum `ui-visibility` — mở khoá đồng bộ đám mây cho cả **ẩn/hiện tile** lẫn **đổi tên module**.
+  Chưa chạy thì 2 tính năng này vẫn dùng được nhưng chỉ lưu localStorage (mỗi trình duyệt một bản).
+  Lưu ý: chạy lại `supabase-price-configs.sql` KHÔNG đủ — `create table if not exists` bỏ qua bảng
+  đã tồn tại nên CHECK constraint cũ vẫn nguyên; phải dùng file migration `ALTER` ở trên.
 
 ### Ghi chú CI
 GitHub Actions CI hiện đỏ (3 test Supabase-WebSocket — lỗi môi trường Node, không phải lỗi code).
