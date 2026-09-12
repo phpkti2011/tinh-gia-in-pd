@@ -26,6 +26,10 @@ export default [
             'tailwind.config.js',
             // Legacy files (gitignored nhưng có thể trên disk dev)
             'google-apps-script.js',
+            // Plugin WordPress (PHP + JS chạy trong WP, không qua Vite/bundler của app
+            // này). Globals khác hẳn (jQuery, wp, biến do wp_localize_script bơm vào)
+            // nên lint chung sẽ toàn báo no-undef giả.
+            'pd-tinh-gia-decal-*/**',
         ],
     },
 

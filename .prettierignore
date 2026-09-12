@@ -23,6 +23,7 @@ google-apps-script.js
 .github/workflows/*.yml
 .prettierrc
 eslint.config.js
+pd-tinh-gia-decal-*
 package.json
 postcss.config.js
 tailwind.config.js
