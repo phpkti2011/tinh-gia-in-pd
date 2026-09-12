@@ -344,6 +344,30 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         <option value="2_vi_tri">1-2 lỗ (2 vị trí)</option>
                     </select>
                 </div>
+                {(config.CUSTOM_FINISHING_TYPES || []).length > 0 && (
+                    <div className="mb-4">
+                        <label htmlFor="customFinishingType">Gia công thêm</label>
+                        <select
+                            id="customFinishingType"
+                            name="customFinishingType"
+                            value={params.customFinishingType}
+                            onChange={handleChange}
+                        >
+                            <option value="none">Không dùng</option>
+                            {config.CUSTOM_FINISHING_TYPES.map((gc) => (
+                                <optgroup key={gc.id} label={gc.name}>
+                                    {(gc.subTypes || []).map((st) => (
+                                        <option key={st.key} value={`${gc.id}::${st.key}`}>
+                                            {gc.subTypes.length > 1
+                                                ? `${gc.name} — ${st.name}`
+                                                : gc.name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            ))}
+                        </select>
+                    </div>
+                )}
                 <div className="mb-4">
                     <label htmlFor="foilStamping">Ép kim (nhũ)</label>
                     <select

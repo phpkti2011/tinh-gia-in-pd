@@ -3,12 +3,23 @@
 // Tách từ src/utils/calculator.js ở TASK-0009.
 // KHÔNG đổi behavior — pure functions, không React/DOM/IO.
 
-// Get number of clicks (printer tier lookup theo chiều cao tờ in)
+// Get number of clicks (printer tier lookup theo chiều cao tờ in) — GIÁ VỐN.
 export function getClicks(h, printer) {
     for (const tier of printer.clickTiers) {
         if (h <= tier.maxH) return tier.clicks;
     }
     return Infinity;
+}
+
+// Get hệ số quy đổi trang A4 cho GIÁ BÁO KHÁCH (tier lookup riêng theo máy,
+// tách biệt với getClicks/giá vốn). null nếu máy chưa cấu hình customerA4Tiers
+// hoặc chiều cao vượt mọi ngưỡng — caller tự fallback (vd computeA4Factor).
+export function getCustomerA4Factor(h, printer) {
+    if (!printer || !Array.isArray(printer.customerA4Tiers)) return null;
+    for (const tier of printer.customerA4Tiers) {
+        if (h <= tier.maxH) return tier.factor;
+    }
+    return null;
 }
 
 // Get printable area sau khi trừ margins theo mode (custom / digital / VK / non-VK)

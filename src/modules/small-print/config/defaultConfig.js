@@ -43,6 +43,8 @@ export const DEFAULT_CONFIG = {
             name: 'C2060',
             maxW: 33.0,
             maxH: 120.0,
+            // Ngưỡng chiều cao → SỐ CLICK — chỉ dùng tính GIÁ VỐN nội bộ (đơn giá
+            // click × số click). Không dùng để tính giá báo khách (xem customerA4Tiers).
             clickTiers: [
                 { maxH: 33, clicks: 1 },
                 { maxH: 48, clicks: 2 },
@@ -50,6 +52,37 @@ export const DEFAULT_CONFIG = {
                 { maxH: 92, clicks: 4 },
                 { maxH: 120, clicks: 5 },
             ],
+            // Ngưỡng chiều cao → HỆ SỐ QUY ĐỔI A4 cho GIÁ BÁO KHÁCH khổ decal — tách
+            // biệt hoàn toàn với clickTiers/giá vốn. Admin tự chỉnh riêng từng máy,
+            // không bắt buộc bằng số click.
+            // LƯU Ý: bậc 35 KHÁC bậc click (click vẫn nhảy 2 ở >33cm vì máy thật sự
+            // tốn 2 click). Hệ số A4 là số trang quy đổi để tính tiền KHÁCH, bám theo
+            // chiều cao thật (~h/21), nên tờ 35cm = 1.5 trang giống bảng
+            // A4_CONVERSION_RATES và giống C6085. Bỏ bậc này là tờ 35cm rơi vào bậc 48
+            // và bị tính 2.4 trang → đội giá khách 60%.
+            customerA4Tiers: [
+                { maxH: 33, factor: 1.5 },
+                { maxH: 35, factor: 1.5 },
+                { maxH: 48, factor: 2.4 },
+                { maxH: 76, factor: 3 },
+                { maxH: 92, factor: 4 },
+                { maxH: 120, factor: 5 },
+            ],
+            // Bảng quy đổi A4 THEO CHIỀU CAO CHÍNH XÁC, riêng từng máy. Dùng cho
+            // giấy thường + decal xi bạc (khổ decal cuộn tra customerA4Tiers ở trên).
+            // Khoá phải đúng dạng h.toFixed(1) — engine/a4.js tra bằng đúng chuỗi đó.
+            // Máy nào không khai báo → fallback về A4_CONVERSION_RATES chung.
+            a4ConversionRates: {
+                21.2: 1,
+                28.3: 1.35,
+                '33.0': 1.5,
+                '35.0': 1.5,
+                42.8: 2,
+                '47.0': 2.4,
+                '48.0': 2.4,
+                '65.0': 3.0,
+                '109.0': 5.2,
+            },
             vkPoints: [33, 48, 76, 92, 120],
             prices: { '4color': 750 },
         },
@@ -62,6 +95,25 @@ export const DEFAULT_CONFIG = {
                 { maxH: 48, clicks: 2 },
                 { maxH: 76, clicks: 3 },
             ],
+            customerA4Tiers: [
+                { maxH: 35, factor: 1.5 },
+                { maxH: 48, factor: 2.4 },
+                { maxH: 76, factor: 3 },
+            ],
+            // Giống C2060 ở mọi mốc — cố ý, để bật tính năng không làm đổi giá.
+            // Admin tự chỉnh lệch đi khi muốn 2 máy báo khách khác nhau.
+            // Mốc 109.0 giữ lại cho bảng thẳng cột dù C6085 chỉ chạy tới 76cm.
+            a4ConversionRates: {
+                21.2: 1,
+                28.3: 1.35,
+                '33.0': 1.5,
+                '35.0': 1.5,
+                42.8: 2,
+                '47.0': 2.4,
+                '48.0': 2.4,
+                '65.0': 3.0,
+                '109.0': 5.2,
+            },
             vkPoints: [35, 48, 76],
             prices: { '4color': 650, '1color': 400 },
         },
@@ -140,6 +192,13 @@ export const DEFAULT_CONFIG = {
             ],
         },
     },
+    // Danh mục "gia công" tùy chỉnh (admin tự thêm ngoài Đục lỗ/Cấn/Bồi có sẵn).
+    // Mỗi gia công có 1+ sub-loại (giống Đục lỗ có '1_vi_tri'/'2_vi_tri'), mỗi
+    // sub-loại có khung giá riêng (cost_tiers/customer_tiers — CÙNG cấu trúc
+    // {max_qty, price, type:'package'|'per_piece'} như HOLE_PUNCHING_CONFIG,
+    // dùng lại calculateFinishingCost() không đổi). Chọn tối đa 1 gia công (kèm
+    // 1 sub-loại) mỗi đơn qua dropdown "Gia công thêm" ở màn nhập liệu.
+    CUSTOM_FINISHING_TYPES: [],
     DIE_CUTTING_MOLD_COST_CONFIG: {
         simple: { base_size: 21, base_price: 120000 },
         envelope: { threshold_area: 960, small_price: 160000, large_price: 220000 },
@@ -312,7 +371,7 @@ export const DEFAULT_CONFIG = {
             customerSurcharge: 3500,
         },
         {
-            name: 'Decal xi bạc mờ/bóng',
+            name: 'Decal xi bạc/vàng hiệu ứng bóng/mờ (không phải cán màng)',
             pricingModel: 'per_sheet',
             sheetPrice: 8000,
             sheetSize: { w: 33, h: 48 },

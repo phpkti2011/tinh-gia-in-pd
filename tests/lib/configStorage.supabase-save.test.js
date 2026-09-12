@@ -59,10 +59,14 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('printConfig → small-print + SMALL_PRINT_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('printConfig', VALID_PRINT);
+            // Literal cố ý (không import hằng số) — test này là chốt chặn để mỗi lần
+            // đổi shape config phải bump version có chủ đích. 1.2.0: thêm
+            // customerA4Tiers + a4ConversionRates theo máy, và mở các bảng khổ /
+            // quy đổi A4 cho admin sửa trong tab Cài Đặt.
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'small-print',
                 VALID_PRINT,
-                '1.0.0',
+                '1.2.0',
                 null
             );
         });

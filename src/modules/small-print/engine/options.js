@@ -9,6 +9,7 @@
 
 import {
     getClicks,
+    getCustomerA4Factor,
     getPrintableArea,
     calculateImposition,
     calculateMaxCuttableSheetsLayout,
@@ -131,15 +132,9 @@ export function calculateDecalOptions(
 ) {
     const decalWidths = [32.2, 33.0];
     const pricePerSqm = selectedPaper.pricePerSqm;
-    const printersToUse = Object.entries(config.PRINTER_CONFIG)
-        .filter(([_key, printer]) => printer.name === 'C2060')
-        .reduce((obj, [key, printer]) => {
-            obj[key] = printer;
-            return obj;
-        }, {});
 
-    for (const printerKey in printersToUse) {
-        const printer = printersToUse[printerKey];
+    for (const printerKey in config.PRINTER_CONFIG) {
+        const printer = config.PRINTER_CONFIG[printerKey];
         for (const pressW of decalWidths) {
             if (pressW > printer.maxW) continue;
             const decalSheets =
@@ -199,7 +194,13 @@ export function calculateDecalOptions(
                     numCuttableSheets: 'N/A',
                     cutSheetW: pressW,
                     cutSheetH: pressH,
-                    a4Factor: commonSheet.a4Factor,
+                    // Hệ số quy đổi trang A4 CHO GIÁ BÁO KHÁCH — tra theo ĐÚNG máy đang xét
+                    // (printer.customerA4Tiers, admin tự chỉnh riêng từng máy trong Cài Đặt),
+                    // fallback về số nhập ở "Khổ Decal Có Sẵn Tại Kho" nếu máy chưa cấu hình.
+                    // Tách biệt hoàn toàn với "clicks" (chỉ dùng tính GIÁ VỐN ở
+                    // printCostPerSheet bên dưới) — 2 máy có thể ra hệ số giá khách khác nhau
+                    // dù cùng 1 khổ giấy.
+                    a4Factor: getCustomerA4Factor(pressH, printer) ?? commonSheet.a4Factor,
                     cutSheetSize: `${pressW.toFixed(2)} x ${pressH.toFixed(2)}`,
                     printableArea: `${printableArea.w.toFixed(2)} x ${printableArea.h.toFixed(2)}`,
                     clicks,
@@ -246,15 +247,9 @@ export function calculatePerSheetOptions(
     const pressW = selectedPaper.sheetSize.w;
     const pressH = selectedPaper.sheetSize.h;
     const paperCostPerSheet = selectedPaper.sheetPrice;
-    const printersToUse = Object.entries(config.PRINTER_CONFIG)
-        .filter(([_key, printer]) => printer.name === 'C2060')
-        .reduce((obj, [key, printer]) => {
-            obj[key] = printer;
-            return obj;
-        }, {});
 
-    for (const printerKey in printersToUse) {
-        const printer = printersToUse[printerKey];
+    for (const printerKey in config.PRINTER_CONFIG) {
+        const printer = config.PRINTER_CONFIG[printerKey];
         if (pressW > printer.maxW || pressH > printer.maxH) continue;
         const clickPrice = printer.prices[params.printColorMode] || printer.prices['4color'];
         if (!clickPrice) continue;
@@ -299,7 +294,10 @@ export function calculatePerSheetOptions(
             actualPrintW: imposition.actualPrintW,
             actualPrintH: imposition.actualPrintH,
             numCuttableSheets: 1,
-            cuttableSheetLayout: null,
+            // Khổ cố định, không cắt ra từ tờ lớn nên không có sơ đồ cắt.
+            // Dùng [] chứ KHÔNG dùng null: LargeSheetVisualizer nhận null sẽ vỡ
+            // (default param chỉ kích hoạt với undefined). Giống nhánh decal cuộn.
+            cuttableSheetLayout: [],
             cutSheetW: pressW,
             cutSheetH: pressH,
             cutSheetSize: `${pressW.toFixed(1)} x ${pressH.toFixed(1)}`,

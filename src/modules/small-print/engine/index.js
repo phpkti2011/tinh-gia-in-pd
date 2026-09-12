@@ -6,6 +6,7 @@
 
 export {
     getClicks,
+    getCustomerA4Factor,
     getPrintableArea,
     calculateImposition,
     calculateMaxCuttableSheetsLayout,
@@ -16,6 +17,7 @@ export {
     calculateVariableDataCost,
     calculatePrintContentSurcharge,
     calculateFinishingCost,
+    calculateCustomFinishingCost,
 } from './pricing.js';
 
 export {
@@ -33,4 +35,4 @@ export {
 
 export { calculateCustomerQuote } from './quote.js';
 
-export { computeA4Factor } from './a4.js';
+export { computeA4Factor, getA4Rates } from './a4.js';

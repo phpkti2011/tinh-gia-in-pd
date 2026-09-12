@@ -40,8 +40,9 @@ export function calculateCustomerQuote(
         // Tỉ lệ quy đổi A4 nhập tay/đã lưu trên từng khổ decal (Cài đặt) → dùng trực tiếp.
         conversionFactor = bestOption.a4Factor;
     } else {
-        // Khổ cũ chưa có a4Factor → suy ra từ chiều cao bằng công thức chung (computeA4Factor).
-        const computed = computeA4Factor(pressH, config);
+        // Khổ cũ chưa có a4Factor → suy ra từ chiều cao. Tra bảng RIÊNG của máy
+        // đang xét trước (printer.a4ConversionRates), không có thì bảng chung.
+        const computed = computeA4Factor(pressH, config, bestOption.printer);
         if (computed == null) {
             return { error: `Lỗi cấu hình: Không có hệ số A4 cho khổ ${bestOption.cutSheetSize}` };
         }
@@ -187,6 +188,7 @@ export function calculateCustomerQuote(
         finishingCustomerPrices.holePunching +
         finishingCustomerPrices.creasing +
         finishingCustomerPrices.mounting +
+        (finishingCustomerPrices.customFinishing || 0) +
         dieCuttingCustomerPrice.moldCost +
         dieCuttingCustomerPrice.laborCustomerPrice +
         variableDataCost +
@@ -214,6 +216,7 @@ export function calculateCustomerQuote(
         holePunchingCustomerPrice: finishingCustomerPrices.holePunching || 0,
         creasingCustomerPrice: finishingCustomerPrices.creasing || 0,
         mountingCustomerPrice: finishingCustomerPrices.mounting || 0,
+        customFinishingCustomerPrice: finishingCustomerPrices.customFinishing || 0,
         dieCuttingMoldCustomerPrice: dieCuttingCustomerPrice.moldCost || 0,
         dieCuttingLaborCustomerPrice: dieCuttingCustomerPrice.laborCustomerPrice || 0,
         variableDataCost,

@@ -32,7 +32,14 @@ export function LargeSheetVisualizer({
         Math.floor(largeW / cutH) * Math.floor(largeH / cutW);
 
     // Fallback simple layout if none provided by complex logic
-    let rects = layouts.length > 0 ? layouts : [];
+    //
+    // LƯU Ý: default param `layouts = []` ở trên CHỈ kích hoạt khi giá trị là
+    // undefined, KHÔNG kích hoạt với null. calculatePerSheetOptions (decal xi
+    // bạc) truyền cuttableSheetLayout = null → trang vỡ với "Cannot read
+    // properties of null (reading 'length')". Phải tự chặn bằng Array.isArray.
+    // Copy mảng để nhánh fallback bên dưới không push vào mảng của caller.
+    const safeLayouts = Array.isArray(layouts) ? layouts : [];
+    let rects = safeLayouts.length > 0 ? [...safeLayouts] : [];
     if (rects.length === 0 && cutW > 0 && cutH > 0) {
         const pW = isSwapped ? cutH : cutW;
         const pH = isSwapped ? cutW : cutH;

@@ -36,6 +36,8 @@ export default function ResultPanel({
     holePunchingCost,
     creasingCost,
     mountingCost,
+    customFinishingCost,
+    customFinishingLabel,
     moldCost,
     laborCost,
     variableDataCost,
@@ -486,6 +488,13 @@ export default function ResultPanel({
                                         color="text-white"
                                     />
                                 )}
+                                {displayQuote.customFinishingCustomerPrice > 0 && (
+                                    <QuoteRow
+                                        label={customFinishingLabel || 'Gia công thêm'}
+                                        value={displayQuote.customFinishingCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
                                 {displayQuote.dieCuttingMoldCustomerPrice > 0 && (
                                     <QuoteRow
                                         label="Khuôn bế"
@@ -610,6 +619,7 @@ export default function ResultPanel({
                                 holePunchingCost +
                                 creasingCost +
                                 mountingCost +
+                                customFinishingCost +
                                 moldCost +
                                 laborCost +
                                 foilCost;

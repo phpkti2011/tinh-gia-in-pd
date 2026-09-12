@@ -16,6 +16,7 @@ export {
     calculateVariableDataCost,
     calculatePrintContentSurcharge,
     calculateFinishingCost,
+    calculateCustomFinishingCost,
     calculateLamination,
     calculateDieCuttingCosts,
     calculateFoilStamping,

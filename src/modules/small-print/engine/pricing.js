@@ -75,3 +75,21 @@ export function calculateFinishingCost(quantity, type, configData) {
 
     return { cost, customerPrice };
 }
+
+// Gia công tùy chỉnh (admin tự thêm) — selection là chuỗi "<gcId>::<subKey>"
+// (từ dropdown "Gia công thêm"), tra trong CUSTOM_FINISHING_TYPES rồi tính
+// bằng calculateFinishingCost() sẵn có (không cần công thức riêng).
+export function calculateCustomFinishingCost(quantity, selection, customFinishingTypes) {
+    if (!selection || selection === 'none') {
+        return { cost: 0, customerPrice: 0, label: '' };
+    }
+    const [gcId, subKey] = selection.split('::');
+    const gc = (customFinishingTypes || []).find((g) => g.id === gcId);
+    const sub = gc?.subTypes?.find((s) => s.key === subKey);
+    if (!gc || !sub) {
+        return { cost: 0, customerPrice: 0, label: '' };
+    }
+    const { cost, customerPrice } = calculateFinishingCost(quantity, 'custom', sub);
+    const label = gc.subTypes.length > 1 ? `${gc.name} — ${sub.name}` : gc.name;
+    return { cost, customerPrice, label };
+}
