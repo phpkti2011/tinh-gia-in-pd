@@ -16,3 +16,9 @@ export {
     LARGE_PRINT_CONFIG_SCHEMA_VERSION,
     LARGE_PRINT_CONFIG_LAST_UPDATED,
 } from './version.js';
+
+export {
+    LARGE_PRINT_FINISHING_OPS,
+    getBlockedFinishing,
+    finishingOpLabel,
+} from './finishingOps.js';

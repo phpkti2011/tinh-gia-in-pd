@@ -130,6 +130,33 @@ describe('TASK-0017: validateLargePrintConfig wired vào configStorage', () => {
             expect(lastTier.maxArea).toBe(Infinity);
             expect(lastTier.discount).toBe(0.2);
         });
+
+        // Trước đây hàm này trả thẳng parsed, lệch với 7 loader sync còn lại →
+        // máy có localStorage cũ thì lần vẽ đầu thiếu key thêm sau này.
+        it('config kiểu v1.0.0 (thiếu key thêm ở v1.1.0) → bù từ default', () => {
+            const old = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            delete old.STANDARD_SIZES;
+            delete old.PRINT_DISCOUNT_TIERS;
+            localStorage.setItem('largePrintConfig', JSON.stringify(old));
+
+            const cfg = loadLargePrintConfig();
+            expect(Array.isArray(cfg.STANDARD_SIZES)).toBe(true);
+            expect(cfg.STANDARD_SIZES.length).toBeGreaterThan(0);
+            expect(Array.isArray(cfg.PRINT_DISCOUNT_TIERS)).toBe(true);
+        });
+
+        it('bù default KHÔNG đè lên giá admin đã sửa', () => {
+            const edited = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            edited.MIN_PRINT_PRICE = 99000;
+            edited.MATERIAL_TYPES.hiflex.disallowedFinishing = ['lamination'];
+            delete edited.STANDARD_SIZES;
+            localStorage.setItem('largePrintConfig', JSON.stringify(edited));
+
+            const cfg = loadLargePrintConfig();
+            expect(cfg.MIN_PRINT_PRICE).toBe(99000);
+            expect(cfg.MATERIAL_TYPES.hiflex.disallowedFinishing).toEqual(['lamination']);
+            expect(cfg.STANDARD_SIZES.length).toBeGreaterThan(0); // key thiếu vẫn được bù
+        });
     });
 
     // ─────────────────────────────────────────────────────────────────────

@@ -82,10 +82,13 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('largePrintConfig → large-print + LARGE_PRINT_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('largePrintConfig', VALID_LARGE);
+            // Literal cố ý (không import hằng số) — chốt chặn để mỗi lần đổi shape
+            // config phải bump version có chủ đích. 1.2.0: thêm
+            // MATERIAL_TYPES[*].disallowedFinishing (thành phẩm theo vật liệu).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'large-print',
                 VALID_LARGE,
-                '1.1.0',
+                '1.2.0',
                 null
             );
         });

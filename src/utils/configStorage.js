@@ -747,7 +747,16 @@ export function loadLargePrintConfig() {
             const parsed = restoreInfinity(JSON.parse(saved));
             if (isValidConfig('largePrintConfig', parsed)) {
                 // TASK-0017: deep schema validation thay cho chỉ shallow key check
-                if (deepValidateLargePrint(parsed, 'localStorage')) return parsed;
+                // Merge với default để backward-compat: key mới lấy từ default
+                // (vd STANDARD_SIZES / PRINT_DISCOUNT_TIERS thêm ở v1.1.0). Trước
+                // đây hàm này trả thẳng parsed — lệch với 7 loader sync còn lại,
+                // làm lần vẽ đầu của máy có localStorage cũ thiếu key mới.
+                if (deepValidateLargePrint(parsed, 'localStorage')) {
+                    return {
+                        ...restoreInfinity(JSON.parse(JSON.stringify(LARGE_PRINT_DEFAULT_CONFIG))),
+                        ...parsed,
+                    };
+                }
                 // else fallback
             } else {
                 console.warn(

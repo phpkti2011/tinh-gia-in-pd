@@ -1,5 +1,9 @@
 // React 18+ auto JSX transform — không cần import React.
 import NumberField from '../common/NumberField';
+import {
+    getBlockedFinishing,
+    finishingOpLabel,
+} from '../../modules/large-print/config/finishingOps';
 
 export default function LPInputPanel({ config, params, onChange }) {
     // Handler cho select + checkbox. Number field dùng NumberField shared.
@@ -53,6 +57,19 @@ export default function LPInputPanel({ config, params, onChange }) {
         'text-indigo-400',
         'text-teal-400',
     ];
+
+    // Thành phẩm bị khoá theo vật liệu đang chọn (xem config/finishingOps.js).
+    // Control bị chặn → disabled + hiện GIÁ TRỊ THỰC TẾ đang tính (none/false),
+    // KHÔNG hiện lựa chọn cũ, để UI không mâu thuẫn với giá bên phải.
+    // params cố ý không bị xoá: đổi về vật liệu cũ là lựa chọn cũ quay lại.
+    const blocked = getBlockedFinishing(config, params.materialTypeKey);
+    const matName = config.MATERIAL_TYPES[params.materialTypeKey]?.name || 'Vật liệu này';
+    const lockedLabelCls = 'flex items-center text-sm opacity-50 cursor-not-allowed';
+    const freeLabelCls = 'flex items-center cursor-pointer text-sm';
+    const lockNoteCls = 'text-xs text-orange-400 mt-1';
+    const blockedFinishingLabels = ['edgeTaping', 'grommets', 'dieCutting']
+        .filter((id) => blocked.has(id))
+        .map(finishingOpLabel);
 
     return (
         <div id="controls" className="h-full">
@@ -177,8 +194,9 @@ export default function LPInputPanel({ config, params, onChange }) {
                         <select
                             id="laminationTypeKey"
                             name="laminationTypeKey"
-                            value={params.laminationTypeKey}
+                            value={blocked.has('lamination') ? 'none' : params.laminationTypeKey}
                             onChange={handleChange}
+                            disabled={blocked.has('lamination')}
                         >
                             <option value="none">Không cán màng</option>
                             {Object.entries(config.LAMINATION_TYPES).map(([key, lam]) => (
@@ -187,6 +205,9 @@ export default function LPInputPanel({ config, params, onChange }) {
                                 </option>
                             ))}
                         </select>
+                        {blocked.has('lamination') && (
+                            <p className={lockNoteCls}>🔒 {matName} không cán màng được.</p>
+                        )}
                     </div>
                 </div>
 
@@ -199,8 +220,9 @@ export default function LPInputPanel({ config, params, onChange }) {
                         <select
                             id="formexTypeKey"
                             name="formexTypeKey"
-                            value={params.formexTypeKey}
+                            value={blocked.has('formex') ? 'none' : params.formexTypeKey}
                             onChange={handleChange}
+                            disabled={blocked.has('formex')}
                         >
                             {Object.entries(config.FORMEX_OPTIONS).map(([key, opt]) => (
                                 <option key={key} value={key}>
@@ -208,9 +230,13 @@ export default function LPInputPanel({ config, params, onChange }) {
                                 </option>
                             ))}
                         </select>
-                        <p className="text-xs text-yellow-400 mt-1">
-                            Giảm: 5-10m² (10%), 10-20m² (15%), {'>'}20m² (20%)
-                        </p>
+                        {blocked.has('formex') ? (
+                            <p className={lockNoteCls}>🔒 {matName} không bồi Formex được.</p>
+                        ) : (
+                            <p className="text-xs text-yellow-400 mt-1">
+                                Giảm: 5-10m² (10%), 10-20m² (15%), {'>'}20m² (20%)
+                            </p>
+                        )}
                     </div>
 
                     <div className="input-group !mb-0 flex-1">
@@ -218,27 +244,35 @@ export default function LPInputPanel({ config, params, onChange }) {
                             <span className="text-blue-400">5.</span> Thành Phẩm
                         </h2>
                         <div className="space-y-2">
-                            <label className="flex items-center cursor-pointer text-sm">
+                            <label
+                                className={
+                                    blocked.has('edgeTaping') ? lockedLabelCls : freeLabelCls
+                                }
+                            >
                                 <input
                                     type="checkbox"
                                     name="edgeTaping"
-                                    checked={params.edgeTaping}
+                                    checked={!!params.edgeTaping && !blocked.has('edgeTaping')}
                                     onChange={handleChange}
+                                    disabled={blocked.has('edgeTaping')}
                                     className="bg-gray-700 rounded mr-2"
                                 />
                                 <span>Dán biên</span>
                             </label>
-                            <label className="flex items-center cursor-pointer text-sm">
+                            <label
+                                className={blocked.has('grommets') ? lockedLabelCls : freeLabelCls}
+                            >
                                 <input
                                     type="checkbox"
                                     name="grommetsCheck"
-                                    checked={params.grommetsCheck}
+                                    checked={!!params.grommetsCheck && !blocked.has('grommets')}
                                     onChange={handleChange}
+                                    disabled={blocked.has('grommets')}
                                     className="bg-gray-700 rounded mr-2"
                                 />
                                 <span>Đóng khoen</span>
                             </label>
-                            {params.grommetsCheck && (
+                            {params.grommetsCheck && !blocked.has('grommets') && (
                                 <div className="ml-6">
                                     <div className="relative">
                                         <NumberField
@@ -252,16 +286,27 @@ export default function LPInputPanel({ config, params, onChange }) {
                                     </div>
                                 </div>
                             )}
-                            <label className="flex items-center cursor-pointer text-sm">
+                            <label
+                                className={
+                                    blocked.has('dieCutting') ? lockedLabelCls : freeLabelCls
+                                }
+                            >
                                 <input
                                     type="checkbox"
                                     name="dieCutting"
-                                    checked={params.dieCutting}
+                                    checked={!!params.dieCutting && !blocked.has('dieCutting')}
                                     onChange={handleChange}
+                                    disabled={blocked.has('dieCutting')}
                                     className="bg-gray-700 rounded mr-2"
                                 />
                                 <span>Bế demi</span>
                             </label>
+                            {blockedFinishingLabels.length > 0 && (
+                                <p className={lockNoteCls}>
+                                    🔒 {matName} không làm được: {blockedFinishingLabels.join(', ')}
+                                    .
+                                </p>
+                            )}
                         </div>
                     </div>
 

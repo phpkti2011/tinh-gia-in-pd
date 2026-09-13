@@ -8,9 +8,17 @@
 // Version metadata:  xem src/modules/large-print/config/version.js
 
 export const LARGE_PRINT_DEFAULT_CONFIG = {
+    // disallowedFinishing = THÀNH PHẨM vật liệu này KHÔNG làm được (id xem
+    // src/modules/large-print/config/finishingOps.js). [] hoặc thiếu field = làm
+    // được tất cả.
+    //
+    // CỐ Ý để trống hết: luật thành phẩm là của từng xưởng, phần mềm KHÔNG đặt hộ.
+    // Admin tick/bỏ tick trong tab Cài đặt → Vật liệu, bấm Lưu là đẩy lên Supabase
+    // và mọi máy nhận theo.
     MATERIAL_TYPES: {
         decal_sua: {
             name: 'Decal Sữa (Trắng)',
+            disallowedFinishing: [],
             options: [
                 { width: 1.07, printPrice: 150000, materialPrice: 35000 },
                 { width: 1.52, printPrice: 150000, materialPrice: 35000 },
@@ -18,6 +26,7 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         },
         decal_trong: {
             name: 'Decal Trong',
+            disallowedFinishing: [],
             options: [
                 { width: 1.07, printPrice: 150000, materialPrice: 35000 },
                 { width: 1.52, printPrice: 150000, materialPrice: 35000 },
@@ -25,6 +34,7 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         },
         pp_co_keo: {
             name: 'PP Có Keo',
+            disallowedFinishing: [],
             options: [
                 { width: 0.91, printPrice: 120000, materialPrice: 25000 },
                 { width: 1.07, printPrice: 120000, materialPrice: 25000 },
@@ -34,6 +44,7 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         },
         pp_khong_keo: {
             name: 'PP Không Keo',
+            disallowedFinishing: [],
             options: [
                 { width: 0.91, printPrice: 120000, materialPrice: 25000 },
                 { width: 1.07, printPrice: 120000, materialPrice: 25000 },
@@ -43,6 +54,7 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         },
         backlit: {
             name: 'Backlit Film',
+            disallowedFinishing: [],
             options: [
                 { width: 1.52, printPrice: 230000, materialPrice: 90000 },
                 { width: 1.27, printPrice: 230000, materialPrice: 90000 },
@@ -52,6 +64,7 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         },
         hiflex: {
             name: 'Bạt Hiflex',
+            disallowedFinishing: [],
             options: [
                 { width: 1.0, printPrice: 120000, materialPrice: 17000 },
                 { width: 1.2, printPrice: 120000, materialPrice: 17000 },

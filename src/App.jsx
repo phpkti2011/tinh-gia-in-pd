@@ -577,6 +577,20 @@ function LargePrintModule({ onBack, heading }) {
         });
     }, []);
 
+    // Admin sửa cài đặt ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    // Bỏ qua khi đang ở tab Cài Đặt để không đè bản nháp admin đang sửa dở.
+    useEffect(() => {
+        if (activeTab === 'settings') return;
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            loadConfigFromCloud('largePrintConfig').then((c) => {
+                if (c) setConfig(c);
+            });
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [activeTab]);
+
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -664,11 +678,13 @@ function LargePrintModule({ onBack, heading }) {
                 <AdminGate>
                     <LPSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('largePrintConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì luật mới
+                            // tới được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('largePrintConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>

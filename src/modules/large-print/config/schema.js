@@ -46,6 +46,17 @@ function validateMaterialType(material, key, errors) {
         return;
     }
     if (typeof material.name !== 'string') errors.push(`${prefix}.name: phải là string`);
+    // Optional (thêm ở v1.2.0) — deny-list thành phẩm theo vật liệu.
+    // Thiếu field = làm được tất cả ⇒ config lưu trước v1.2.0 vẫn hợp lệ.
+    // Cố ý KHÔNG ép id phải thuộc LARGE_PRINT_FINISHING_OPS: id lạ được
+    // getBlockedFinishing bỏ qua vô hại, không đáng để chặn cả lần lưu.
+    if (material.disallowedFinishing != null) {
+        if (!Array.isArray(material.disallowedFinishing)) {
+            errors.push(`${prefix}.disallowedFinishing: phải là array`);
+        } else if (material.disallowedFinishing.some((x) => typeof x !== 'string')) {
+            errors.push(`${prefix}.disallowedFinishing: mỗi phần tử phải là string`);
+        }
+    }
     if (!Array.isArray(material.options) || material.options.length === 0) {
         errors.push(`${prefix}.options: phải là array non-empty`);
         return;

@@ -137,6 +137,49 @@ describe('TASK-0017: large-print config schema + version', () => {
         });
     });
 
+    // v1.2.0 — thành phẩm theo vật liệu (MATERIAL_TYPES[*].disallowedFinishing).
+    describe('disallowedFinishing — default values', () => {
+        // Luật thành phẩm là của từng xưởng: phần mềm KHÔNG đặt hộ luật nào.
+        // Admin tick/bỏ tick trong tab Cài đặt, bấm Lưu là đẩy lên Supabase.
+        it('mọi vật liệu mặc định đều làm được tất cả thành phẩm', () => {
+            const mats = Object.entries(LARGE_PRINT_DEFAULT_CONFIG.MATERIAL_TYPES);
+            expect(mats.length).toBe(6);
+            for (const [key, m] of mats) {
+                expect(m.disallowedFinishing, `${key} phải mở hết`).toEqual([]);
+            }
+        });
+    });
+
+    describe('validateLargePrintConfig — disallowedFinishing (optional)', () => {
+        it('xoá hẳn field → vẫn valid (config lưu trước v1.2.0)', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            for (const m of Object.values(cfg.MATERIAL_TYPES)) delete m.disallowedFinishing;
+            expect(validateLargePrintConfig(cfg).isValid).toBe(true);
+        });
+
+        it('string thay vì array → fail', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.MATERIAL_TYPES.hiflex.disallowedFinishing = 'lamination';
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('disallowedFinishing'))).toBe(true);
+        });
+
+        it('phần tử không phải string → fail', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.MATERIAL_TYPES.hiflex.disallowedFinishing = [1];
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('disallowedFinishing'))).toBe(true);
+        });
+
+        it('id lạ (không thuộc registry) → vẫn valid, cố ý không chặn', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.MATERIAL_TYPES.hiflex.disallowedFinishing = ['khong_ton_tai'];
+            expect(validateLargePrintConfig(cfg).isValid).toBe(true);
+        });
+    });
+
     describe('validateLargePrintConfig — negative: inner sanity', () => {
         it('MATERIAL_TYPES.pp_co_keo.options[0].printPrice sai kiểu → fail', () => {
             const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);

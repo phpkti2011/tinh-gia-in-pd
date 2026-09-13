@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { saveLargePrintConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
+import { LARGE_PRINT_FINISHING_OPS } from '../../modules/large-print/config/finishingOps';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -47,7 +48,7 @@ const tdCls = 'px-3 py-2';
 const numCls =
     'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-28 focus:outline-none focus:border-blue-500';
 
-export default function LPSettingsPanel({ config, onSave, onCancel }) {
+export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
     // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
     // key upper-bound để schema validation không fail khi save.
@@ -55,23 +56,45 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
         restoreInfinity(JSON.parse(JSON.stringify(config)))
     );
 
-    const handleSave = () => {
+    // null | 'saving' | 'cloud' | 'local' | 'error' — theo mẫu HomePage ở App.jsx.
+    // Phân biệt "đã lên đám mây" (mọi máy nhận được) với "mới nằm trên máy này".
+    const [saveStatus, setSaveStatus] = useState(null);
+    const [saveError, setSaveError] = useState(null);
+
+    const handleSave = async () => {
+        setSaveError(null);
         try {
             // TASK-0017: saveLargePrintConfig giờ trả false nếu config fail
             // schema validation. Không gọi onSave (tránh update React state
             // với config xấu) và hiển thị lỗi cho admin.
             const ok = saveLargePrintConfig(localConfig);
             if (!ok) {
-                alert(
-                    'Cấu hình in khổ lớn không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.'
-                );
+                setSaveStatus('error');
+                setSaveError('Cấu hình không hợp lệ. Mở Console để xem chi tiết lỗi.');
                 return;
             }
-            alert('Đã lưu cài đặt! Chương trình sẽ tính toán lại với giá mới.');
-            onSave(localConfig);
+            setSaveStatus('saving');
+            // Supabase là đường DUY NHẤT đưa cài đặt sang máy người khác. Trước đây
+            // panel báo "Đã lưu" ngay sau khi ghi localStorage rồi bỏ mặc promise
+            // cloud → lưu hỏng trong im lặng, cả xưởng vẫn dùng bảng giá cũ.
+            const res = await onSave(localConfig);
+            if (res?.error || res?.local === false) {
+                setSaveStatus('error');
+                setSaveError(res?.error || 'Không lưu được');
+                return;
+            }
+            if (res?.cloud) {
+                setSaveStatus('cloud');
+                onSaved?.();
+                return;
+            }
+            // Ghi được máy này nhưng chưa lên đám mây → ở lại tab để admin thấy
+            // cảnh báo và Lưu lại, thay vì tưởng đã xong.
+            setSaveStatus('local');
         } catch (e) {
             console.error(e);
-            alert('Lỗi lưu cấu hình!');
+            setSaveStatus('error');
+            setSaveError(e?.message || 'Lỗi lưu cấu hình');
         }
     };
 
@@ -103,6 +126,16 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
         updateConfig((c) => {
             c.MATERIAL_TYPES[key].options.splice(idx, 1);
         });
+    // Thành phẩm theo vật liệu: UI tick = LÀM ĐƯỢC, lưu NGƯỢC LẠI vào deny-list
+    // disallowedFinishing (thiếu field / [] = làm được tất cả).
+    const toggleMatFinishing = (key, opId) =>
+        updateConfig((c) => {
+            const m = c.MATERIAL_TYPES[key];
+            const list = Array.isArray(m.disallowedFinishing) ? m.disallowedFinishing : [];
+            m.disallowedFinishing = list.includes(opId)
+                ? list.filter((id) => id !== opId)
+                : [...list, opId];
+        });
     const addMaterial = () => {
         const matKey = prompt('Nhập key vật liệu (vd: decal_den):');
         if (!matKey || matKey.trim() === '') return;
@@ -116,6 +149,7 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
         updateConfig((c) => {
             c.MATERIAL_TYPES[k] = {
                 name: matName.trim(),
+                disallowedFinishing: [],
                 options: [{ width: 1.07, printPrice: 0, materialPrice: 0 }],
             };
         });
@@ -235,18 +269,42 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
     const printTiers = localConfig.PRINT_DISCOUNT_TIERS || [];
     const stdSizes = localConfig.STANDARD_SIZES || [];
     const fin = localConfig.FINISHING_PRICES;
+    const saving = saveStatus === 'saving';
+
+    // Băng trạng thái lưu — dùng ở cả header và footer.
+    const saveBanner = (
+        <p className="text-xs mt-2" data-testid="lp-save-status">
+            {saveStatus === 'saving' && <span className="text-gray-400">Đang lưu…</span>}
+            {saveStatus === 'cloud' && (
+                <span className="text-emerald-400">✓ Đã lưu — mọi máy sẽ nhận cài đặt mới</span>
+            )}
+            {saveStatus === 'local' && (
+                <span className="text-yellow-400">
+                    ⚠ Mới lưu trên máy này, các máy khác CHƯA nhận. Kiểm tra mạng / đăng nhập lại
+                    rồi bấm Lưu lần nữa.
+                </span>
+            )}
+            {saveStatus === 'error' && (
+                <span className="text-red-400">✗ Không lưu được: {saveError}</span>
+            )}
+        </p>
+    );
 
     return (
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
-                <h2 className="text-2xl font-bold text-white">⚙ Cài đặt In Khổ Lớn</h2>
+            <div className="flex items-start justify-between mb-6 border-b border-gray-700 pb-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-white">⚙ Cài đặt In Khổ Lớn</h2>
+                    {saveBanner}
+                </div>
                 <div className="flex gap-3">
                     <button
                         onClick={handleSave}
-                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+                        disabled={saving}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Lưu
+                        {saving ? 'Đang lưu…' : 'Lưu'}
                     </button>
                     <button
                         onClick={onCancel}
@@ -286,6 +344,29 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
                                 >
                                     Xóa vật liệu
                                 </button>
+                            </div>
+                            <div className="mb-3">
+                                <label className={labelCls}>
+                                    Thành phẩm làm được (bỏ tick = khoá ở màn tính giá)
+                                </label>
+                                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                                    {LARGE_PRINT_FINISHING_OPS.map((op) => (
+                                        <label
+                                            key={op.id}
+                                            className="flex items-center gap-2 text-sm cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    !(m.disallowedFinishing || []).includes(op.id)
+                                                }
+                                                onChange={() => toggleMatFinishing(key, op.id)}
+                                                className="bg-gray-900 rounded"
+                                            />
+                                            {op.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                             <table className="w-full text-sm">
                                 <thead>
@@ -861,12 +942,14 @@ export default function LPSettingsPanel({ config, onSave, onCancel }) {
                 <PriceConfigHistoryPanel moduleKey="large-print" />
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 border-t border-gray-700 pt-4">
+            <div className="flex items-start justify-end gap-3 mt-6 border-t border-gray-700 pt-4">
+                <div className="mr-auto">{saveBanner}</div>
                 <button
                     onClick={handleSave}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
+                    disabled={saving}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    Lưu cài đặt
+                    {saving ? 'Đang lưu…' : 'Lưu cài đặt'}
                 </button>
                 <button
                     onClick={onCancel}
