@@ -64,11 +64,11 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             // Literal cố ý (không import hằng số) — test này là chốt chặn để mỗi lần
             // đổi shape config phải bump version có chủ đích. 1.2.0: thêm
             // customerA4Tiers + a4ConversionRates theo máy, và mở các bảng khổ /
-            // quy đổi A4 cho admin sửa trong tab Cài Đặt.
+            // quy đổi A4 cho admin sửa. 1.3.0: thêm LAMINATION_FILMS (loại màng cán).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'small-print',
                 VALID_PRINT,
-                '1.2.0',
+                '1.3.0',
                 null
             );
         });
@@ -76,7 +76,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('decalConfig → decal + DECAL_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 3 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.6.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.7.0', null);
         });
 
         it('largePrintConfig → large-print + LARGE_PRINT_CONFIG_SCHEMA_VERSION', async () => {
@@ -102,8 +102,9 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('moduleVisibilityConfig → ui-visibility + MODULE_VISIBILITY_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('moduleVisibilityConfig', VALID_UI);
-            // Literal cố ý. 1.1.0: thêm MODULE_LABELS (admin đổi tên module trên tile).
-            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', VALID_UI, '1.1.0', null);
+            // Literal cố ý. 1.2.0: bỏ field `heading`, tile và tiêu đề trong module
+            // dùng chung `title`.
+            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', VALID_UI, '1.2.0', null);
         });
     });
 
@@ -114,7 +115,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
 
             const sent = mockSaveSupabase.mock.calls.at(-1)[1];
             expect(sent.MODULE_VISIBILITY).toBeTruthy();
-            expect(sent.MODULE_LABELS.small.title).toBe('In KTS Khổ Nhỏ');
+            expect(sent.MODULE_LABELS.small.title).toBe('In KTS Khổ Nhỏ — Tính Giá & Báo Giá');
         });
 
         it('config cũ chưa có MODULE_LABELS vẫn lưu được (backward-compat)', async () => {
@@ -123,7 +124,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             const res = await saveConfigToCloud('moduleVisibilityConfig', legacy);
 
             expect(res.cloud).toBe(true);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', legacy, '1.1.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', legacy, '1.2.0', null);
         });
 
         it('tên module sai kiểu → chặn trước Supabase, không ghi localStorage', async () => {
@@ -149,7 +150,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('Save thành công gọi Supabase với đúng 4 RPC args', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.6.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.7.0', null);
         });
     });
 

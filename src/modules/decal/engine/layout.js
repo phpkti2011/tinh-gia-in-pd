@@ -99,43 +99,129 @@ export function packRectangles(w, h, areaW, areaH, gap, depth = 4) {
     return best;
 }
 
-// Hexagonal layout for circle stickers
-function calculateHexagonalLayout(diameter, areaW, areaH, gap) {
-    const d = diameter + gap;
-    const r = d / 2;
-    if (diameter > areaW || diameter > areaH) return { count: 0 };
-    const vertSpacing = (d * Math.sqrt(3)) / 2;
-    if (vertSpacing === 0) return { count: 0 };
-    const cols_full = Math.floor((areaW + gap) / d);
-    const cols_staggered = Math.floor((areaW - r + gap) / d);
-    const rows = Math.floor((areaH - diameter) / vertSpacing) + 1;
-    let count1 = 0;
-    if (rows > 0) count1 = Math.ceil(rows / 2) * cols_full + Math.floor(rows / 2) * cols_staggered;
-    let count2 = 0;
-    if (rows > 0) count2 = Math.floor(rows / 2) * cols_full + Math.ceil(rows / 2) * cols_staggered;
-    const best =
-        count1 >= count2
-            ? {
-                  type: 'hexagonal',
-                  count: count1,
-                  rows,
-                  cols_full,
-                  cols_staggered,
-                  pattern: 'full_first',
-                  itemW: diameter,
-                  itemH: diameter,
-              }
-            : {
-                  type: 'hexagonal',
-                  count: count2,
-                  rows,
-                  cols_full,
-                  cols_staggered,
-                  pattern: 'staggered_first',
-                  itemW: diameter,
-                  itemH: diameter,
-              };
-    return best;
+// Xếp tem TRÒN / OVAL — TRỘN hàng thẳng và hàng so le để tối đa số con.
+//
+// Mỗi hàng nằm ở 1 trong 2 vị trí ngang: thẳng (lệch 0) hoặc so le (lệch dW/2).
+//   - 2 hàng CÙNG vị trí  → phải cách nhau dH
+//   - 2 hàng KHÁC vị trí  → chỉ cần cách dH×√3/2 (tiết kiệm ~13% chiều cao)
+//   - hàng thẳng chứa cols_full con, hàng so le chứa cols_staggered con
+// ⇒ mỗi hàng so le thường mất 1 con nhưng tiết kiệm chiều cao. Trộn khéo thì
+//   nhét thêm được cả một hàng, hơn CẢ lưới thuần lẫn so le thuần.
+//   Vd tròn 90mm trên vùng in 314×340: lưới 9, so le 10, TRỘN 11 (3+3+2+3).
+//
+// Hằng số √3 suy từ hình học ellipse: hai ellipse lệch ngang nửa bề rộng thì
+// khoảng cách dọc tối thiểu là √3 × nửa chiều cao. itemW = itemH ⇒ đúng công
+// thức hình tròn cũ.
+//
+// Cách này BAO TRÙM 2 kiểu cũ: s = 0 là lưới thẳng, s xen kẽ tối đa là so le
+// thuần — nên số con chỉ có thể tăng hoặc giữ nguyên, không bao giờ giảm.
+function calculateStaggeredLayout(itemW, itemH, areaW, areaH, gap) {
+    if (itemW <= 0 || itemH <= 0 || itemW > areaW || itemH > areaH) return { count: 0 };
+    const dW = itemW + gap;
+    const dH = itemH + gap;
+    const vertSpacing = (dH * Math.sqrt(3)) / 2;
+    if (vertSpacing <= 0) return { count: 0 };
+
+    const cols_full = Math.floor((areaW + gap) / dW);
+    const cols_staggered = Math.floor((areaW - dW / 2 + gap) / dW);
+    if (cols_full <= 0) return { count: 0 };
+
+    const maxRows = Math.floor((areaH - itemH) / vertSpacing) + 1;
+
+    // Quy hoạch động: minH[k][s][o] = chiều cao nhỏ nhất để xếp k hàng, trong đó
+    // s hàng ở vị trí so le, hàng cuối ở vị trí o (0 = thẳng, 1 = so le).
+    // Truy vết `par` để dựng lại vị trí THẬT của từng hàng.
+    const INF = Infinity;
+    const minH = [];
+    const par = [];
+    for (let k = 0; k <= maxRows; k++) {
+        minH.push(Array.from({ length: maxRows + 2 }, () => [INF, INF]));
+        par.push(Array.from({ length: maxRows + 2 }, () => [null, null]));
+    }
+    minH[1][0][0] = itemH;
+    minH[1][1][1] = itemH;
+
+    for (let k = 1; k < maxRows; k++) {
+        for (let s = 0; s <= k; s++) {
+            for (let o = 0; o < 2; o++) {
+                const h = minH[k][s][o];
+                if (h === INF) continue;
+                for (let o2 = 0; o2 < 2; o2++) {
+                    const nh = h + (o === o2 ? dH : vertSpacing);
+                    if (nh > areaH + 1e-9) continue;
+                    const s2 = s + o2;
+                    if (nh < minH[k + 1][s2][o2] - 1e-12) {
+                        minH[k + 1][s2][o2] = nh;
+                        par[k + 1][s2][o2] = { k, s, o };
+                    }
+                }
+            }
+        }
+    }
+
+    let best = null;
+    for (let k = 1; k <= maxRows; k++) {
+        for (let s = 0; s <= k; s++) {
+            for (let o = 0; o < 2; o++) {
+                if (minH[k][s][o] > areaH + 1e-9) continue;
+                const count = (k - s) * cols_full + s * cols_staggered;
+                // Hoà số con thì ưu tiên nhiều hàng hơn (xếp xen kẽ dày hơn) —
+                // giữ đúng kiểu so le cổ điển ở các ca mà so le vốn đã tối ưu.
+                if (!best || count > best.count || (count === best.count && k > best.k)) {
+                    best = { count, k, s, o };
+                }
+            }
+        }
+    }
+    if (!best || best.count <= 0) return { count: 0 };
+
+    // Truy vết ngược ra dãy vị trí của từng hàng.
+    const offsets = [];
+    let cur = { k: best.k, s: best.s, o: best.o };
+    while (cur) {
+        offsets.unshift(cur.o);
+        cur = par[cur.k][cur.s][cur.o];
+    }
+
+    const buildPlan = (offs) => {
+        const plan = [];
+        let y = 0;
+        for (let i = 0; i < offs.length; i++) {
+            if (i > 0) y += offs[i] === offs[i - 1] ? dH : vertSpacing;
+            plan.push({
+                y,
+                offsetX: offs[i] === 1 ? dW / 2 : 0,
+                cols: offs[i] === 1 ? cols_staggered : cols_full,
+            });
+        }
+        return plan;
+    };
+    const countOf = (plan) => plan.reduce((a, r) => a + r.cols, 0);
+
+    // Lật toàn bộ (thẳng ↔ so le) cũng là một cách xếp hợp lệ, cùng chiều cao.
+    // Chọn bản nhiều con hơn; hoà thì lấy bản BẮT ĐẦU BẰNG HÀNG THẲNG cho đẹp.
+    let rowPlan = buildPlan(offsets);
+    const flipped = buildPlan(offsets.map((o) => 1 - o));
+    if (
+        countOf(flipped) > countOf(rowPlan) ||
+        (countOf(flipped) === countOf(rowPlan) && offsets[0] === 1)
+    ) {
+        rowPlan = flipped;
+    }
+
+    const planCount = countOf(rowPlan);
+    return {
+        type: 'hexagonal',
+        count: planCount,
+        rows: rowPlan.length,
+        cols_full,
+        cols_staggered,
+        // Giữ field cũ cho nhánh vẽ / test cũ; rowPlan mới mới là nguồn chính xác.
+        pattern: rowPlan[0] && rowPlan[0].offsetX > 0 ? 'staggered_first' : 'full_first',
+        rowPlan,
+        itemW,
+        itemH,
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,13 +241,44 @@ export function calculateStickersPerSheet(
     const pa = getPrintableArea(sheetW, sheetH, config, machine);
     const gap = config.stickerGap;
 
-    if (shape === 'circle') {
-        const diameter = Math.max(stickerW, stickerH);
-        const lv = calculateHexagonalLayout(diameter, pa.w, pa.h, gap);
-        const lh = calculateHexagonalLayout(diameter, pa.h, pa.w, gap);
-        return lv.count >= lh.count
-            ? { ...lv, orientation: 'vertical', printableW: pa.w, printableH: pa.h }
-            : { ...lh, orientation: 'horizontal', printableW: pa.w, printableH: pa.h };
+    if (shape === 'circle' || shape === 'oval') {
+        // Tròn: dùng đường kính (hộp vuông bao ngoài). Oval: giữ đúng W×H.
+        const iw = shape === 'circle' ? Math.max(stickerW, stickerH) : stickerW;
+        const ih = shape === 'circle' ? Math.max(stickerW, stickerH) : stickerH;
+
+        // Ứng viên xếp trộn (đã bao trùm lưới thẳng + so le thuần).
+        // `swapped` = tính trong hệ toạ độ xoay 90° của VÙNG IN → so le theo trục
+        // còn lại. Khác hẳn việc xoay CON TEM (chỉ có nghĩa với oval).
+        // Phần vẽ sơ đồ dựa vào cờ này để hoán đổi x/y, nên phải tách bạch.
+        const mk = (w2, h2, swapped) => {
+            const aw = swapped ? pa.h : pa.w;
+            const ah = swapped ? pa.w : pa.h;
+            return {
+                ...calculateStaggeredLayout(w2, h2, aw, ah, gap),
+                swapped,
+                orientation: swapped ? 'horizontal' : 'vertical',
+            };
+        };
+        const cands = [mk(iw, ih, false), mk(iw, ih, true)];
+        if (iw !== ih) cands.push(mk(ih, iw, false), mk(ih, iw, true));
+        // Oval còn có thể lợi hơn khi xếp theo hộp chữ nhật bao ngoài (guillotine).
+        if (shape === 'oval') {
+            const packed = packRectangles(stickerW, stickerH, pa.w, pa.h, gap);
+            if (packed.count > 0) {
+                cands.push({
+                    type: 'packed',
+                    count: packed.count,
+                    blocks: packed.blocks,
+                    itemW: stickerW,
+                    itemH: stickerH,
+                    orientation: 'mixed',
+                });
+            }
+        }
+
+        const best = cands.reduce((a, b) => (b.count > a.count ? b : a), { count: 0 });
+        if (!best || best.count <= 0) return { count: 0, printableW: pa.w, printableH: pa.h };
+        return { ...best, printableW: pa.w, printableH: pa.h };
     } else {
         // Xếp hỗn hợp (guillotine) — tối đa số con/tờ.
         const packed = packRectangles(stickerW, stickerH, pa.w, pa.h, gap);

@@ -6,6 +6,12 @@
 // đây — sửa giá giấy 1 lần bên In KTS là catalogue tự áp dụng.
 
 export const CATALOGUE_DEFAULT_CONFIG = {
+    // Loại màng cán — admin sửa được, chọn RIÊNG cho bìa và ruột.
+    // Mờ/Bóng 0% ⇒ không đổi giá. TOP-LEVEL để merge backward-compat không nuốt.
+    LAMINATION_FILMS: [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'bong', name: 'Bóng', percent: 0 },
+    ],
     // Phí bấm kim (saddle stitch). Giá KHÁCH tính theo BẬC số cuốn (đúng cột
     // "Đóng kim" trong bảng giá in nhanh); giá VỐN phẳng theo cuốn.
     STAPLE_CONFIG: {

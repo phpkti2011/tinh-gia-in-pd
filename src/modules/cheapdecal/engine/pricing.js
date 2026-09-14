@@ -1,3 +1,5 @@
+import { filmMultiplier } from '../../../utils/laminationFilm.js';
+
 // Decal nhãn GIÁ RẺ — engine (dựng từ bảng giá Google Sheets).
 //
 // Pure function: chỉ phụ thuộc params + config. TRA BẢNG (cỡ × mốc SL 500/1000/2000) → TỔNG gốc
@@ -35,8 +37,12 @@ export function calculateCheapDecal(params, config) {
 
     const materialFee =
         material === 'plastic' ? ((c.materialSurcharge?.[size.id] ?? 0) || 0) * quantity : 0;
+    // Loại màng nhân vào tiền cán màng. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    const laminationFilm = params.laminationFilm || '';
     const laminationFee = lamination
-        ? ((c.laminationSurcharge?.[size.id] ?? 0) || 0) * quantity
+        ? ((c.laminationSurcharge?.[size.id] ?? 0) || 0) *
+          quantity *
+          filmMultiplier(c.laminationFilms, laminationFilm)
         : 0;
     const rushFee = rush ? c.rushFee?.[quantity] || 0 : 0;
 
@@ -57,6 +63,7 @@ export function calculateCheapDecal(params, config) {
         material,
         materialName,
         lamination,
+        laminationFilm,
         rush,
         basePrice,
         squareSurcharge,

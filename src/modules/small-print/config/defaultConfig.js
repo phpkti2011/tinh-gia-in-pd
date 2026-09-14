@@ -118,6 +118,12 @@ export const DEFAULT_CONFIG = {
             prices: { '4color': 650, '1color': 400 },
         },
     },
+    // Loại màng cán — admin thêm/sửa được. Mờ/Bóng 0% ⇒ không đổi giá.
+    // Phụ thu % nhân vào CẢ giá vốn (finishing.js) LẪN giá báo khách (quote.js).
+    LAMINATION_FILMS: [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'bong', name: 'Bóng', percent: 0 },
+    ],
     LAMINATION_CONFIG: {
         WIDTH: 32,
         PRICE_PER_METER: 2200,

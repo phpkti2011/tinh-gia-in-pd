@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import LaminationFilmSettings from '../common/LaminationFilmSettings';
 import { useCloudSave } from '../common/useCloudSave';
 import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveConfig } from '../../utils/configStorage';
@@ -681,6 +682,13 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                         </div>
                     </div>
                 </section>
+
+                <LaminationFilmSettings
+                    films={localConfig.LAMINATION_FILMS}
+                    onChange={(next) =>
+                        setLocalConfig((prev) => ({ ...prev, LAMINATION_FILMS: next }))
+                    }
+                />
 
                 {/* 1b. Ngưỡng click / quy đổi A4 theo máy */}
                 <section>

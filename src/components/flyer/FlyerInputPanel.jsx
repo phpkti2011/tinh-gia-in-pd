@@ -1,5 +1,6 @@
 // React 18+ auto JSX transform — không cần import React.
 import NumberField from '../common/NumberField';
+import LaminationFilmSelect from '../common/LaminationFilmSelect';
 
 export default function FlyerInputPanel({ config, params, onChange }) {
     const c = config.FLYER_CONFIG || {};
@@ -78,6 +79,16 @@ export default function FlyerInputPanel({ config, params, onChange }) {
                     <Select id="lamination" label="Cán màng" options={c.laminationOptions} />
                     <Select id="creasing" label="Cấn gấp" options={c.creasingOptions} />
                 </div>
+                {params.lamination === 'yes' && (
+                    <div className="mb-4">
+                        <LaminationFilmSelect
+                            id="laminationFilm"
+                            films={c.laminationFilms}
+                            value={params.laminationFilm}
+                            onChange={onChange}
+                        />
+                    </div>
+                )}
                 <Select id="contents" label="Số nội dung / mẫu" options={c.contentOptions} />
                 {params.lamination === 'yes' && (
                     <p className="mt-2 text-xs text-gray-400">

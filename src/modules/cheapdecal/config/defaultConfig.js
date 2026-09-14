@@ -47,6 +47,11 @@ export const CHEAP_DECAL_DEFAULT_CONFIG = {
             { id: 'paper', name: 'Decal giấy' },
             { id: 'plastic', name: 'Decal nhựa (+đ/nhãn)' },
         ],
+        // Loại màng cán — admin thêm/sửa được. Mờ/Bóng 0% ⇒ không đổi giá.
+        laminationFilms: [
+            { id: 'mo', name: 'Mờ', percent: 0 },
+            { id: 'bong', name: 'Bóng', percent: 0 },
+        ],
         shapes: [
             { id: 'round', name: 'Nhãn hình tròn' },
             { id: 'square', name: 'Nhãn hình vuông (+10%)' },

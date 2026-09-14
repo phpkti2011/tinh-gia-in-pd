@@ -1,3 +1,5 @@
+import { filmMultiplier } from '../../../utils/laminationFilm.js';
+
 // Tính giá TỜ RƠI — engine (port từ module-tinh-gia-to-roi-pd-tone-web.html).
 //
 // Pure function: chỉ phụ thuộc params + config. TRA BẢNG bậc SL theo khổ → giá GỐC (baseline
@@ -101,8 +103,14 @@ export function calculateFlyer(params, config) {
 
     const contentFee =
         contents === '3-5' ? printSubtotal * ((c.contentSurchargePct || 0) / 100) : 0;
+    // Loại màng (mờ/bóng/soft-touch…) nhân vào tiền cán màng. Chưa chọn hoặc
+    // config cũ chưa có danh sách ⇒ hệ số 1 ⇒ giá y như trước.
+    const laminationFilm = params.laminationFilm || '';
+    const filmMult = filmMultiplier(c.laminationFilms, laminationFilm);
     const laminationFee =
-        lamination === 'yes' ? ((c.laminationSurcharge?.[size.id] ?? 0) || 0) * quantity : 0;
+        lamination === 'yes'
+            ? ((c.laminationSurcharge?.[size.id] ?? 0) || 0) * quantity * filmMult
+            : 0;
 
     const creasing = calculateCreasingFee(quantity, creasingType, c.creasing || {});
     const total = printSubtotal + contentFee + laminationFee + creasing.fee;
@@ -119,6 +127,7 @@ export function calculateFlyer(params, config) {
         sidesName,
         sides,
         lamination,
+        laminationFilm,
         contents,
         creasingType,
         unitPrice: base.unitPrice,

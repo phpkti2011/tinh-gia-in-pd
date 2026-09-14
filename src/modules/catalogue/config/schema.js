@@ -19,6 +19,27 @@ function validateStapleTier(tier, index, errors) {
     if (typeof tier.type !== 'string') errors.push(`${prefix}.type: phải là string`);
 }
 
+// Optional — loại màng cán (thêm ở phiên bản này). Config cũ chưa có vẫn hợp lệ.
+// Xem src/utils/laminationFilm.js. Thiếu ⇒ mặc định Mờ/Bóng 0% ⇒ giá không đổi.
+function validateLaminationFilms(list, prefix, errors) {
+    if (list == null) return;
+    if (!Array.isArray(list)) {
+        errors.push(`${prefix}: phải là array`);
+        return;
+    }
+    list.forEach((f, i) => {
+        const p = `${prefix}[${i}]`;
+        if (!f || typeof f !== 'object' || Array.isArray(f)) {
+            errors.push(`${p}: phải là object`);
+            return;
+        }
+        if (typeof f.id !== 'string' || !f.id) errors.push(`${p}.id: phải là string không rỗng`);
+        if (typeof f.name !== 'string') errors.push(`${p}.name: phải là string`);
+        if (f.percent != null && typeof f.percent !== 'number')
+            errors.push(`${p}.percent: phải là number`);
+    });
+}
+
 export function validateCatalogueConfig(config) {
     if (!config || typeof config !== 'object' || Array.isArray(config)) {
         return { isValid: false, errors: ['Config phải là object'] };
@@ -41,6 +62,8 @@ export function validateCatalogueConfig(config) {
             staple.tiers.forEach((t, i) => validateStapleTier(t, i, errors));
         }
     }
+
+    validateLaminationFilms(config.LAMINATION_FILMS, 'LAMINATION_FILMS', errors);
 
     return { isValid: errors.length === 0, errors };
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import LaminationFilmSettings from '../common/LaminationFilmSettings';
 import { useCloudSave } from '../common/useCloudSave';
 import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveDecalConfig } from '../../utils/configStorage';
@@ -208,6 +209,14 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
                         </div>
                     </div>
                 </section>
+
+                <LaminationFilmSettings
+                    title="Loai mang can"
+                    films={localConfig.laminationFilms}
+                    onChange={(next) =>
+                        setLocalConfig((prev) => ({ ...prev, laminationFilms: next }))
+                    }
+                />
 
                 {/* Section 1a: May Be (vung be) */}
                 <section>

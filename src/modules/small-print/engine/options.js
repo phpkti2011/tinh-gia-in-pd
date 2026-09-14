@@ -76,7 +76,8 @@ export function processSheet(
         imposition.actualPrintW,
         productsPerSheet,
         params.laminationType,
-        config
+        config,
+        params.laminationFilm
     );
     const totalCostPerSheet = paperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
 
@@ -175,7 +176,8 @@ export function calculateDecalOptions(
                     imposition.actualPrintW,
                     productsPerSheet,
                     params.laminationType,
-                    config
+                    config,
+                    params.laminationFilm
                 );
                 const totalCostPerSheet =
                     paperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
@@ -278,7 +280,8 @@ export function calculatePerSheetOptions(
             imposition.actualPrintW,
             productsPerSheet,
             params.laminationType,
-            config
+            config,
+            params.laminationFilm
         );
         const totalCostPerSheet = paperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
         const costPerProduct =

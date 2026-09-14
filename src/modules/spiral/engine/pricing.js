@@ -10,6 +10,7 @@ import {
     calculateDecalOptions,
     calculateCustomerQuote,
 } from '../../small-print/engine/index.js';
+import { filmMultiplier, filmName } from '../../../utils/laminationFilm.js';
 
 const err = (message) => ({ error: message });
 
@@ -235,12 +236,21 @@ export function calculateSpiral(params, config) {
     innerLam = Math.max(0, Math.min(2, innerLam || 0));
     const lamRate = tier.laminate || 0;
     // per_page: theo trang A4 × số mặt cán. package: phí phẳng × số mặt cán.
-    const lamCost = isPerPage
-        ? (coverA4 * coverLam + innerA4 * innerLam) * lamRate
-        : (coverLam + innerLam) * lamRate;
+    // Loại màng chọn riêng bìa/ruột, nhân vào phần tiền cán tương ứng.
+    // Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    const films = config.LAMINATION_FILMS;
+    const coverMult = filmMultiplier(films, params.coverLamFilm);
+    const innerMult = filmMultiplier(films, params.innerLamFilm);
+    const coverLamCost = (isPerPage ? coverA4 * coverLam : coverLam) * lamRate * coverMult;
+    const innerLamCost = (isPerPage ? innerA4 * innerLam : innerLam) * lamRate * innerMult;
+    const lamCost = coverLamCost + innerLamCost;
+    const coverFilm = filmName(films, params.coverLamFilm);
+    const innerFilm = filmName(films, params.innerLamFilm);
     const lamParts = [];
-    if (coverLam) lamParts.push(`Bìa cán ${coverLam} mặt`);
-    if (innerLam) lamParts.push(`Ruột cán ${innerLam} mặt`);
+    if (coverLam)
+        lamParts.push(`Bìa cán ${coverFilm ? coverFilm.toLowerCase() + ' ' : ''}${coverLam} mặt`);
+    if (innerLam)
+        lamParts.push(`Ruột cán ${innerFilm ? innerFilm.toLowerCase() + ' ' : ''}${innerLam} mặt`);
     const lamLabel = lamParts.length ? lamParts.join(' + ') : 'Không cán';
 
     // 6. Giấy (tách bìa/ruột) — cộng dồn.

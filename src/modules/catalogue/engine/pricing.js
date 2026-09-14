@@ -16,6 +16,7 @@ import {
     calculateDecalOptions,
     calculateCustomerQuote,
 } from '../../small-print/engine/index.js';
+import { filmMultiplier, filmName } from '../../../utils/laminationFilm.js';
 
 const err = (message) => ({ error: message });
 
@@ -213,14 +214,27 @@ export function calculateCatalogue(params, config) {
 
     // 5. Cán màng (cán 1 mặt/tờ), dùng đơn giá cán của bậc giá gộp.
     const lamRate = tier.laminate || 0;
+    // Loại màng chọn riêng bìa/ruột. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    const films = config.LAMINATION_FILMS;
+    const coverMult = filmMultiplier(films, params.coverLamFilm);
+    const innerMult = filmMultiplier(films, params.innerLamFilm);
+    const coverFilm = filmName(films, params.coverLamFilm);
+    const innerFilm = filmName(films, params.innerLamFilm);
+    const lamOf = (film) => (film ? ` ${film.toLowerCase()}` : '');
     let lamCost = 0;
     let lamLabel = 'Không cán';
     if (laminationMode === 'cover1') {
-        lamCost = isPerPage ? coverA4 * lamRate : lamRate;
-        lamLabel = 'Bìa cán 1 mặt';
+        lamCost = (isPerPage ? coverA4 * lamRate : lamRate) * coverMult;
+        lamLabel = `Bìa cán${lamOf(coverFilm)} 1 mặt`;
     } else if (laminationMode === 'all') {
-        lamCost = isPerPage ? totalA4Pages * lamRate : lamRate;
-        lamLabel = 'Cán toàn bộ';
+        // Chế độ 'all' trước đây gộp totalA4Pages — tách bìa/ruột để áp được 2
+        // loại màng khác nhau. Cùng loại màng thì tổng tiền không đổi.
+        // Nhánh trọn gói (không per_page) chia đôi phí phẳng theo đúng cách
+        // spiral đang làm: mỗi phần một nửa, nhân hệ số màng của phần đó.
+        lamCost = isPerPage
+            ? coverA4 * lamRate * coverMult + innerA4 * lamRate * innerMult
+            : (lamRate / 2) * coverMult + (lamRate / 2) * innerMult;
+        lamLabel = `Cán toàn bộ (bìa${lamOf(coverFilm) || ' —'}, ruột${lamOf(innerFilm) || ' —'})`;
     }
 
     // 6. Giấy (tách bìa/ruột) — cộng dồn.

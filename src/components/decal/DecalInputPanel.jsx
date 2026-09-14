@@ -1,4 +1,5 @@
 // React 18+ auto JSX transform — không cần import React.
+import { useRef } from 'react';
 import NumberField from '../common/NumberField';
 
 export default function DecalInputPanel({ config, params, onChange }) {
@@ -10,6 +11,29 @@ export default function DecalInputPanel({ config, params, onChange }) {
     };
 
     const isSingleMode = params.mode === 'single';
+    const isCircle = params.shape === 'circle';
+
+    // Tem TRÒN thì Rộng = Cao. Nhớ ô vừa gõ gần nhất để khi bấm nút "Tròn" lúc
+    // 2 ô đang lệch thì lấy đúng số vừa nhập làm đường kính (chưa gõ ô nào thì
+    // lấy ô Rộng). Dùng ref: đây là thao tác nhập liệu, không phải dữ liệu giá.
+    const lastEdited = useRef('stickerW');
+
+    const setSize = (field, v) => {
+        lastEdited.current = field;
+        onChange(field, v);
+        if (isCircle) onChange(field === 'stickerW' ? 'stickerH' : 'stickerW', v);
+    };
+
+    const setShape = (shape) => {
+        onChange('shape', shape);
+        if (shape !== 'circle') return;
+        const w = Number(params.stickerW);
+        const h = Number(params.stickerH);
+        if (w === h) return;
+        const d = lastEdited.current === 'stickerH' ? h : w;
+        onChange('stickerW', d);
+        onChange('stickerH', d);
+    };
 
     const isPrintSheetCustom = !config.printSheetSizes.some(
         (s) => s.w === params.printSheetW && s.h === params.printSheetH
@@ -141,24 +165,28 @@ export default function DecalInputPanel({ config, params, onChange }) {
                     <>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
-                                <label htmlFor="stickerW">Rộng tem (W)</label>
+                                <label htmlFor="stickerW">
+                                    {isCircle ? 'Đường kính (W)' : 'Rộng tem (W)'}
+                                </label>
                                 <div className="relative">
                                     <NumberField
                                         id="stickerW"
                                         value={params.stickerW}
-                                        onCommit={(v) => onChange('stickerW', v)}
+                                        onCommit={(v) => setSize('stickerW', v)}
                                         step={1}
                                     />
                                     <span className="unit">mm</span>
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="stickerH">Cao tem (H)</label>
+                                <label htmlFor="stickerH">
+                                    {isCircle ? 'Đường kính (H)' : 'Cao tem (H)'}
+                                </label>
                                 <div className="relative">
                                     <NumberField
                                         id="stickerH"
                                         value={params.stickerH}
-                                        onCommit={(v) => onChange('stickerH', v)}
+                                        onCommit={(v) => setSize('stickerH', v)}
                                         step={1}
                                     />
                                     <span className="unit">mm</span>
@@ -208,7 +236,7 @@ export default function DecalInputPanel({ config, params, onChange }) {
                                     <button
                                         key={opt.value}
                                         type="button"
-                                        onClick={() => onChange('shape', opt.value)}
+                                        onClick={() => setShape(opt.value)}
                                         className={`flex-1 py-1.5 px-2 text-xs font-medium rounded transition ${
                                             params.shape === opt.value
                                                 ? 'bg-blue-600 text-white'

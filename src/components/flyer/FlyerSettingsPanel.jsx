@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import LaminationFilmSettings from '../common/LaminationFilmSettings';
 import { useCloudSave } from '../common/useCloudSave';
 import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveFlyerConfig } from '../../utils/configStorage';
@@ -222,6 +223,15 @@ export default function FlyerSettingsPanel({ config, onSave, onSaved, onCancel }
                         </table>
                     </div>
                 </section>
+
+                <LaminationFilmSettings
+                    films={c.laminationFilms}
+                    onChange={(next) =>
+                        updateConfig((cfg) => {
+                            cfg.FLYER_CONFIG.laminationFilms = next;
+                        })
+                    }
+                />
 
                 <section>
                     <h3 className="text-amber-400 font-bold mb-3">Phụ thu cán màng / tờ</h3>

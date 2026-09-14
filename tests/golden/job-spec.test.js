@@ -63,6 +63,7 @@ describe('small-print — In KTS khổ nhỏ', () => {
         productQuantity: 500,
         printSides: '2',
         laminationType: 'laminate_2',
+        laminationFilm: 'mo',
         mountingType: 'none',
         creasingType: 'none',
         holePunchingType: 'none',
@@ -74,7 +75,7 @@ describe('small-print — In KTS khổ nhỏ', () => {
 
     it('đúng công thức, không bế → cắt thành phẩm chữ nhật', () => {
         expect(buildJobSpec('small-print', { params, result, config })).toBe(
-            '500 _ 9x5.5cm _ Couche 300gsm _ 2 mặt _ cán màng 2 mặt, cắt thành phẩm chữ nhật\n' +
+            '500 _ 9x5.5cm _ Couche 300gsm _ 2 mặt _ cán màng mờ 2 mặt, cắt thành phẩm chữ nhật\n' +
                 'Giá: 1.250.000đ (2.500đ/cái)'
         );
     });
@@ -110,7 +111,7 @@ describe('small-print — In KTS khổ nhỏ', () => {
             result,
             config,
         });
-        expect(out).toContain('cán màng 2 mặt, bồi carton, có cấn, đục lỗ 2 vị trí, ép kim');
+        expect(out).toContain('cán màng mờ 2 mặt, bồi carton, có cấn, đục lỗ 2 vị trí, ép kim');
     });
 
     it('ưu tiên quote.printSides (params bị ép về 1 với decal/bồi)', () => {
@@ -295,13 +296,14 @@ describe('flyer', () => {
         paperName: 'Giấy C150',
         sidesName: 'In 2 mặt',
         lamination: 'yes',
+        laminationFilm: 'bong',
         creasingType: '1-2',
         total: 1020000,
     };
 
     it('bỏ tiền tố "Kích thước"/"In", cắt đuôi giảm giá', () => {
         expect(buildJobSpec('flyer', { result: base })).toBe(
-            '170 _ A5 _ Giấy C150 _ 2 mặt _ có cán màng, cấn 1-2 đường\nGiá: 1.020.000đ (6.000đ/tờ)'
+            '170 _ A5 _ Giấy C150 _ 2 mặt _ cán màng bóng, cấn 1-2 đường\nGiá: 1.020.000đ (6.000đ/tờ)'
         );
     });
 
@@ -330,12 +332,13 @@ describe('cheapdecal — cắt chú thích giá trong tên', () => {
                 shapeName: 'Nhãn hình vuông (+10%)',
                 materialName: 'Decal nhựa (+đ/nhãn)',
                 lamination: true,
+                laminationFilm: 'mo',
                 total: 550000,
                 unitPrice: 550,
             },
         });
         expect(out).toBe(
-            '1.000 _ 3 cm _ Decal nhựa _ nhãn hình vuông, có cán màng\nGiá: 550.000đ (550đ/cái)'
+            '1.000 _ 3 cm _ Decal nhựa _ nhãn hình vuông, cán màng mờ\nGiá: 550.000đ (550đ/cái)'
         );
         expect(out).not.toContain('%');
         expect(out).not.toContain('+');
@@ -389,7 +392,7 @@ describe('sticker / card / uvdtf — module thiếu mục thì bỏ hẳn', () =
 });
 
 describe('decal — copy theo từng dòng bảng giá', () => {
-    const params = { stickerW: 50, stickerH: 90, shape: 'rectangle' };
+    const params = { stickerW: 50, stickerH: 90, shape: 'rectangle', laminationFilm: 'mo' };
     const result = { mode: 'single' };
 
     it('lấy đúng số lượng/giá của dòng được bấm', () => {
@@ -399,19 +402,91 @@ describe('decal — copy theo từng dòng bảng giá', () => {
             row: { quantity: 500, decalType: 'Decal giấy', laminated: true, finalPrice: 750000 },
         });
         expect(out).toBe(
-            '500 con _ 50x90mm _ Decal giấy _ có cán màng, cắt thành phẩm chữ nhật\n' +
-                'Giá: 750.000đ (1.500đ/con)'
+            '500 con _ 50x90mm _ Decal giấy _ cán màng mờ, bế demi\n' + 'Giá: 750.000đ (1.500đ/con)'
         );
     });
 
-    it('hình tròn → bế tròn', () => {
-        const out = buildJobSpec('decal', {
-            params: { ...params, shape: 'circle' },
-            result,
-            row: { quantity: 500, decalType: 'Decal nhựa', laminated: false, finalPrice: 750000 },
+    // Tem tròn chỉ có ĐƯỜNG KÍNH. Ghi "48x48mm" đã kỳ, ghi "20x48mm" (báo giá cũ
+    // còn lệch W/H) thì xưởng bế sai hẳn con tem.
+    describe('tem tròn ghi đường kính, không ghi WxH', () => {
+        it('W = H → "Tròn 48 mm"', () => {
+            const out = buildJobSpec('decal', {
+                params: { ...params, shape: 'circle', stickerW: 48, stickerH: 48 },
+                result,
+                row: {
+                    quantity: 500,
+                    decalType: 'Decal giấy',
+                    laminated: false,
+                    finalPrice: 750000,
+                },
+            });
+            expect(out).toContain('_ Tròn 48 mm _');
+            expect(out).not.toContain('48x48');
         });
-        expect(out).toContain('bế tròn');
-        expect(out).not.toContain('cắt thành phẩm');
+
+        it('báo giá cũ còn lệch 20×48 → vẫn "Tròn 48 mm" (khớp giá engine đang tính)', () => {
+            const out = buildJobSpec('decal', {
+                params: { ...params, shape: 'circle', stickerW: 20, stickerH: 48 },
+                result,
+                row: {
+                    quantity: 500,
+                    decalType: 'Decal giấy',
+                    laminated: false,
+                    finalPrice: 750000,
+                },
+            });
+            expect(out).toContain('_ Tròn 48 mm _');
+            expect(out).not.toContain('20x48');
+        });
+
+        it('chữ nhật và oval vẫn ghi WxH như cũ', () => {
+            for (const shape of ['rectangle', 'oval']) {
+                const out = buildJobSpec('decal', {
+                    params: { ...params, shape },
+                    result,
+                    row: {
+                        quantity: 500,
+                        decalType: 'Decal giấy',
+                        laminated: false,
+                        finalPrice: 750000,
+                    },
+                });
+                expect(out, shape).toContain('50x90mm');
+                expect(out, shape).not.toContain('Tròn');
+            }
+        });
+    });
+
+    // Module này vốn LUÔN bế demi. Câu "cắt thành phẩm chữ nhật/vuông" nghĩa là
+    // chỉ xén thẳng — gửi xuống xưởng là sai hẳn công đoạn.
+    it('mọi hình dạng đều chỉ ghi "bế demi", không nêu hình', () => {
+        for (const shape of ['rectangle', 'circle', 'oval']) {
+            const out = buildJobSpec('decal', {
+                params: { ...params, shape },
+                result,
+                row: {
+                    quantity: 500,
+                    decalType: 'Decal nhựa',
+                    laminated: false,
+                    finalPrice: 750000,
+                },
+            });
+            expect(out, shape).toContain('bế demi');
+            expect(out, shape).not.toContain('cắt thành phẩm');
+            expect(out, shape).not.toContain('bế tròn');
+            expect(out, shape).not.toContain('bế oval');
+        }
+    });
+
+    // Tem vuông cũng KHÔNG tự đổi câu chữ — nhân viên chọn hình nào là hình đó.
+    it('tem vuông vẫn chỉ ghi "bế demi"', () => {
+        const out = buildJobSpec('decal', {
+            params: { ...params, stickerW: 50, stickerH: 50 },
+            result,
+            row: { quantity: 500, decalType: 'Decal giấy', laminated: false, finalPrice: 750000 },
+        });
+        expect(out).toContain('bế demi');
+        expect(out).not.toContain('vuông');
     });
 });
 

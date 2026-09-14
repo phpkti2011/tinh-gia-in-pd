@@ -46,7 +46,7 @@ export default function ModuleTile({
     const [draft, setDraft] = useState(null);
 
     const startEdit = () => {
-        setDraft({ title: label.title, desc: label.desc, heading: label.heading });
+        setDraft({ title: label.title, desc: label.desc });
         setEditing(true);
     };
 
@@ -60,7 +60,7 @@ export default function ModuleTile({
     // Chỉ gửi field có nội dung. Field để trống → parent lấy lại giá trị mặc định của field đó.
     const commitEdit = () => {
         const patch = {};
-        for (const field of ['title', 'desc', 'heading']) {
+        for (const field of ['title', 'desc']) {
             const trimmed = (draft[field] || '').trim();
             if (trimmed) patch[field] = trimmed;
         }
@@ -106,14 +106,6 @@ export default function ModuleTile({
                         value={draft.desc}
                         onChange={updateDraft}
                         multiline
-                    />
-                    <LabelField
-                        id={mod.id}
-                        field="heading"
-                        label="Tiêu đề trong trang"
-                        value={draft.heading}
-                        onChange={updateDraft}
-                        onKeyDown={handleKeyDown}
                     />
                     <div className="flex items-center gap-2 mt-3">
                         <button

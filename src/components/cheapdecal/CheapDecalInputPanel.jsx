@@ -1,4 +1,5 @@
 // React 18+ auto JSX transform — không cần import React.
+import LaminationFilmSelect from '../common/LaminationFilmSelect';
 export default function CheapDecalInputPanel({ config, params, onChange }) {
     const c = config.CHEAP_DECAL_CONFIG || {};
     const handleSelect = (e) => onChange(e.target.name, e.target.value);
@@ -88,6 +89,14 @@ export default function CheapDecalInputPanel({ config, params, onChange }) {
                             <option value="yes">Có cán màng</option>
                         </select>
                     </div>
+                    {params.lamination === 'yes' && (
+                        <LaminationFilmSelect
+                            id="laminationFilm"
+                            films={c.laminationFilms}
+                            value={params.laminationFilm}
+                            onChange={onChange}
+                        />
+                    )}
                     <div>
                         <label htmlFor="rush">Lấy trong ngày</label>
                         <select id="rush" name="rush" value={params.rush} onChange={handleSelect}>

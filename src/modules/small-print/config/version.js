@@ -27,6 +27,10 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //     engine fallback về A4_CONVERSION_RATES chung như cũ.
 //   - A4_CONVERSION_RATES giữ nguyên, đổi vai trò thành fallback + mẫu cho máy
 //     thêm mới. Giá trị mặc định 2 máy giống hệt nhau nên bật lên KHÔNG đổi giá.
-export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.2.0';
+//   1.3.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
+//           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
+//           => gia khong doi.
 
-export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-12';
+export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.3.0';
+
+export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-14';

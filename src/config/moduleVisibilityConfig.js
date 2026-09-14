@@ -3,73 +3,69 @@
 // MODULE_VISIBILITY: map { moduleId: boolean }. true = hiện với mọi người; false = ẩn với người dùng
 // thường (admin vẫn thấy mờ + nhãn "Đang ẩn"). Default = tất cả HIỆN → an toàn khi mới tải.
 //
-// MODULE_LABELS: map { moduleId: { title, desc, heading } } — admin đổi tên module không cần deploy.
-//   title   = chữ lớn trên tile trang chủ
-//   desc    = dòng mô tả xám dưới title
-//   heading = thẻ <h1> bên trong trang module (khác title ở nhiều module, vd tile "Tính Giá Decal"
-//             nhưng heading "Tính Giá In Decal") → phải giữ 2 field riêng, đừng suy ra từ nhau.
-// Optional: config lưu trước 1.1.0 chưa có MODULE_LABELS vẫn hợp lệ, thiếu thì lấp từ default
-// qua mergeModuleLabels().
+// MODULE_LABELS: map { moduleId: { title, desc } } — admin đổi tên module không cần deploy.
+//   title = chữ lớn trên tile trang chủ VÀ thẻ <h1> bên trong trang module
+//   desc  = dòng mô tả xám dưới title
+//
+// TRƯỚC 1.2.0 còn field `heading` riêng cho <h1> bên trong. Đã BỎ: admin đổi tên
+// tile nhưng heading không đi theo nên hai chỗ lệch nhau vĩnh viễn (tile "In Khổ
+// Lớn (In Phun Mực Dầu)" mà bên trong vẫn "In Khổ Lớn — Tư Vấn & Tính Giá").
+// Một nguồn tên duy nhất thì không thể lệch. Config cũ còn `heading` vẫn hợp lệ —
+// validator và mergeModuleLabels chỉ duyệt LABEL_FIELDS nên field thừa bị bỏ qua.
+//
+// Optional: config lưu trước 1.1.0 chưa có MODULE_LABELS vẫn hợp lệ, thiếu thì lấp
+// từ default qua mergeModuleLabels().
 
 // 1.0.0 → 1.1.0 — thêm MODULE_LABELS (field optional, không breaking).
-export const MODULE_VISIBILITY_SCHEMA_VERSION = '1.1.0';
+// 1.1.0 → 1.2.0 — bỏ field `heading`, dùng chung `title` cho cả tile lẫn <h1>.
+export const MODULE_VISIBILITY_SCHEMA_VERSION = '1.2.0';
 
 export const MODULE_VISIBILITY_DEFAULT_LABELS = {
     small: {
-        title: 'In KTS Khổ Nhỏ',
+        title: 'In KTS Khổ Nhỏ — Tính Giá & Báo Giá',
         desc: 'In laser kỹ thuật số trên giấy couche, bristol, ford, decal... Tối ưu hóa xếp hình, tính giá vốn & báo giá khách hàng.',
-        heading: 'In KTS Khổ Nhỏ — Tính Giá & Báo Giá',
     },
     large: {
-        title: 'In Khổ Lớn',
+        title: 'In Khổ Lớn — Tư Vấn & Tính Giá',
         desc: 'In phun khổ lớn trên PP, decal, backlit, bạt hiflex... Tự động tối ưu khổ cuộn, cán màng, bồi formex.',
-        heading: 'In Khổ Lớn — Tư Vấn & Tính Giá',
     },
     decal: {
-        title: 'Tính Giá Decal',
+        title: 'Tính Giá In Decal',
         desc: 'Tính giá tem lẻ & tờ sticker. Mô phỏng xếp tem, bảng giá lũy tiến, bế demi, cán màng tự động.',
-        heading: 'Tính Giá In Decal',
     },
     uvdtf: {
-        title: 'In UV DTF',
+        title: 'Tính Giá In UV DTF',
         desc: 'Tính giá in UV DTF theo mét tới. Tự động xoay tối ưu, mô phỏng xếp hình trên cuộn.',
-        heading: 'Tính Giá In UV DTF',
     },
     catalogue: {
-        title: 'Catalogue Bấm Kim',
+        title: 'Tính Giá Catalogue Bấm Kim',
         desc: 'Tính giá catalogue/brochure bấm kim (gấp lồng). Tự tính số tờ in, quy đổi trang A4 & dùng chung bảng giá In KTS.',
-        heading: 'Tính Giá Catalogue Bấm Kim',
     },
     spiral: {
-        title: 'Sổ Đóng Lò Xo',
+        title: 'Tính Giá Sổ Đóng Lò Xo',
         desc: 'Tính giá sổ/notebook đóng lò xo. In từng tờ, tách bìa/ruột, chọn 1-2 mặt & dùng chung bảng giá In KTS.',
-        heading: 'Tính Giá Sổ Đóng Lò Xo',
     },
     sticker: {
         title: 'Tính Giá Tờ Sticker',
         desc: 'Báo giá tờ sticker theo khổ (10x10 / A6 / A5 / A4) & số lượng. Bậc giá, phụ phí cán màng, số sticker, nội dung & vẽ đường cắt.',
-        heading: 'Tính Giá Tờ Sticker',
     },
     card: {
         title: 'Tính Giá Thẻ Nhựa',
         desc: 'Báo giá thẻ nhựa / thẻ gỗ theo loại thẻ & số lượng. Chip Mifare/NFC, add-on, nhóm khách trực tiếp / đại lý.',
-        heading: 'Tính Giá Thẻ Nhựa',
     },
     flyer: {
         title: 'Tính Giá Tờ Rơi',
         desc: 'Báo giá tờ rơi A5/A4 theo số lượng. Loại giấy, in 1/2 mặt, cán màng, cấn gấp & số nội dung.',
-        heading: 'Tính Giá Tờ Rơi',
     },
     cheapdecal: {
         title: 'Decal Nhãn Giá Rẻ',
         desc: 'Báo giá nhanh decal nhãn theo cỡ & số lượng (500/1000/2000). Hình tròn/vuông, decal giấy/nhựa, cán màng, lấy trong ngày.',
-        heading: 'Decal Nhãn Giá Rẻ',
     },
 };
 
 // Các field nhãn được phép sửa + giới hạn độ dài (dùng cho maxLength của input và validator).
-export const LABEL_FIELDS = ['title', 'desc', 'heading'];
-export const LABEL_MAX_LEN = { title: 60, desc: 300, heading: 120 };
+export const LABEL_FIELDS = ['title', 'desc'];
+export const LABEL_MAX_LEN = { title: 60, desc: 300 };
 
 export const MODULE_VISIBILITY_DEFAULT_CONFIG = {
     MODULE_VISIBILITY: {

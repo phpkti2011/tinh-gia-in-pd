@@ -1,4 +1,5 @@
 // React 18+ auto JSX transform — không cần import React.
+import LaminationFilmSelect from '../common/LaminationFilmSelect';
 import { useEffect } from 'react';
 import NumberField from '../common/NumberField';
 
@@ -313,6 +314,17 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         <option value="laminate_2">Cán màng 2 mặt</option>
                     </select>
                 </div>
+                {(params.laminationType === 'laminate_1' ||
+                    params.laminationType === 'laminate_2') && (
+                    <div className="mb-4">
+                        <LaminationFilmSelect
+                            id="laminationFilm"
+                            films={config.LAMINATION_FILMS}
+                            value={params.laminationFilm}
+                            onChange={onChange}
+                        />
+                    </div>
+                )}
                 <div className="mb-4">
                     <label htmlFor="creasingType">Cấn</label>
                     <select

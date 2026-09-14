@@ -3,6 +3,7 @@ import { useCloudSave } from '../common/useCloudSave';
 import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveSpiralConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
+import LaminationFilmSettings from '../common/LaminationFilmSettings';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -178,6 +179,15 @@ export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel 
                     />
                     <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
                 </div>
+
+                <LaminationFilmSettings
+                    films={localConfig.LAMINATION_FILMS}
+                    onChange={(next) =>
+                        updateConfig((c) => {
+                            c.LAMINATION_FILMS = next;
+                        })
+                    }
+                />
 
                 <section>
                     <div className="flex items-center justify-between mb-2">

@@ -7,6 +7,7 @@
 // KHÔNG đổi behavior.
 
 import { calculateFinishingCost } from './pricing.js';
+import { filmMultiplier } from '../../../utils/laminationFilm.js';
 
 // Cán màng (lamination)
 export function calculateLamination(
@@ -14,7 +15,8 @@ export function calculateLamination(
     actualPrintW,
     productsPerSheet,
     laminationType,
-    config
+    config,
+    laminationFilm = ''
 ) {
     let cost = 0;
     let warning = null;
@@ -24,7 +26,12 @@ export function calculateLamination(
             warning = `KHÔNG THỂ CÁN MÀNG (Vùng in ${actualPrintW.toFixed(1)}cm > rộng màng ${config.LAMINATION_CONFIG.WIDTH}cm)`;
             cost = 0;
         } else {
-            cost = (pressH / 100) * config.LAMINATION_CONFIG.PRICE_PER_METER * sides;
+            // Loại màng nhân vào GIÁ VỐN cán màng (giá báo khách nhân ở quote.js).
+            cost =
+                (pressH / 100) *
+                config.LAMINATION_CONFIG.PRICE_PER_METER *
+                sides *
+                filmMultiplier(config.LAMINATION_FILMS, laminationFilm);
             if (Math.abs(actualPrintW - config.LAMINATION_CONFIG.WIDTH) < 0.01) {
                 warning = `Lưu ý: Vùng in ${actualPrintW.toFixed(1)}cm bằng rộng màng, dễ bị hụt.`;
             }

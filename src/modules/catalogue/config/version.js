@@ -9,6 +9,10 @@
 
 export const CATALOGUE_MODULE_NAME = 'catalogue';
 
-export const CATALOGUE_CONFIG_SCHEMA_VERSION = '1.0.0';
+//   1.1.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
+//           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
+//           => gia khong doi.
 
-export const CATALOGUE_CONFIG_LAST_UPDATED = '2026-07-28';
+export const CATALOGUE_CONFIG_SCHEMA_VERSION = '1.1.0';
+
+export const CATALOGUE_CONFIG_LAST_UPDATED = '2026-09-14';

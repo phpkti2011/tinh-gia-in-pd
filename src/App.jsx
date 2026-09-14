@@ -276,6 +276,7 @@ function SmallPrintModule({ onBack, heading }) {
         customSheetH: 100,
         mountingType: 'none',
         laminationType: 'none',
+        laminationFilm: '',
         creasingType: 'none',
         holePunchingType: 'none',
         customFinishingType: 'none',
@@ -492,7 +493,7 @@ function SmallPrintModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.small.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.small.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Nhập thông số - Hệ thống sẽ tự động tính toán phương án hiệu quả nhất.
@@ -634,7 +635,7 @@ function LargePrintModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.large.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.large.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Nhập kích thước & vật liệu - Hệ thống tự động tìm phương án tối ưu.
@@ -717,6 +718,7 @@ function DecalModule({ onBack, heading }) {
         sheetCustomQuantity: 0,
         sheetDecalType: 'Decal giấy',
         sheetLamination: false,
+        laminationFilm: '',
     });
     const [result, setResult] = useState(null);
     const [isCalculating, setIsCalculating] = useState(false);
@@ -792,7 +794,8 @@ function DecalModule({ onBack, heading }) {
                             params.printSheetW,
                             params.printSheetH,
                             config,
-                            parseInt(params.customQuantity) || 0
+                            parseInt(params.customQuantity) || 0,
+                            params.laminationFilm || ''
                         );
                         return {
                             name: m.name,
@@ -851,7 +854,8 @@ function DecalModule({ onBack, heading }) {
                             params.printSheetW,
                             params.printSheetH,
                             config,
-                            parseInt(params.sheetCustomQuantity) || 0
+                            parseInt(params.sheetCustomQuantity) || 0,
+                            params.laminationFilm || ''
                         );
                         return {
                             name: m.name,
@@ -901,7 +905,7 @@ function DecalModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.decal.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.decal.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Chọn loại sản phẩm và khổ in để bắt đầu báo giá.
@@ -934,6 +938,7 @@ function DecalModule({ onBack, heading }) {
                             params={params}
                             config={config}
                             isCalculating={isCalculating}
+                            onChange={handleChange}
                         />
                     </div>
                 </div>
@@ -1007,7 +1012,7 @@ function UvdtfModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.uvdtf.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.uvdtf.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Khổ vật liệu {config.materialWidthCM}cm · Vùng in {config.printableWidthCM}cm
@@ -1073,6 +1078,8 @@ function CatalogueModule({ onBack, heading }) {
         coverPaperType: '3',
         innerPaperType: '0',
         laminationMode: 'cover1',
+        coverLamFilm: '',
+        innerLamFilm: '',
         coverSingleSide: false,
         printColorMode: '4color',
         artPaperPrice: 10000,
@@ -1097,13 +1104,21 @@ function CatalogueModule({ onBack, heading }) {
 
     const engineConfig =
         printConfig && catalogueConfig
-            ? { ...printConfig, STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG }
+            ? {
+                  ...printConfig,
+                  STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG,
+                  LAMINATION_FILMS: catalogueConfig.LAMINATION_FILMS,
+              }
             : null;
 
     const doCalc = useCallback(() => {
         if (!printConfig || !catalogueConfig) return;
         try {
-            const cfg = { ...printConfig, STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG };
+            const cfg = {
+                ...printConfig,
+                STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG,
+                LAMINATION_FILMS: catalogueConfig.LAMINATION_FILMS,
+            };
             setResult(calculateCatalogue(params, cfg));
         } catch (e) {
             console.error('Catalogue calc error', e);
@@ -1133,7 +1148,7 @@ function CatalogueModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.catalogue.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.catalogue.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Gấp lồng bấm kim · số trang chia hết cho 4 · dùng chung giá In KTS Khổ Nhỏ
@@ -1211,6 +1226,8 @@ function SpiralModule({ onBack, heading }) {
         innerColorMode: '4color',
         coverLam: '1',
         innerLam: '0',
+        coverLamFilm: '',
+        innerLamFilm: '',
         linerType: '',
         artPaperPrice: 10000,
     });
@@ -1234,13 +1251,21 @@ function SpiralModule({ onBack, heading }) {
 
     const engineConfig =
         printConfig && spiralConfig
-            ? { ...printConfig, SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG }
+            ? {
+                  ...printConfig,
+                  SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG,
+                  LAMINATION_FILMS: spiralConfig.LAMINATION_FILMS,
+              }
             : null;
 
     const doCalc = useCallback(() => {
         if (!printConfig || !spiralConfig) return;
         try {
-            const cfg = { ...printConfig, SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG };
+            const cfg = {
+                ...printConfig,
+                SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG,
+                LAMINATION_FILMS: spiralConfig.LAMINATION_FILMS,
+            };
             setResult(calculateSpiral(params, cfg));
         } catch (e) {
             console.error('Spiral calc error', e);
@@ -1270,7 +1295,7 @@ function SpiralModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.spiral.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.spiral.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     In từng tờ · tách bìa/ruột · chọn 1-2 mặt · dùng chung giá In KTS Khổ Nhỏ
@@ -1388,7 +1413,7 @@ function StickerModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.sticker.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.sticker.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá theo khổ tờ & số lượng · phụ phí cán màng, số sticker, nội dung, vẽ cắt
@@ -1503,7 +1528,7 @@ function CardModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.card.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.card.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá theo loại thẻ & số lượng · chip / add-on · nhóm khách trực tiếp / đại lý
@@ -1568,6 +1593,7 @@ function FlyerModule({ onBack, heading }) {
         paper: 'C150',
         sides: '2',
         lamination: 'none',
+        laminationFilm: '',
         creasing: 'none',
         contents: '1-2',
     });
@@ -1617,7 +1643,7 @@ function FlyerModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.flyer.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.flyer.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá theo khổ & số lượng · giấy · in 1/2 mặt · cán màng · cấn gấp · nội dung
@@ -1682,6 +1708,7 @@ function CheapDecalModule({ onBack, heading }) {
         shape: 'round',
         material: 'paper',
         lamination: 'no',
+        laminationFilm: '',
         rush: 'no',
     });
     const [result, setResult] = useState(null);
@@ -1730,7 +1757,7 @@ function CheapDecalModule({ onBack, heading }) {
                     ← Trang chủ
                 </button>
                 <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.cheapdecal.heading}
+                    {heading || MODULE_VISIBILITY_DEFAULT_LABELS.cheapdecal.title}
                 </h1>
                 <p className="text-gray-400 mt-2">
                     Báo giá nhanh theo cỡ & số lượng · hình · vật liệu · cán màng · lấy trong ngày
@@ -1901,7 +1928,10 @@ function App() {
     const content = (() => {
         const home = () => setCurrentModule('home');
         // Optional chaining + default prop ở component: payload cloud cũ có thể thiếu id.
-        const heading = (id) => uiConfig.MODULE_LABELS?.[id]?.heading;
+        // Tiêu đề <h1> trong module DÙNG CHUNG tên tile — một nguồn tên duy nhất thì
+        // không thể lệch nhau (trước đây có field `heading` riêng nên admin đổi tên
+        // tile mà bên trong vẫn giữ tên cũ).
+        const heading = (id) => uiConfig.MODULE_LABELS?.[id]?.title;
 
         if (currentModule === 'small')
             return <SmallPrintModule onBack={home} heading={heading('small')} />;

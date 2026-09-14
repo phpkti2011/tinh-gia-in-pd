@@ -14,6 +14,7 @@
 // src/components/** bị loại khỏi coverage.
 
 import { getBlockedFinishing } from '../modules/large-print/config/finishingOps.js';
+import { filmPhrase } from './laminationFilm.js';
 
 const SEP = ' _ ';
 
@@ -94,10 +95,7 @@ function qtyPart(qty, unitWord) {
 
 // Nhãn tiếng Việt của thành phẩm hiện CHỈ tồn tại trong <option> của InputPanel,
 // chưa có map key→nhãn ở đâu cả. Đặt map tại đây (đã bỏ chú thích kỹ thuật).
-const SP_LAMINATION = {
-    laminate_1: 'cán màng 1 mặt',
-    laminate_2: 'cán màng 2 mặt',
-};
+const SP_LAMINATION_SIDES = { laminate_1: 1, laminate_2: 2 };
 const SP_DIECUT = { mold: 'bế khuôn', digital: 'bế kỹ thuật số' };
 const SP_MOLD = {
     simple: 'hình dạng đơn giản',
@@ -121,7 +119,14 @@ function smallPrintSpec({ params, result, config }) {
     const sides = Number(result.printSides) || Number(params.printSides) || 1;
 
     const fin = [];
-    if (SP_LAMINATION[params.laminationType]) fin.push(SP_LAMINATION[params.laminationType]);
+    // Loại màng chèn vào giữa: 'cán màng mờ 2 mặt'. Chưa chọn thì nói thẳng
+    // để xưởng hỏi lại, không đoán bừa.
+    const lamSides = SP_LAMINATION_SIDES[params.laminationType];
+    if (lamSides) {
+        fin.push(
+            `cán màng ${filmPhrase(config?.LAMINATION_FILMS, params.laminationFilm)} ${lamSides} mặt`
+        );
+    }
     if (params.mountingType === 'yes') fin.push('bồi carton');
     if (SP_CREASING[params.creasingType]) fin.push(SP_CREASING[params.creasingType]);
     if (SP_HOLE[params.holePunchingType]) fin.push(SP_HOLE[params.holePunchingType]);
@@ -289,11 +294,13 @@ function catalogueSpec({ params, result }) {
 // flyer — tờ rơi (result đã có sẵn nhãn tiếng Việt)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function flyerSpec({ result }) {
+function flyerSpec({ result, config }) {
     if (!result || result.error || result.requiresManualQuote) return null;
 
     const fin = joinFinishing([
-        result.lamination === 'yes' ? 'có cán màng' : null,
+        result.lamination === 'yes'
+            ? `cán màng ${filmPhrase(config?.FLYER_CONFIG?.laminationFilms, result.laminationFilm)}`
+            : null,
         result.creasingType && result.creasingType !== 'none'
             ? `cấn ${result.creasingType} đường`
             : null,
@@ -318,12 +325,14 @@ function flyerSpec({ result }) {
 // cheapdecal — decal giá rẻ
 // ─────────────────────────────────────────────────────────────────────────────
 
-function cheapDecalSpec({ result }) {
+function cheapDecalSpec({ result, config }) {
     if (!result || result.error) return null;
 
     const fin = joinFinishing([
         stripPriceNote(result.shapeName || '').toLowerCase() || null,
-        result.lamination ? 'có cán màng' : null,
+        result.lamination
+            ? `cán màng ${filmPhrase(config?.CHEAP_DECAL_CONFIG?.laminationFilms, result.laminationFilm)}`
+            : null,
     ]);
 
     const qty = Number(result.quantity);
@@ -402,24 +411,32 @@ function uvdtfSpec({ params, result }) {
 // Nút copy đặt trên từng dòng → builder nhận thêm `row`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function decalSpec({ params, result, row }) {
+function decalSpec({ params, result, config, row }) {
     if (!row || !result) return null;
 
     const w = Number(params?.stickerW);
     const h = Number(params?.stickerH);
     const fin = joinFinishing([
-        row.laminated ? 'có cán màng' : null,
-        params?.shape === 'circle'
-            ? 'bế tròn'
-            : params?.shape === 'oval'
-              ? 'bế oval'
-              : cutShapeLabel(w, h),
+        row.laminated
+            ? `cán màng ${filmPhrase(config?.laminationFilms, params?.laminationFilm)}`
+            : null,
+        // Module này LUÔN bế demi → KHÔNG dùng cutShapeLabel: câu "cắt thành phẩm
+        // chữ nhật/vuông" nghĩa là chỉ xén thẳng, dành cho In KTS khổ nhỏ khi
+        // không chọn bế. Cố ý không nêu hình dạng (tròn/oval/chữ nhật) — kích
+        // thước và file thiết kế đã nói rõ.
+        'bế demi',
     ]);
+
+    // Tem tròn: ghi ĐƯỜNG KÍNH, không ghi WxH — gửi "20x48mm" cho một con tem
+    // tròn 48mm là sai hẳn với xưởng. Màn nhập đã ép W = H, nhưng báo giá lưu
+    // từ trước có thể còn lệch ⇒ lấy cạnh lớn, đúng như engine đang tính.
+    const sizePart =
+        params?.shape === 'circle' ? `Tròn ${num(Math.max(w, h))} mm` : formatSize(w, h, 'mm');
 
     const qty = Number(row.quantity);
     const total = row.finalPrice != null ? row.finalPrice : row.price;
     return compose(
-        [qtyPart(qty, 'con'), formatSize(w, h, 'mm'), stripPriceNote(row.decalType || ''), fin],
+        [qtyPart(qty, 'con'), sizePart, stripPriceNote(row.decalType || ''), fin],
         total,
         qty > 0 ? total / qty : null,
         'con'

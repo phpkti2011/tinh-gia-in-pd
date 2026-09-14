@@ -5,6 +5,7 @@
 // quy đổi sang trang A4 + áp CUSTOMER_PRICE_TIERS.
 
 import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pricing.js';
+import { filmMultiplier } from '../../../utils/laminationFilm.js';
 import { computeA4Factor } from './a4.js';
 
 export function calculateCustomerQuote(
@@ -19,10 +20,15 @@ export function calculateCustomerQuote(
         productQuantity: totalQuantity,
         printSides,
         laminationType,
+        laminationFilm,
         printContents,
         variableData,
         printColorMode,
     } = params;
+
+    // Loại màng (mờ/bóng/soft-touch…) nhân vào GIÁ BÁO KHÁCH của cán màng.
+    // Giá vốn nhân ở engine/finishing.js. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    const lamFilmMult = filmMultiplier(config.LAMINATION_FILMS, laminationFilm);
 
     // Giá in 1 màu ĐEN = giá 4 màu × (1 − %), sàn theo đ/trang (chỉ per_page).
     const oneColorDisc = (config.ONE_COLOR_DISCOUNT_PERCENT ?? 0) / 100;
@@ -75,11 +81,13 @@ export function calculateCustomerQuote(
             if (tier.type === 'per_page') {
                 const rate = printRateFor(tier.print, true);
                 totalPrintCost = totalA4Pages * rate;
-                totalLaminationCost = hasLam ? physicalA4Pages * tier.laminate * lamSides : 0;
+                totalLaminationCost = hasLam
+                    ? physicalA4Pages * tier.laminate * lamSides * lamFilmMult
+                    : 0;
                 unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             } else {
                 totalPrintCost = printRateFor(tier.print, false);
-                totalLaminationCost = hasLam ? tier.laminate * lamSides : 0;
+                totalLaminationCost = hasLam ? tier.laminate * lamSides * lamFilmMult : 0;
                 unitPriceText = `Trọn gói${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             }
         } else {
@@ -108,11 +116,13 @@ export function calculateCustomerQuote(
         if (tier.type === 'per_page') {
             const rate = printRateFor(tier.print, true);
             totalPrintCost = totalA4Pages * rate;
-            totalLaminationCost = hasLam2 ? physicalA4Pages * tier.laminate * lamSides2 : 0;
+            totalLaminationCost = hasLam2
+                ? physicalA4Pages * tier.laminate * lamSides2 * lamFilmMult
+                : 0;
             unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         } else {
             totalPrintCost = printRateFor(tier.print, false);
-            totalLaminationCost = hasLam2 ? tier.laminate * lamSides2 : 0;
+            totalLaminationCost = hasLam2 ? tier.laminate * lamSides2 * lamFilmMult : 0;
             unitPriceText = `Trọn gói${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         }
     }

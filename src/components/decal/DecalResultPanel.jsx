@@ -1,4 +1,5 @@
 import { copyText } from '../common/CopyButton';
+import LaminationFilmSelect from '../common/LaminationFilmSelect';
 import { buildJobSpec } from '../../utils/jobSpec';
 import { useMemo, useState } from 'react';
 
@@ -29,6 +30,8 @@ function LayoutVisualizationContent({ result, params }) {
         cols_full,
         cols_staggered,
         pattern,
+        rowPlan,
+        swapped,
     } = layout;
     const gap = params?.stickerGap || 2;
     const shape = params?.shape || 'rectangle';
@@ -49,43 +52,48 @@ function LayoutVisualizationContent({ result, params }) {
         const sw = itemW * scale;
         const sh = itemH * scale;
 
-        if (type === 'hexagonal') {
-            const d = (itemW + gap) * scale;
-            const r = d / 2;
-            const vertSpacing = (d * Math.sqrt(3)) / 2;
-            // Content size for centering
-            const contentH = rows > 0 ? (rows - 1) * vertSpacing + sw : 0;
-            const fullW = cols_full > 0 ? (cols_full - 1) * d + sw : 0;
-            const stagW =
-                cols_staggered > 0 && rows > 1 ? (cols_staggered - 1) * d + r + sw / 2 : 0;
-            const contentW = Math.max(fullW, stagW);
-            const fCW = orientation === 'vertical' ? contentW : contentH;
-            const fCH = orientation === 'vertical' ? contentH : contentW;
+        if (type === 'hexagonal' && Array.isArray(rowPlan) && rowPlan.length > 0) {
+            // Vẽ theo rowPlan — vị trí THẬT của từng hàng do engine tính. Nhờ vậy
+            // vẽ được mọi kiểu trộn (vài hàng thẳng, vài hàng so le), không còn
+            // bó buộc vào 2 mẫu xen kẽ cứng như trước.
+            //
+            // rowPlan nằm trong hệ toạ độ của engine; `swapped` = engine tính
+            // trên vùng in đã xoay 90° → phải hoán đổi x/y khi vẽ.
+            const pitchX = (itemW + gap) * scale;
+            const lastRow = rowPlan[rowPlan.length - 1];
+            const contentH = lastRow.y * scale + sh;
+            const contentW =
+                rowPlan.reduce(
+                    (m, r) =>
+                        Math.max(m, r.offsetX * scale + (r.cols > 0 ? (r.cols - 1) * pitchX : 0)),
+                    0
+                ) + sw;
+
+            const fCW = swapped ? contentH : contentW;
+            const fCH = swapped ? contentW : contentH;
             const offX = paLeft + (paW - fCW) / 2;
             const offY = paTop + (paH - fCH) / 2;
+            // Con tem cũng xoay theo khi hệ toạ độ bị hoán đổi.
+            const dw = swapped ? sh : sw;
+            const dh = swapped ? sw : sh;
 
             let idx = 0;
-            for (let i = 0; i < rows; i++) {
-                const isStaggered =
-                    (pattern === 'full_first' && i % 2 !== 0) ||
-                    (pattern === 'staggered_first' && i % 2 === 0);
-                const numCols = isStaggered ? cols_staggered : cols_full;
-                for (let j = 0; j < numCols; j++) {
+            for (const row of rowPlan) {
+                for (let j = 0; j < row.cols; j++) {
                     idx++;
-                    const xOff = isStaggered ? r : 0;
-                    const cx = j * d + sw / 2 + xOff;
-                    const cy = i * vertSpacing + sw / 2;
-                    const drawX = orientation === 'vertical' ? cx : cy;
-                    const drawY = orientation === 'vertical' ? cy : cx;
+                    const cx = row.offsetX * scale + j * pitchX + sw / 2;
+                    const cy = row.y * scale + sh / 2;
+                    const drawX = swapped ? cy : cx;
+                    const drawY = swapped ? cx : cy;
                     items.push(
                         <div
                             key={idx}
                             style={{
                                 position: 'absolute',
-                                left: offX + drawX - sw / 2,
-                                top: offY + drawY - sh / 2,
-                                width: sw,
-                                height: sh,
+                                left: offX + drawX - dw / 2,
+                                top: offY + drawY - dh / 2,
+                                width: dw,
+                                height: dh,
                                 borderRadius: '50%',
                                 background: 'rgba(59,130,246,0.5)',
                                 border: '1px solid rgba(96,165,250,0.8)',
@@ -143,6 +151,8 @@ function LayoutVisualizationContent({ result, params }) {
         gap,
         shape,
         orientation,
+        rowPlan,
+        swapped,
         paLeft,
         paTop,
         paW,
@@ -548,7 +558,7 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
     );
 }
 
-export default function DecalResultPanel({ result, params, config, isCalculating }) {
+export default function DecalResultPanel({ result, params, config, isCalculating, onChange }) {
     if (!result || !result.machines || result.machines.length === 0) {
         return (
             <div className="h-full min-h-[400px]">
@@ -595,6 +605,15 @@ export default function DecalResultPanel({ result, params, config, isCalculating
                 </div>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <div className="mb-4 max-w-xs">
+                    <LaminationFilmSelect
+                        id="laminationFilm"
+                        label="Loại màng (cho các dòng CÓ cán màng)"
+                        films={config?.laminationFilms}
+                        value={params?.laminationFilm}
+                        onChange={onChange}
+                    />
+                </div>
                 <ComparisonPriceTable
                     machines={result.machines}
                     mode={result.mode}

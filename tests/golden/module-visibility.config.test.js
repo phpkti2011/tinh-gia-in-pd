@@ -3,6 +3,7 @@ import {
     MODULE_VISIBILITY_DEFAULT_CONFIG,
     MODULE_VISIBILITY_DEFAULT_LABELS,
     LABEL_MAX_LEN,
+    LABEL_FIELDS,
     validateModuleVisibilityConfig,
     mergeModuleLabels,
 } from '../../src/config/moduleVisibilityConfig';
@@ -48,11 +49,11 @@ describe('Module visibility config', () => {
 });
 
 describe('Module labels (tên module admin sửa được)', () => {
-    it('default có đủ 10 module × 3 field, đều là chuỗi không rỗng', () => {
+    it('default có đủ 10 module × 2 field, đều là chuỗi không rỗng', () => {
         expect(Object.keys(MODULE_VISIBILITY_DEFAULT_LABELS)).toEqual(MODULE_IDS);
         for (const id of MODULE_IDS) {
             const entry = MODULE_VISIBILITY_DEFAULT_LABELS[id];
-            for (const f of ['title', 'desc', 'heading']) {
+            for (const f of ['title', 'desc']) {
                 expect(typeof entry[f]).toBe('string');
                 expect(entry[f].trim().length).toBeGreaterThan(0);
             }
@@ -70,11 +71,21 @@ describe('Module labels (tên module admin sửa được)', () => {
         }
     });
 
-    it('heading KHÁC title ở những module vốn có tiêu đề riêng', () => {
-        // Nếu ai đó "dọn dẹp" bằng cách suy heading từ title thì test này đỏ.
-        expect(MODULE_VISIBILITY_DEFAULT_LABELS.decal.title).toBe('Tính Giá Decal');
-        expect(MODULE_VISIBILITY_DEFAULT_LABELS.decal.heading).toBe('Tính Giá In Decal');
-        expect(MODULE_VISIBILITY_DEFAULT_LABELS.uvdtf.heading).toBe('Tính Giá In UV DTF');
+    // 1.2.0 — ĐẢO NGƯỢC yêu cầu cũ. Trước đây ở đây có test bắt `heading` phải
+    // KHÁC `title`, kèm lời dặn "đừng suy heading từ title". Thực tế dùng cho thấy
+    // tách 2 field là sai: admin đổi tên tile mà tiêu đề bên trong không đi theo,
+    // hai chỗ lệch nhau vĩnh viễn. Giờ chỉ còn MỘT nguồn tên duy nhất.
+    it('KHÔNG còn field heading — tile và tiêu đề trong module dùng chung title', () => {
+        expect(LABEL_FIELDS).toEqual(['title', 'desc']);
+        for (const id of MODULE_IDS) {
+            expect(MODULE_VISIBILITY_DEFAULT_LABELS[id].heading, id).toBeUndefined();
+        }
+    });
+
+    it('tên mặc định lấy theo bản dài (tiêu đề cũ)', () => {
+        expect(MODULE_VISIBILITY_DEFAULT_LABELS.decal.title).toBe('Tính Giá In Decal');
+        expect(MODULE_VISIBILITY_DEFAULT_LABELS.uvdtf.title).toBe('Tính Giá In UV DTF');
+        expect(MODULE_VISIBILITY_DEFAULT_LABELS.large.title).toBe('In Khổ Lớn — Tư Vấn & Tính Giá');
     });
 
     it('thiếu MODULE_LABELS vẫn valid (config lưu trước 1.1.0)', () => {
@@ -130,15 +141,14 @@ describe('mergeModuleLabels', () => {
         expect(Object.keys(merged)).toEqual(MODULE_IDS);
         expect(merged.small.title).toBe('In Tem');
         // Các field không sửa vẫn lấy từ default.
-        expect(merged.small.heading).toBe(MODULE_VISIBILITY_DEFAULT_LABELS.small.heading);
+        expect(merged.small.desc).toBe(MODULE_VISIBILITY_DEFAULT_LABELS.small.desc);
         expect(merged.cheapdecal).toEqual(MODULE_VISIBILITY_DEFAULT_LABELS.cheapdecal);
     });
 
     it('chuỗi rỗng / toàn khoảng trắng bị bỏ qua, quay về default', () => {
-        const merged = mergeModuleLabels({ small: { title: '', desc: '   ', heading: 'Mới' } });
+        const merged = mergeModuleLabels({ small: { title: '', desc: '   ' } });
         expect(merged.small.title).toBe(MODULE_VISIBILITY_DEFAULT_LABELS.small.title);
         expect(merged.small.desc).toBe(MODULE_VISIBILITY_DEFAULT_LABELS.small.desc);
-        expect(merged.small.heading).toBe('Mới');
     });
 
     it('trim giá trị lưu', () => {
@@ -147,7 +157,9 @@ describe('mergeModuleLabels', () => {
 
     it('không mutate default', () => {
         mergeModuleLabels({ small: { title: 'Đổi' } });
-        expect(MODULE_VISIBILITY_DEFAULT_LABELS.small.title).toBe('In KTS Khổ Nhỏ');
+        expect(MODULE_VISIBILITY_DEFAULT_LABELS.small.title).toBe(
+            'In KTS Khổ Nhỏ — Tính Giá & Báo Giá'
+        );
     });
 
     it('payload rác (mảng / null / entry sai kiểu) không làm vỡ', () => {

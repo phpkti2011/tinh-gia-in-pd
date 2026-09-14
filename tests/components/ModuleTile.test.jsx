@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 //
-// Admin đổi tên module ngay trên tile trang chủ (title / desc / heading).
+// Admin đổi tên module ngay trên tile trang chủ (title / desc).
+// 1.2.0: bỏ ô "Tiêu đề trong trang" — tiêu đề <h1> bên trong module giờ dùng
+// chung `title`, nên hai chỗ không thể lệch nhau nữa.
 //
 // Ràng buộc quan trọng được chốt ở đây:
 //   - Nút ✎ chỉ hiện với admin.
@@ -26,7 +28,6 @@ const MOD = {
 const LABEL = {
     title: 'In KTS Khổ Nhỏ',
     desc: 'In laser kỹ thuật số...',
-    heading: 'In KTS Khổ Nhỏ — Tính Giá & Báo Giá',
 };
 
 function setup(overrides = {}) {
@@ -68,12 +69,14 @@ describe('ModuleTile — chế độ xem', () => {
 });
 
 describe('ModuleTile — chế độ sửa', () => {
-    it('bấm ✎ mở 3 ô, đổ sẵn giá trị hiện tại', () => {
+    it('bấm ✎ mở ĐÚNG 2 ô, đổ sẵn giá trị hiện tại', () => {
         setup();
         fireEvent.click(editButton());
         expect(field('Tên module').value).toBe(LABEL.title);
         expect(field('Mô tả ngắn').value).toBe(LABEL.desc);
-        expect(field('Tiêu đề trong trang').value).toBe(LABEL.heading);
+        // Ô "Tiêu đề trong trang" đã bỏ — tiêu đề bên trong dùng chung tên tile.
+        expect(screen.queryByText('Tiêu đề trong trang')).toBeNull();
+        expect(document.querySelectorAll('input, textarea')).toHaveLength(2);
     });
 
     it('không render <button> tile khi đang sửa (tránh <input> lồng trong <button>)', () => {
@@ -87,18 +90,16 @@ describe('ModuleTile — chế độ sửa', () => {
         expect(onSelect).not.toHaveBeenCalled();
     });
 
-    it('Lưu gửi patch đã trim cho cả 3 field', () => {
+    it('Lưu gửi patch đã trim cho cả 2 field', () => {
         const { onSaveLabel } = setup();
         fireEvent.click(editButton());
         fireEvent.change(field('Tên module'), { target: { value: '  In Tem  ' } });
         fireEvent.change(field('Mô tả ngắn'), { target: { value: ' Mô tả mới ' } });
-        fireEvent.change(field('Tiêu đề trong trang'), { target: { value: ' Báo Giá In Tem ' } });
         fireEvent.click(screen.getByText('✓ Lưu'));
 
         expect(onSaveLabel).toHaveBeenCalledWith('small', {
             title: 'In Tem',
             desc: 'Mô tả mới',
-            heading: 'Báo Giá In Tem',
         });
     });
 
@@ -107,7 +108,6 @@ describe('ModuleTile — chế độ sửa', () => {
         fireEvent.click(editButton());
         fireEvent.change(field('Tên module'), { target: { value: 'In Tem' } });
         fireEvent.change(field('Mô tả ngắn'), { target: { value: '   ' } });
-        fireEvent.change(field('Tiêu đề trong trang'), { target: { value: '' } });
         fireEvent.click(screen.getByText('✓ Lưu'));
 
         expect(onSaveLabel).toHaveBeenCalledWith('small', { title: 'In Tem' });

@@ -1,5 +1,6 @@
 // React 18+ auto JSX transform — không cần import React.
 import NumberField from '../common/NumberField';
+import LaminationFilmSelect from '../common/LaminationFilmSelect';
 
 const SIZE_PRESETS = [
     { label: 'A4', w: 210, h: 297 },
@@ -214,6 +215,26 @@ export default function CatalogueInputPanel({ config, params, onChange }) {
                         <option value="all">Cán toàn bộ (bìa + ruột)</option>
                     </select>
                 </div>
+                {params.laminationMode !== 'none' && (
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <LaminationFilmSelect
+                            id="coverLamFilm"
+                            label="Loại màng bìa"
+                            films={config.LAMINATION_FILMS}
+                            value={params.coverLamFilm}
+                            onChange={onChange}
+                        />
+                        {params.laminationMode === 'all' && (
+                            <LaminationFilmSelect
+                                id="innerLamFilm"
+                                label="Loại màng ruột"
+                                films={config.LAMINATION_FILMS}
+                                value={params.innerLamFilm}
+                                onChange={onChange}
+                            />
+                        )}
+                    </div>
+                )}
                 <div>
                     <label htmlFor="printColorMode">Chế độ màu</label>
                     <select

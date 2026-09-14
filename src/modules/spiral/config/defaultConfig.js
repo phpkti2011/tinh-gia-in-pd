@@ -20,6 +20,13 @@ const COIL_RANGES = [
 const zeroTiers = () => COIL_RANGES.map(([min, max]) => ({ min, max, price: 0, type: 'per_book' }));
 
 export const SPIRAL_DEFAULT_CONFIG = {
+    // Loại màng cán — admin sửa được, chọn RIÊNG cho bìa và ruột.
+    // Mờ/Bóng 0% ⇒ không đổi giá. Đặt TOP-LEVEL để merge backward-compat
+    // (merge chỉ 1 cấp) không nuốt mất; App.jsx phải forward vào engineConfig.
+    LAMINATION_FILMS: [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'bong', name: 'Bóng', percent: 0 },
+    ],
     // Đóng lò xo (coil binding).
     SPIRAL_CONFIG: {
         costPerBook: 800, // giá vốn lò xo / cuốn (phẳng)

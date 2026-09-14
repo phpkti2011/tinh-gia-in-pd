@@ -10,6 +10,7 @@
 // Pure functions: chỉ phụ thuộc input + config object.
 
 import { findPrintSheet } from './layout.js';
+import { filmMultiplier } from '../../../utils/laminationFilm.js';
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -76,14 +77,18 @@ export function calculateSingleStickerPrice(
     stickersPerSheet,
     sheetW,
     sheetH,
-    config
+    config,
+    filmId = ''
 ) {
     if (stickersPerSheet <= 0) return 0;
     const sheets = Math.ceil(quantity / stickersPerSheet);
 
     const printCost = calculateProgressivePrice(sheets, config);
     const materialCost = (config.decalCosts[decalType] || 0) * sheets;
-    const lamCost = isLaminated ? config.laminationCost * sheets : 0;
+    // Loại màng nhân vào tiền cán. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    const lamCost = isLaminated
+        ? config.laminationCost * sheets * filmMultiplier(config.laminationFilms, filmId)
+        : 0;
 
     const percent = getSizePercent(config, sheetW, sheetH);
     return (printCost + materialCost + lamCost) * (1 + percent / 100);
@@ -98,14 +103,17 @@ export function calculateSheetPrice(
     stickersOnSheet,
     sheetW,
     sheetH,
-    config
+    config,
+    filmId = ''
 ) {
     if (sheetsPerPrintSheet <= 0) return 0;
     const numPrintSheets = Math.ceil(quantity / sheetsPerPrintSheet);
 
     const printCost = calculateProgressivePrice(numPrintSheets, config);
     const materialCost = (config.decalCosts[decalType] || 0) * numPrintSheets;
-    const lamCost = isLaminated ? config.laminationCost * numPrintSheets : 0;
+    const lamCost = isLaminated
+        ? config.laminationCost * numPrintSheets * filmMultiplier(config.laminationFilms, filmId)
+        : 0;
 
     const percent = getSizePercent(config, sheetW, sheetH);
     const sheetPrice = (printCost + materialCost + lamCost) * (1 + percent / 100);

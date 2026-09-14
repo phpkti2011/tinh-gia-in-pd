@@ -19,7 +19,8 @@ export function generateSinglePriceTable(
     sheetW,
     sheetH,
     config,
-    customQuantity
+    customQuantity,
+    filmId = ''
 ) {
     const decalsToDisplay = filterAvailable(
         decalType === 'Decal giấy' || decalType === 'Decal nhựa'
@@ -45,7 +46,8 @@ export function generateSinglePriceTable(
                     stickersPerSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
                 isCustom: true,
             });
@@ -60,7 +62,8 @@ export function generateSinglePriceTable(
                     stickersPerSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
                 isCustom: true,
             });
@@ -80,7 +83,8 @@ export function generateSinglePriceTable(
                     stickersPerSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
             });
             rows.push({
@@ -94,7 +98,8 @@ export function generateSinglePriceTable(
                     stickersPerSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
             });
         }
@@ -110,7 +115,8 @@ export function generateSheetPriceTable(
     sheetW,
     sheetH,
     config,
-    customQuantity
+    customQuantity,
+    filmId = ''
 ) {
     const decalsToDisplay = filterAvailable(
         decalType === 'Decal giấy' || decalType === 'Decal nhựa'
@@ -137,7 +143,8 @@ export function generateSheetPriceTable(
                     stickersOnSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
                 isCustom: true,
             });
@@ -153,7 +160,8 @@ export function generateSheetPriceTable(
                     stickersOnSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
                 isCustom: true,
             });
@@ -174,7 +182,8 @@ export function generateSheetPriceTable(
                     stickersOnSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
             });
             rows.push({
@@ -189,7 +198,8 @@ export function generateSheetPriceTable(
                     stickersOnSheet,
                     sheetW,
                     sheetH,
-                    config
+                    config,
+                    filmId
                 ),
             });
         }

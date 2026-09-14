@@ -1,5 +1,6 @@
 // React 18+ auto JSX transform — không cần import React.
 import NumberField from '../common/NumberField';
+import LaminationFilmSelect from '../common/LaminationFilmSelect';
 
 const SIZE_PRESETS = [
     { label: 'A4', w: 210, h: 297 },
@@ -218,6 +219,26 @@ export default function SpiralInputPanel({ config, params, onChange }) {
                             <option value="2">Cán 2 mặt</option>
                         </select>
                     </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    {params.coverLam !== '0' && (
+                        <LaminationFilmSelect
+                            id="coverLamFilm"
+                            label="Loại màng bìa"
+                            films={config.LAMINATION_FILMS}
+                            value={params.coverLamFilm}
+                            onChange={onChange}
+                        />
+                    )}
+                    {params.innerLam !== '0' && (
+                        <LaminationFilmSelect
+                            id="innerLamFilm"
+                            label="Loại màng ruột"
+                            films={config.LAMINATION_FILMS}
+                            value={params.innerLamFilm}
+                            onChange={onChange}
+                        />
+                    )}
                 </div>
                 <div className="mb-4">
                     <label htmlFor="linerType">Bìa lót ngoài (trước bìa)</label>

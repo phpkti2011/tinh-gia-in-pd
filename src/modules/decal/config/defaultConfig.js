@@ -16,6 +16,11 @@ export const DECAL_DEFAULT_CONFIG = {
     marginLongSide: 50,
     stickerGap: 2,
     laminationCost: 500,
+    // Loại màng cán — admin thêm/sửa được. Mờ/Bóng 0% ⇒ không đổi giá.
+    laminationFilms: [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'bong', name: 'Bóng', percent: 0 },
+    ],
     // Máy bế — mỗi máy có vùng bế (lề) riêng 4 cạnh (trên/dưới/trái/phải, mm) → số tem/tờ khác →
     // số tờ & giá khác. Avitech vùng bế rộng hơn Graptech → lề NHỎ hơn → nhiều tem/tờ hơn.
     // Số mẫu (tách đôi tổng lề cũ) — admin chỉnh số thật từng cạnh trong Cài đặt.

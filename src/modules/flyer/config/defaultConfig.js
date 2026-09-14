@@ -76,6 +76,12 @@ export const FLYER_DEFAULT_CONFIG = {
             { id: 'none', name: 'Không cán màng' },
             { id: 'yes', name: 'Có cán màng' },
         ],
+        // Loại màng cán — admin thêm/sửa được. Mờ/Bóng phụ thu 0% ⇒ không đổi giá.
+        // Xem src/utils/laminationFilm.js.
+        laminationFilms: [
+            { id: 'mo', name: 'Mờ', percent: 0 },
+            { id: 'bong', name: 'Bóng', percent: 0 },
+        ],
         creasingOptions: [
             { id: 'none', name: 'Không cấn' },
             { id: '1-2', name: 'Cấn 1-2 đường' },
