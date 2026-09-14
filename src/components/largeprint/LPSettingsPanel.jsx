@@ -3,6 +3,8 @@ import { saveLargePrintConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 import { LARGE_PRINT_FINISHING_OPS } from '../../modules/large-print/config/finishingOps';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -56,47 +58,19 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
         restoreInfinity(JSON.parse(JSON.stringify(config)))
     );
 
-    // null | 'saving' | 'cloud' | 'local' | 'error' — theo mẫu HomePage ở App.jsx.
-    // Phân biệt "đã lên đám mây" (mọi máy nhận được) với "mới nằm trên máy này".
-    const [saveStatus, setSaveStatus] = useState(null);
-    const [saveError, setSaveError] = useState(null);
-
-    const handleSave = async () => {
-        setSaveError(null);
-        try {
-            // TASK-0017: saveLargePrintConfig giờ trả false nếu config fail
-            // schema validation. Không gọi onSave (tránh update React state
-            // với config xấu) và hiển thị lỗi cho admin.
-            const ok = saveLargePrintConfig(localConfig);
-            if (!ok) {
-                setSaveStatus('error');
-                setSaveError('Cấu hình không hợp lệ. Mở Console để xem chi tiết lỗi.');
-                return;
-            }
-            setSaveStatus('saving');
-            // Supabase là đường DUY NHẤT đưa cài đặt sang máy người khác. Trước đây
-            // panel báo "Đã lưu" ngay sau khi ghi localStorage rồi bỏ mặc promise
-            // cloud → lưu hỏng trong im lặng, cả xưởng vẫn dùng bảng giá cũ.
-            const res = await onSave(localConfig);
-            if (res?.error || res?.local === false) {
-                setSaveStatus('error');
-                setSaveError(res?.error || 'Không lưu được');
-                return;
-            }
-            if (res?.cloud) {
-                setSaveStatus('cloud');
-                onSaved?.();
-                return;
-            }
-            // Ghi được máy này nhưng chưa lên đám mây → ở lại tab để admin thấy
-            // cảnh báo và Lưu lại, thay vì tưởng đã xong.
-            setSaveStatus('local');
-        } catch (e) {
-            console.error(e);
-            setSaveStatus('error');
-            setSaveError(e?.message || 'Lỗi lưu cấu hình');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveLargePrintConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cấu hình không hợp lệ. Mở Console để xem chi tiết lỗi.',
+    });
+    const handleSave = () => save(localConfig);
 
     // --- Deep update helpers ---
     const updateConfig = (updater) => {
@@ -269,25 +243,9 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
     const printTiers = localConfig.PRINT_DISCOUNT_TIERS || [];
     const stdSizes = localConfig.STANDARD_SIZES || [];
     const fin = localConfig.FINISHING_PRICES;
-    const saving = saveStatus === 'saving';
 
-    // Băng trạng thái lưu — dùng ở cả header và footer.
     const saveBanner = (
-        <p className="text-xs mt-2" data-testid="lp-save-status">
-            {saveStatus === 'saving' && <span className="text-gray-400">Đang lưu…</span>}
-            {saveStatus === 'cloud' && (
-                <span className="text-emerald-400">✓ Đã lưu — mọi máy sẽ nhận cài đặt mới</span>
-            )}
-            {saveStatus === 'local' && (
-                <span className="text-yellow-400">
-                    ⚠ Mới lưu trên máy này, các máy khác CHƯA nhận. Kiểm tra mạng / đăng nhập lại
-                    rồi bấm Lưu lần nữa.
-                </span>
-            )}
-            {saveStatus === 'error' && (
-                <span className="text-red-400">✗ Không lưu được: {saveError}</span>
-            )}
-        </p>
+        <SaveStatusBanner status={saveStatus} error={saveError} className="block mt-2" />
     );
 
     return (

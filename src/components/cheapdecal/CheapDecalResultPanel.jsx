@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 
 function Row({ label, value, strong }) {
@@ -115,6 +117,9 @@ export default function CheapDecalResultPanel({ result, config, isCalculating })
                     <span className="px-2 py-1 rounded bg-gray-700 text-gray-200">
                         {materialName}
                     </span>
+                </div>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('cheapdecal', { result })} />
                 </div>
             </div>
 

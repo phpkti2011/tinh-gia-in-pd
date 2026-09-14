@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveCardConfig } from '../../utils/configStorage';
 
 // NumInput: nullable=true cho phép để trống → commit null (ô giá thẻ gỗ 4.000–4.999).
@@ -51,7 +53,7 @@ const inputCls =
 const cellCls =
     'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-24 text-right focus:outline-none focus:border-indigo-500';
 
-export default function CardSettingsPanel({ config, onSave, onCancel }) {
+export default function CardSettingsPanel({ config, onSave, onSaved, onCancel }) {
     const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
 
     const updateConfig = (updater) => {
@@ -62,20 +64,19 @@ export default function CardSettingsPanel({ config, onSave, onCancel }) {
         });
     };
 
-    const handleSave = () => {
-        try {
-            const ok = saveCardConfig(localConfig);
-            if (!ok) {
-                alert('Cấu hình thẻ nhựa không hợp lệ, không lưu. Mở Console để xem lỗi.');
-                return;
-            }
-            alert('Lưu thành công! Chương trình sẽ tính lại với giá mới.');
-            onSave(localConfig);
-        } catch (e) {
-            console.error(e);
-            alert('Lỗi lưu cấu hình!');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveCardConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cấu hình thẻ nhựa không hợp lệ, không lưu. Mở Console để xem lỗi.',
+    });
+    const handleSave = () => save(localConfig);
 
     const c = localConfig.CARD_CONFIG || {};
     const stdProducts = (c.products || []).filter((p) => p.table === 'standard');
@@ -154,9 +155,15 @@ export default function CardSettingsPanel({ config, onSave, onCancel }) {
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
             <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
                 <h2 className="text-2xl font-bold text-white">⚙ Cài đặt Bảng giá Thẻ Nhựa</h2>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <SaveStatusBanner
+                        status={saveStatus}
+                        error={saveError}
+                        className="max-w-md text-right"
+                    />
                     <button
                         onClick={handleSave}
+                        disabled={saving}
                         className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium"
                     >
                         Lưu

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveSpiralConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 
@@ -62,7 +64,7 @@ const numCls =
     'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-24 focus:outline-none focus:border-blue-500';
 const btnCls = 'px-3 py-1 rounded text-sm font-medium';
 
-export default function SpiralSettingsPanel({ config, onSave, onCancel }) {
+export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel }) {
     const [localConfig, setLocalConfig] = useState(() =>
         restoreInfinity(JSON.parse(JSON.stringify(config)))
     );
@@ -75,20 +77,19 @@ export default function SpiralSettingsPanel({ config, onSave, onCancel }) {
         });
     };
 
-    const handleSave = () => {
-        try {
-            const ok = saveSpiralConfig(localConfig);
-            if (!ok) {
-                alert('Cấu hình sổ lò xo không hợp lệ, không lưu. Mở Console để xem lỗi.');
-                return;
-            }
-            alert('Lưu thành công! Chương trình sẽ tính lại với giá mới.');
-            onSave(localConfig);
-        } catch (e) {
-            console.error(e);
-            alert('Lỗi lưu cấu hình!');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveSpiralConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cấu hình sổ lò xo không hợp lệ, không lưu. Mở Console để xem lỗi.',
+    });
+    const handleSave = () => save(localConfig);
 
     const s = localConfig.SPIRAL_CONFIG || {};
     const coilTiers = s.coilTiers || [];
@@ -139,9 +140,15 @@ export default function SpiralSettingsPanel({ config, onSave, onCancel }) {
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
             <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
                 <h2 className="text-2xl font-bold text-white">⚙ Cài đặt Sổ đóng lò xo</h2>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <SaveStatusBanner
+                        status={saveStatus}
+                        error={saveError}
+                        className="max-w-md text-right"
+                    />
                     <button
                         onClick={handleSave}
+                        disabled={saving}
                         className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
                     >
                         Lưu

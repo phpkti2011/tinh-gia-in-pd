@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveFlyerConfig } from '../../utils/configStorage';
 
 function NumInput({ configValue, onCommit, className, step }) {
@@ -41,7 +43,7 @@ const btnCls = 'px-3 py-1 rounded text-sm font-medium';
 const btnAdd = btnCls + ' bg-green-600 hover:bg-green-700 text-white';
 const btnDel = btnCls + ' bg-red-600 hover:bg-red-700 text-white';
 
-export default function FlyerSettingsPanel({ config, onSave, onCancel }) {
+export default function FlyerSettingsPanel({ config, onSave, onSaved, onCancel }) {
     const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
 
     const updateConfig = (updater) => {
@@ -52,19 +54,19 @@ export default function FlyerSettingsPanel({ config, onSave, onCancel }) {
         });
     };
 
-    const handleSave = () => {
-        try {
-            if (!saveFlyerConfig(localConfig)) {
-                alert('Cấu hình tờ rơi không hợp lệ, không lưu. Mở Console để xem lỗi.');
-                return;
-            }
-            alert('Lưu thành công! Chương trình sẽ tính lại với giá mới.');
-            onSave(localConfig);
-        } catch (e) {
-            console.error(e);
-            alert('Lỗi lưu cấu hình!');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveFlyerConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cấu hình tờ rơi không hợp lệ, không lưu. Mở Console để xem lỗi.',
+    });
+    const handleSave = () => save(localConfig);
 
     const c = localConfig.FLYER_CONFIG || {};
     const sizeIds = (c.sizes || []).map((s) => s.id);
@@ -133,9 +135,15 @@ export default function FlyerSettingsPanel({ config, onSave, onCancel }) {
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
             <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
                 <h2 className="text-2xl font-bold text-white">⚙ Cài đặt Bảng giá Tờ Rơi</h2>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <SaveStatusBanner
+                        status={saveStatus}
+                        error={saveError}
+                        className="max-w-md text-right"
+                    />
                     <button
                         onClick={handleSave}
+                        disabled={saving}
                         className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded font-medium"
                     >
                         Lưu

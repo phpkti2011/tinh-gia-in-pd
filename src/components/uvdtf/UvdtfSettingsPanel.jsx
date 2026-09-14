@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveUvdtfConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
@@ -47,7 +49,7 @@ const tdCls = 'px-3 py-2';
 const numCls =
     'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-28 focus:outline-none focus:border-blue-500';
 
-export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
+export default function UvdtfSettingsPanel({ config, onSave, onSaved, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
     // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
     // key upper-bound (maxMeters, ...) để schema validation không fail khi save.
@@ -55,23 +57,19 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
         restoreInfinity(JSON.parse(JSON.stringify(config)))
     );
 
-    const handleSave = () => {
-        try {
-            // TASK-0013: saveUvdtfConfig giờ trả false nếu config fail schema
-            // validation. Không gọi onSave (tránh update React state với config
-            // xấu) và hiển thị lỗi cho admin.
-            const ok = saveUvdtfConfig(localConfig);
-            if (!ok) {
-                alert('Cau hinh UV DTF khong hop le, khong luu. Mo Console de xem chi tiet loi.');
-                return;
-            }
-            alert('Luu thanh cong! Chuong trinh se tinh toan lai voi gia moi.');
-            onSave(localConfig);
-        } catch (e) {
-            console.error(e);
-            alert('Loi luu cau hinh!');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveUvdtfConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cau hinh UV DTF khong hop le, khong luu. Mo Console de xem chi tiet loi.',
+    });
+    const handleSave = () => save(localConfig);
 
     const updateConfig = (updater) => {
         setLocalConfig((prev) => {
@@ -104,9 +102,15 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
             {/* Header */}
             <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
                 <h2 className="text-2xl font-bold text-white">⚙ Cai dat UV DTF</h2>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <SaveStatusBanner
+                        status={saveStatus}
+                        error={saveError}
+                        className="max-w-md text-right"
+                    />
                     <button
                         onClick={handleSave}
+                        disabled={saving}
                         className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
                     >
                         Luu
@@ -255,6 +259,7 @@ export default function UvdtfSettingsPanel({ config, onSave, onCancel }) {
             <div className="flex justify-end gap-3 mt-6 border-t border-gray-700 pt-4">
                 <button
                     onClick={handleSave}
+                    disabled={saving}
                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
                 >
                     Luu cai dat

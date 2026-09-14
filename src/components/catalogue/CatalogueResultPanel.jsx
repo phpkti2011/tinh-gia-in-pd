@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
 
@@ -29,9 +31,7 @@ function SectionCard({ title, section }) {
                 </div>
                 <div className="flex justify-between">
                     <span className="text-gray-400">Tổng số tờ in</span>
-                    <span className="text-gray-100">
-                        {section.sheets.toLocaleString('vi-VN')}
-                    </span>
+                    <span className="text-gray-100">{section.sheets.toLocaleString('vi-VN')}</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-gray-400">Trang A4</span>
@@ -42,7 +42,7 @@ function SectionCard({ title, section }) {
     );
 }
 
-export default function CatalogueResultPanel({ result, config: _config, isCalculating }) {
+export default function CatalogueResultPanel({ result, params, config: _config, isCalculating }) {
     const { user } = useAuth();
     const { isAdmin } = useUserRole(user);
 
@@ -100,7 +100,10 @@ export default function CatalogueResultPanel({ result, config: _config, isCalcul
     } = result;
 
     return (
-        <div className="transition-opacity duration-300" style={{ opacity: isCalculating ? 0.5 : 1 }}>
+        <div
+            className="transition-opacity duration-300"
+            style={{ opacity: isCalculating ? 0.5 : 1 }}
+        >
             {/* Tổng + đơn giá/cuốn */}
             <div className="bg-gray-800 p-6 rounded-lg border-2 border-dashed border-yellow-500 mb-6 text-center">
                 <p className="text-sm text-gray-400 mb-1">Tổng báo giá khách (đã gồm bấm kim)</p>
@@ -108,6 +111,9 @@ export default function CatalogueResultPanel({ result, config: _config, isCalcul
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá: <span className="font-bold">{fmt(unitPerBook)}</span> / cuốn
                 </p>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('catalogue', { params, result })} />
+                </div>
                 {isAdmin && (
                     <p className="mt-1 text-sm text-cyan-300">
                         Giá vốn: <span className="font-semibold">{fmt(giaVon)}</span>
@@ -145,7 +151,11 @@ export default function CatalogueResultPanel({ result, config: _config, isCalcul
                         value={`${pressSheetSize} cm · ${productsPerSheet} sp/tờ`}
                     />
                     <Row label="Tổng số tờ gấp / cuốn" value={signaturesPerBook} />
-                    <Row label="Tổng số tờ in" value={totalPrintSheets.toLocaleString('vi-VN')} strong />
+                    <Row
+                        label="Tổng số tờ in"
+                        value={totalPrintSheets.toLocaleString('vi-VN')}
+                        strong
+                    />
                     <Row
                         label="Số trang A4 quy đổi (gộp)"
                         value={`${totalA4Pages.toLocaleString('vi-VN')} (bìa ${coverA4.toLocaleString('vi-VN')} + ruột ${innerA4.toLocaleString('vi-VN')})`}

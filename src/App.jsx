@@ -538,11 +538,13 @@ function SmallPrintModule({ onBack, heading }) {
                 <AdminGate>
                     <SettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('printConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('printConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -940,11 +942,13 @@ function DecalModule({ onBack, heading }) {
                 <AdminGate>
                     <DecalSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('decalConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('decalConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1040,11 +1044,13 @@ function UvdtfModule({ onBack, heading }) {
                 <AdminGate>
                     <UvdtfSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('uvdtfConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('uvdtfConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1161,6 +1167,7 @@ function CatalogueModule({ onBack, heading }) {
                     <div className="lg:col-span-2">
                         <CatalogueResultPanel
                             result={result}
+                            params={params}
                             config={engineConfig}
                             isCalculating={isCalculating}
                         />
@@ -1171,11 +1178,13 @@ function CatalogueModule({ onBack, heading }) {
                 <AdminGate>
                     <CatalogueSettingsPanel
                         config={catalogueConfig}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setCatalogueConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('catalogueConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('catalogueConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1295,6 +1304,7 @@ function SpiralModule({ onBack, heading }) {
                     <div className="lg:col-span-2">
                         <SpiralResultPanel
                             result={result}
+                            params={params}
                             config={engineConfig}
                             isCalculating={isCalculating}
                         />
@@ -1305,11 +1315,13 @@ function SpiralModule({ onBack, heading }) {
                 <AdminGate>
                     <SpiralSettingsPanel
                         config={spiralConfig}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setSpiralConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('spiralConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('spiralConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1420,11 +1432,13 @@ function StickerModule({ onBack, heading }) {
                 <AdminGate>
                     <StickerSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('stickerConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('stickerConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1529,11 +1543,13 @@ function CardModule({ onBack, heading }) {
                 <AdminGate>
                     <CardSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('cardConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('cardConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1641,11 +1657,13 @@ function FlyerModule({ onBack, heading }) {
                 <AdminGate>
                     <FlyerSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('flyerConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('flyerConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>
@@ -1756,11 +1774,13 @@ function CheapDecalModule({ onBack, heading }) {
                 <AdminGate>
                     <CheapDecalSettingsPanel
                         config={config}
-                        onSave={(newConfig) => {
+                        onSave={async (newConfig) => {
                             setConfig(newConfig);
-                            setActiveTab('main');
-                            saveConfigToCloud('cheapDecalConfig', newConfig);
+                            // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
+                            // được máy người khác. Panel tự quyết có rời tab không.
+                            return await saveConfigToCloud('cheapDecalConfig', newConfig);
                         }}
+                        onSaved={() => setActiveTab('main')}
                         onCancel={() => setActiveTab('main')}
                     />
                 </AdminGate>

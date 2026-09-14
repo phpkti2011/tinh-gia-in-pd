@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 import { useMemo } from 'react';
 
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
@@ -130,7 +132,7 @@ function MeterVisualization({ result, config }) {
     );
 }
 
-export default function UvdtfResultPanel({ result, params: _params, config, isCalculating }) {
+export default function UvdtfResultPanel({ result, params, config, isCalculating }) {
     if (!result) {
         return (
             <div className="h-full min-h-[400px]">
@@ -185,6 +187,9 @@ export default function UvdtfResultPanel({ result, params: _params, config, isCa
                             {rotated ? 'Xoay' : 'Không xoay'}
                         </p>
                     </div>
+                </div>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('uvdtf', { params, result })} />
                 </div>
             </div>
 

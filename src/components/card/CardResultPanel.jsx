@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 
 function Row({ label, value, strong }) {
@@ -105,6 +107,9 @@ export default function CardResultPanel({ result, config, isCalculating }) {
                 <p className="mt-2 text-lg text-yellow-200">
                     Tổng tiền: <span className="font-bold">{fmt(result.total)}</span>
                 </p>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('card', { result })} />
+                </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">

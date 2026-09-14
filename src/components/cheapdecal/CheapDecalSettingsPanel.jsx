@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveCheapDecalConfig } from '../../utils/configStorage';
 
 function NumInput({ configValue, onCommit, className, step }) {
@@ -49,7 +51,7 @@ const cellCls =
 const nameCls =
     'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-24 focus:outline-none focus:border-rose-500';
 
-export default function CheapDecalSettingsPanel({ config, onSave, onCancel }) {
+export default function CheapDecalSettingsPanel({ config, onSave, onSaved, onCancel }) {
     const [localConfig, setLocalConfig] = useState(() => JSON.parse(JSON.stringify(config)));
 
     const updateConfig = (updater) => {
@@ -60,19 +62,19 @@ export default function CheapDecalSettingsPanel({ config, onSave, onCancel }) {
         });
     };
 
-    const handleSave = () => {
-        try {
-            if (!saveCheapDecalConfig(localConfig)) {
-                alert('Cấu hình decal giá rẻ không hợp lệ, không lưu. Mở Console để xem lỗi.');
-                return;
-            }
-            alert('Lưu thành công! Chương trình sẽ tính lại với giá mới.');
-            onSave(localConfig);
-        } catch (e) {
-            console.error(e);
-            alert('Lỗi lưu cấu hình!');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveCheapDecalConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cấu hình decal giá rẻ không hợp lệ, không lưu. Mở Console để xem lỗi.',
+    });
+    const handleSave = () => save(localConfig);
 
     const c = localConfig.CHEAP_DECAL_CONFIG || {};
     const sizes = c.sizes || [];
@@ -84,9 +86,15 @@ export default function CheapDecalSettingsPanel({ config, onSave, onCancel }) {
                 <h2 className="text-2xl font-bold text-white">
                     ⚙ Cài đặt Bảng giá Decal Nhãn Giá Rẻ
                 </h2>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
+                    <SaveStatusBanner
+                        status={saveStatus}
+                        error={saveError}
+                        className="max-w-md text-right"
+                    />
                     <button
                         onClick={handleSave}
+                        disabled={saving}
                         className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded font-medium"
                     >
                         Lưu

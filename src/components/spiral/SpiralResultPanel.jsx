@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
 
@@ -43,7 +45,7 @@ function SectionCard({ title, section }) {
     );
 }
 
-export default function SpiralResultPanel({ result, config: _config, isCalculating }) {
+export default function SpiralResultPanel({ result, params, config: _config, isCalculating }) {
     const { user } = useAuth();
     const { isAdmin } = useUserRole(user);
 
@@ -105,13 +107,19 @@ export default function SpiralResultPanel({ result, config: _config, isCalculati
     } = result;
 
     return (
-        <div className="transition-opacity duration-300" style={{ opacity: isCalculating ? 0.5 : 1 }}>
+        <div
+            className="transition-opacity duration-300"
+            style={{ opacity: isCalculating ? 0.5 : 1 }}
+        >
             <div className="bg-gray-800 p-6 rounded-lg border-2 border-dashed border-yellow-500 mb-6 text-center">
                 <p className="text-sm text-gray-400 mb-1">Tổng báo giá khách (đã gồm lò xo)</p>
                 <p className="text-4xl font-bold text-yellow-300">{fmt(totalCustomerCost)}</p>
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá: <span className="font-bold">{fmt(unitPerBook)}</span> / cuốn
                 </p>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('spiral', { params, result })} />
+                </div>
                 {isAdmin && (
                     <p className="mt-1 text-sm text-cyan-300">
                         Giá vốn: <span className="font-semibold">{fmt(giaVon)}</span>
@@ -144,7 +152,11 @@ export default function SpiralResultPanel({ result, config: _config, isCalculati
                         value={`${pressSheetSize} cm · ${productsPerSheet} sp/tờ`}
                     />
                     <Row label="Tổng số tờ / cuốn (độ dày)" value={`${totalLeaves} tờ`} />
-                    <Row label="Tổng số tờ in" value={totalPrintSheets.toLocaleString('vi-VN')} strong />
+                    <Row
+                        label="Tổng số tờ in"
+                        value={totalPrintSheets.toLocaleString('vi-VN')}
+                        strong
+                    />
                     <Row
                         label="Số trang A4 quy đổi (gộp)"
                         value={`${totalA4Pages.toLocaleString('vi-VN')} (bìa ${coverA4.toLocaleString('vi-VN')} + ruột ${innerA4.toLocaleString('vi-VN')})`}
@@ -180,7 +192,10 @@ export default function SpiralResultPanel({ result, config: _config, isCalculati
                         value={fmt(coilCustomer)}
                     />
                     {thicknessAdd > 0 && (
-                        <Row label={`— gồm phụ giá độ dày (${totalLeaves} tờ)`} value={fmt(thicknessAdd)} />
+                        <Row
+                            label={`— gồm phụ giá độ dày (${totalLeaves} tờ)`}
+                            value={fmt(thicknessAdd)}
+                        />
                     )}
                     {linerCustomer > 0 && (
                         <Row

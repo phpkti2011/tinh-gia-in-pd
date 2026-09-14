@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 import { useState, useRef, useEffect } from 'react';
 
 const ITEM_COLORS = [
@@ -115,6 +117,9 @@ export default function LPResultPanel({
                     <p className="text-3xl font-bold text-yellow-300 mt-1">
                         {totalCost.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VNĐ
                     </p>
+                </div>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('large-print', { params, result, config })} />
                 </div>
             </div>
 

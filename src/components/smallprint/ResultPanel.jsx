@@ -6,6 +6,8 @@ import {
 } from '../../utils/calculator';
 import { calculateCustomerQuote } from '../../utils/customerQuote';
 import NumberField from '../common/NumberField';
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 import { LargeSheetVisualizer, PrintSheetVisualizer } from './SheetVisualizer';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
@@ -555,6 +557,15 @@ export default function ResultPanel({
                                 <p className="text-4xl font-bold text-yellow-300 mt-2">
                                     {displayQuote.totalCustomerCost.toLocaleString('vi-VN')} VNĐ
                                 </p>
+                                <div className="mt-3 flex justify-center">
+                                    <CopyButton
+                                        text={buildJobSpec('small-print', {
+                                            params,
+                                            result: displayQuote,
+                                            config,
+                                        })}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}

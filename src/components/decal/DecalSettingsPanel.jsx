@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useCloudSave } from '../common/useCloudSave';
+import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveDecalConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
@@ -34,7 +36,7 @@ function NumInput({ configValue, onCommit, className, step }) {
     );
 }
 
-export default function DecalSettingsPanel({ config, onSave, onCancel }) {
+export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
     // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
     // key upper-bound để schema validation không fail khi save.
@@ -42,23 +44,19 @@ export default function DecalSettingsPanel({ config, onSave, onCancel }) {
         restoreInfinity(JSON.parse(JSON.stringify(config)))
     );
 
-    const handleSave = () => {
-        try {
-            // TASK-0005.5: saveDecalConfig giờ trả về false nếu config fail
-            // schema validation. Không gọi onSave (tránh update React state với
-            // config xấu) và hiển thị lỗi cho admin.
-            const ok = saveDecalConfig(localConfig);
-            if (!ok) {
-                alert('Cấu hình decal không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.');
-                return;
-            }
-            alert('Đã lưu cài đặt! Chương trình sẽ tính toán lại với giá mới.');
-            onSave(localConfig);
-        } catch (e) {
-            console.error(e);
-            alert('Lỗi lưu cấu hình!');
-        }
-    };
+    // Chờ kết quả đẩy lên Supabase rồi mới báo — xem useCloudSave.js.
+    const {
+        status: saveStatus,
+        error: saveError,
+        saving,
+        save,
+    } = useCloudSave({
+        saveLocal: saveDecalConfig,
+        onSave,
+        onSaved,
+        invalidMessage: 'Cấu hình decal không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.',
+    });
+    const handleSave = () => save(localConfig);
 
     const updateNestedField = (path, numValue) => {
         setLocalConfig((prev) => {
@@ -166,8 +164,14 @@ export default function DecalSettingsPanel({ config, onSave, onCancel }) {
                     >
                         Huy
                     </button>
+                    <SaveStatusBanner
+                        status={saveStatus}
+                        error={saveError}
+                        className="max-w-md text-right"
+                    />
                     <button
                         onClick={handleSave}
+                        disabled={saving}
                         className="px-6 py-2 rounded font-semibold bg-green-600 hover:bg-green-500 text-white transition shadow-lg shadow-green-900/50"
                     >
                         Luu Cai Dat
@@ -582,6 +586,7 @@ export default function DecalSettingsPanel({ config, onSave, onCancel }) {
                 </button>
                 <button
                     onClick={handleSave}
+                    disabled={saving}
                     className="px-6 py-2 rounded font-semibold bg-green-600 hover:bg-green-500 text-white transition shadow-lg shadow-green-900/50"
                 >
                     Luu Cai Dat

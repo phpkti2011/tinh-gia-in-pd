@@ -1,3 +1,5 @@
+import CopyButton from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 const pct = (v) => `${(+v || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%`;
 
@@ -144,6 +146,9 @@ export default function StickerResultPanel({ result, config, isCalculating }) {
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá thực tế: <span className="font-bold">{fmt(unitPerSheet)}</span> / tờ
                 </p>
+                <div className="mt-3 flex justify-center">
+                    <CopyButton text={buildJobSpec('sticker', { result })} />
+                </div>
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">

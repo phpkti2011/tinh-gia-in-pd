@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { copyText } from '../common/CopyButton';
+import { buildJobSpec } from '../../utils/jobSpec';
+import { useMemo, useState } from 'react';
 
 // P3-LINT.2: wrapper guard pattern.
 // Trước: LayoutVisualization có `if (!layout) return null` rồi gọi useMemo →
@@ -369,7 +371,9 @@ function SheetLayoutVisualization({ result, params }) {
 
 // Bảng giá SO SÁNH nhiều máy bế — mỗi máy 1 cột giá. Zip các priceTable theo index
 // (cùng thứ tự hàng: quantity × decalType × lamination).
-function ComparisonPriceTable({ machines, mode, discountPercent = 0 }) {
+function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
+    // Bấm thẳng vào ô giá để copy quy cách của đúng mức SL + máy đó.
+    const [copied, setCopied] = useState(null);
     const list = machines || [];
     const base = list[0]?.priceTable || [];
     if (list.length === 0 || base.length === 0) {
@@ -489,7 +493,24 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0 }) {
                                     {row.cells.map((cell, i) => (
                                         <td
                                             key={i}
-                                            className={`p-2 text-right font-semibold ${
+                                            onClick={async () => {
+                                                const text = buildJobSpec('decal', {
+                                                    params,
+                                                    result: { mode },
+                                                    row: {
+                                                        quantity: row.quantity,
+                                                        decalType: row.decalType,
+                                                        laminated: row.laminated,
+                                                        finalPrice: cell.price,
+                                                    },
+                                                });
+                                                if (!text) return;
+                                                await copyText(text);
+                                                setCopied(`${idx}-${i}`);
+                                                setTimeout(() => setCopied(null), 1500);
+                                            }}
+                                            title="Bấm để copy quy cách gửi khách"
+                                            className={`p-2 text-right font-semibold cursor-pointer hover:bg-gray-600/40 ${
                                                 cell.floored
                                                     ? 'bg-red-900/40 text-red-300'
                                                     : isCus
@@ -497,7 +518,11 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0 }) {
                                                       : 'text-green-400'
                                             }`}
                                         >
-                                            {fmt(cell.price)}
+                                            {copied === `${idx}-${i}` ? (
+                                                <span className="text-emerald-300">✓ đã copy</span>
+                                            ) : (
+                                                fmt(cell.price)
+                                            )}
                                             {cell.floored && (
                                                 <span className="block text-[9px] font-normal text-red-400">
                                                     sàn
@@ -574,6 +599,7 @@ export default function DecalResultPanel({ result, params, config, isCalculating
                     machines={result.machines}
                     mode={result.mode}
                     discountPercent={result.discountPercent || 0}
+                    params={params}
                 />
             </div>
         </div>
