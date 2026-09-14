@@ -75,7 +75,10 @@ describe('Catalogue: calculateCatalogue (tách bìa/ruột)', () => {
 
     it('in bìa 1 mặt → số trang chia 4 dư 2, A4 bìa giảm nửa', () => {
         // numPages 34 (%4===2): bìa 2 trang (1 mặt) + ruột 32 trang (8 chữ ký)
-        const r = calculateCatalogue({ ...baseParams, coverSingleSide: true, numPages: 34 }, config);
+        const r = calculateCatalogue(
+            { ...baseParams, coverSingleSide: true, numPages: 34 },
+            config
+        );
         expect(r.error).toBeNull();
         expect(r.coverSingleSide).toBe(true);
         expect(r.cover.a4).toBe(300); // 3 × 100 × 1 (nửa của 600)
@@ -86,7 +89,10 @@ describe('Catalogue: calculateCatalogue (tách bìa/ruột)', () => {
     });
 
     it('in bìa 1 mặt nhưng số trang chia hết 4 → lỗi dư 2', () => {
-        const r = calculateCatalogue({ ...baseParams, coverSingleSide: true, numPages: 36 }, config);
+        const r = calculateCatalogue(
+            { ...baseParams, coverSingleSide: true, numPages: 36 },
+            config
+        );
         expect(r.error).toMatch(/dư 2/);
     });
 

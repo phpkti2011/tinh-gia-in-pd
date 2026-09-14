@@ -96,10 +96,7 @@ describe('Spiral: calculateSpiral', () => {
         // ruột 1 mặt tốn gấp đôi giấy → tổng báo khách phải cao hơn 2 mặt
         expect(r1.totalCustomerCost).toBeGreaterThan(r2.totalCustomerCost);
         // và cao hơn ĐÚNG bằng phần giấy dư (phụ thu không bị chiết khấu triệt tiêu).
-        expect(r1.totalCustomerCost - r2.totalCustomerCost).toBeCloseTo(
-            r1.extraPaperCustomer,
-            -3
-        );
+        expect(r1.totalCustomerCost - r2.totalCustomerCost).toBeCloseTo(r1.extraPaperCustomer, -3);
     });
 
     it('cán màng bìa & ruột riêng (per_page) = trang A4 × số mặt × đơn giá cán', () => {

@@ -164,11 +164,23 @@ export function calculateCatalogue(params, config) {
     }
 
     // 3. Chạy từng section.
-    const base = { pieceW_cm, pieceH_cm, printColorMode: params.printColorMode, artPaperPrice: params.artPaperPrice };
+    const base = {
+        pieceW_cm,
+        pieceH_cm,
+        printColorMode: params.printColorMode,
+        artPaperPrice: params.artPaperPrice,
+    };
     const coverSigs = 1;
     const innerSigs = (numPages - coverPages) / 4;
 
-    const cover = sectionQuote(params.coverPaperType, coverSigs, quantity, base, config, coverSides);
+    const cover = sectionQuote(
+        params.coverPaperType,
+        coverSigs,
+        quantity,
+        base,
+        config,
+        coverSides
+    );
     if (cover.error) return err(cover.error);
     let inner = null;
     if (innerSigs > 0) {

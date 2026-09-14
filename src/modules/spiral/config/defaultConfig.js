@@ -17,8 +17,7 @@ const COIL_RANGES = [
     [560, 1000],
     [1001, Infinity],
 ];
-const zeroTiers = () =>
-    COIL_RANGES.map(([min, max]) => ({ min, max, price: 0, type: 'per_book' }));
+const zeroTiers = () => COIL_RANGES.map(([min, max]) => ({ min, max, price: 0, type: 'per_book' }));
 
 export const SPIRAL_DEFAULT_CONFIG = {
     // Đóng lò xo (coil binding).

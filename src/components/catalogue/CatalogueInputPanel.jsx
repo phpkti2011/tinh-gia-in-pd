@@ -119,8 +119,8 @@ export default function CatalogueInputPanel({ config, params, onChange }) {
                 </div>
                 <p className="mb-4 text-xs text-yellow-400/90">
                     Lưu ý: khổ thành phẩm thực tế thường nhỏ hơn kích thước danh nghĩa ~1–2mm mỗi
-                    chiều (vd A4 không chính xác 210×297; A5, A6 tương tự) — nên nhập đúng kích thước
-                    thành phẩm cần in.
+                    chiều (vd A4 không chính xác 210×297; A5, A6 tương tự) — nên nhập đúng kích
+                    thước thành phẩm cần in.
                 </p>
 
                 <div className="mb-4">
@@ -227,8 +227,8 @@ export default function CatalogueInputPanel({ config, params, onChange }) {
                     </select>
                     {params.printColorMode === '1color' && (
                         <p className="mt-1 text-xs text-yellow-400">
-                            ⚠ In 1 màu đen chỉ in chữ &amp; đối tượng đen — KHÔNG in nền đen kín (full
-                            đen).
+                            ⚠ In 1 màu đen chỉ in chữ &amp; đối tượng đen — KHÔNG in nền đen kín
+                            (full đen).
                         </p>
                     )}
                 </div>

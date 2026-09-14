@@ -14,7 +14,15 @@ import {
 const err = (message) => ({ error: message });
 
 // Chạy 1 "section" (bìa hoặc ruột): `leaves` tờ/cuốn, in `printSides` mặt, `colorMode` màu.
-function sectionQuote(paperType, leaves, quantity, base, config, printSides = '2', colorMode = '4color') {
+function sectionQuote(
+    paperType,
+    leaves,
+    quantity,
+    base,
+    config,
+    printSides = '2',
+    colorMode = '4color'
+) {
     const spParams = {
         productW: base.pieceW_cm,
         productH: base.pieceH_cm,
@@ -37,7 +45,16 @@ function sectionQuote(paperType, leaves, quantity, base, config, printSides = '2
     if (!selectedPaper) return { error: 'Loại giấy không hợp lệ.' };
 
     const allResults = [];
-    const genArgs = [spParams, selectedPaper, base.pieceW_cm, base.pieceH_cm, allResults, 0, false, config];
+    const genArgs = [
+        spParams,
+        selectedPaper,
+        base.pieceW_cm,
+        base.pieceH_cm,
+        allResults,
+        0,
+        false,
+        config,
+    ];
     const model = selectedPaper.pricingModel;
     if (model === 'sqm') calculateDecalOptions(...genArgs);
     else if (model === 'per_sheet') calculatePerSheetOptions(...genArgs);
