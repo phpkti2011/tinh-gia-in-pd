@@ -205,6 +205,39 @@ export const DEFAULT_CONFIG = {
     // dùng lại calculateFinishingCost() không đổi). Chọn tối đa 1 gia công (kèm
     // 1 sub-loại) mỗi đơn qua dropdown "Gia công thêm" ở màn nhập liệu.
     CUSTOM_FINISHING_TYPES: [],
+    // Ép plastic (màng nhiệt bỏ túi) — xem src/utils/plasticLamination.js.
+    // Bảng giá CHUNG cho mọi độ dày: `tiers` hàng = bậc SL (tra "qty <= max_qty"
+    // như calculateFinishingCost), cột = khổ (id trong `sizes`). Mỗi độ dày trong
+    // `thicknesses` chỉ khai % phụ thu (nhân vào CẢ giá khách LẪN sàn) + các khổ
+    // được phép chọn (`sizeIds`, admin tick trong Cài Đặt).
+    // `minPrice` = giá bán SÀN / tấm — CHỈ ADMIN thấy: ResultPanel cộng thẳng
+    // sàn × SL × (1+%) vào "Giá Tối Thiểu", KHÔNG qua profit margin.
+    // Optional: config cũ thiếu key → engine trả 0, ô chọn ẩn → giá không đổi.
+    PLASTIC_LAMINATION_CONFIG: {
+        sizes: [
+            { id: 'a6', name: 'A6' },
+            { id: 'a5', name: 'A5' },
+            { id: 'a4', name: 'A4' },
+            { id: 'a3', name: 'A3' },
+            { id: 'cccd', name: 'CCCD (67 x 97 mm)' },
+        ],
+        minPrice: { a6: 850, a5: 1000, a4: 1300, a3: 2900, cccd: 0 },
+        tiers: [
+            { max_qty: 3, price: { a6: 10000, a5: 10000, a4: 15000, a3: 20000, cccd: 10000 } },
+            { max_qty: 10, price: { a6: 8000, a5: 8000, a4: 12000, a3: 15000, cccd: 5000 } },
+            { max_qty: 50, price: { a6: 4000, a5: 5000, a4: 8000, a3: 10000, cccd: 3000 } },
+            { max_qty: 100, price: { a6: 3500, a5: 4000, a4: 6000, a3: 8000, cccd: 2500 } },
+            { max_qty: 200, price: { a6: 2500, a5: 3000, a4: 5000, a3: 6500, cccd: 1500 } },
+            { max_qty: 500, price: { a6: 2000, a5: 2500, a4: 4500, a3: 5500, cccd: 1000 } },
+            { max_qty: 1000, price: { a6: 1500, a5: 2000, a4: 3000, a3: 4800, cccd: 800 } },
+            { max_qty: 2000, price: { a6: 1300, a5: 1500, a4: 2000, a3: 4000, cccd: 700 } },
+            { max_qty: Infinity, price: { a6: 1100, a5: 1300, a4: 1700, a3: 3700, cccd: 550 } },
+        ],
+        thicknesses: [
+            { id: 'mic80', name: '80 mic', percent: 0, sizeIds: ['a6', 'a5', 'a4', 'a3'] },
+            { id: 'mic125', name: '125 mic', percent: 0, sizeIds: ['cccd'] },
+        ],
+    },
     DIE_CUTTING_MOLD_COST_CONFIG: {
         simple: { base_size: 21, base_price: 120000 },
         envelope: { threshold_area: 960, small_price: 160000, large_price: 220000 },

@@ -25,20 +25,21 @@ describe('TASK-0009: small-print module path + compat shims', () => {
         'calculateLamination',
         'calculateDieCuttingCosts',
         'calculateFoilStamping',
+        'calculatePlasticLamination', // 1.4.0 — ép plastic
         'processSheet',
         'calculatePaperOptions',
         'calculatePerSheetOptions',
         'calculateDecalOptions',
     ];
 
-    it('module path mới export đủ 15 hàm từ calculator + 1 từ customerQuote = 16', () => {
+    it('module path mới export đủ 16 hàm từ calculator + 1 từ customerQuote = 17', () => {
         for (const fn of calcFunctions) {
             expect(typeof newPath[fn]).toBe('function');
         }
         expect(typeof newPath.calculateCustomerQuote).toBe('function');
     });
 
-    it('compat shim src/utils/calculator.js re-export cùng reference (15 fn)', () => {
+    it('compat shim src/utils/calculator.js re-export cùng reference (16 fn)', () => {
         for (const fn of calcFunctions) {
             expect(oldCalc[fn]).toBe(newPath[fn]);
         }

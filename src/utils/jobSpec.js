@@ -15,6 +15,8 @@
 
 import { getBlockedFinishing } from '../modules/large-print/config/finishingOps.js';
 import { filmPhrase } from './laminationFilm.js';
+import { plasticPhrase } from './plasticLamination.js';
+import { formatVndRounded, unitFromRoundedTotal } from './money.js';
 
 const SEP = ' _ ';
 
@@ -69,8 +71,16 @@ function joinFinishing(parts) {
 }
 
 // 'Giá: 1.250.000đ (2.500đ/cái)' — bỏ ngoặc khi không có đơn giá.
+//
+// TỔNG làm tròn nghìn (giá báo khách), ĐƠN GIÁ giữ số lẻ tới hàng đồng — đơn giá
+// chỉ vài trăm đồng/con nên tròn nghìn là sai hẳn. Xem src/utils/money.js.
+//
+// ⚠ Đơn giá kiểu "tổng chia đều" phải được caller tính bằng unitFromRoundedTotal(),
+// tức chia từ TỔNG ĐÃ TRÒN — để khách lấy đúng con số trong cùng chuỗi này chia
+// cho số lượng thì ra đúng đơn giá đang ghi. Đơn giá GỐC theo bảng giá (đ/thẻ)
+// thì truyền thẳng số gốc.
 function priceLine(total, unitPrice, unitWord) {
-    const t = formatVnd(total);
+    const t = formatVndRounded(total);
     if (!t) return null;
     const u = formatVnd(unitPrice);
     return u && unitWord ? `Giá: ${t} (${u}/${unitWord})` : `Giá: ${t}`;
@@ -127,6 +137,14 @@ function smallPrintSpec({ params, result, config }) {
             `cán màng ${filmPhrase(config?.LAMINATION_FILMS, params.laminationFilm)} ${lamSides} mặt`
         );
     }
+    // Ép plastic: 'ép plastic 80 mic khổ A4' — chưa chọn khổ thì ghi thẳng
+    // "(CHƯA CHỌN khổ)" để xưởng hỏi lại. Không ép → null → bỏ qua.
+    const plastic = plasticPhrase(
+        config?.PLASTIC_LAMINATION_CONFIG,
+        params.plasticThickness,
+        params.plasticSize
+    );
+    if (plastic) fin.push(plastic);
     if (params.mountingType === 'yes') fin.push('bồi carton');
     if (SP_CREASING[params.creasingType]) fin.push(SP_CREASING[params.creasingType]);
     if (SP_HOLE[params.holePunchingType]) fin.push(SP_HOLE[params.holePunchingType]);
@@ -159,7 +177,7 @@ function smallPrintSpec({ params, result, config }) {
             joinFinishing(fin),
         ],
         total,
-        qty > 0 ? total / qty : null,
+        unitFromRoundedTotal(total, qty),
         'cái'
     );
 }
@@ -211,7 +229,11 @@ function largePrintSpec({ params, result, config }) {
     const spec = lines.filter(Boolean).join('\n');
     if (!spec) return null;
     const panels = Number(result.totalPanels) || 0;
-    const price = priceLine(result.totalCost, panels > 0 ? result.totalCost / panels : null, 'tấm');
+    const price = priceLine(
+        result.totalCost,
+        unitFromRoundedTotal(result.totalCost, panels),
+        'tấm'
+    );
     return price ? `${spec}\n${price}` : spec;
 }
 
@@ -249,7 +271,7 @@ function spiralSpec({ params, result }) {
             fin,
         ],
         result.totalCustomerCost,
-        result.unitPerBook,
+        unitFromRoundedTotal(result.totalCustomerCost, qty),
         'cuốn'
     );
 }
@@ -285,7 +307,7 @@ function catalogueSpec({ params, result }) {
             fin,
         ],
         result.totalCustomerCost,
-        result.unitPerBook,
+        unitFromRoundedTotal(result.totalCustomerCost, qty),
         'cuốn'
     );
 }
@@ -316,7 +338,7 @@ function flyerSpec({ result, config }) {
             fin,
         ],
         result.total,
-        qty > 0 ? result.total / qty : null,
+        unitFromRoundedTotal(result.total, qty),
         'tờ'
     );
 }
@@ -344,7 +366,7 @@ function cheapDecalSpec({ result, config }) {
             fin,
         ],
         result.total,
-        result.unitPrice,
+        unitFromRoundedTotal(result.total, qty),
         'cái'
     );
 }
@@ -357,6 +379,9 @@ function stickerSpec({ result }) {
     if (!result || result.error || result.isCustomQuote) return null;
 
     const qty = Number(result.qty);
+    // Chia cho SỐ TỜ TÍNH TIỀN (giống engine + panel), không phải số tờ đặt: khi
+    // khách đặt dưới mốc tối thiểu, hai số này khác nhau.
+    const billable = Number(result.billableQty) || qty;
     return compose(
         [
             qtyPart(qty, 'tờ'),
@@ -364,7 +389,7 @@ function stickerSpec({ result }) {
             stripPriceNote(result.finishName || ''),
         ],
         result.total,
-        result.unitPerSheet,
+        unitFromRoundedTotal(result.total, billable),
         'tờ'
     );
 }
@@ -380,6 +405,8 @@ function cardSpec({ result }) {
     return compose(
         [qtyPart(qty, 'thẻ'), stripPriceNote(result.productName || '')],
         result.total,
+        // CỐ Ý giữ đơn giá GỐC theo mốc số lượng (engine tính ngược total = unit ×
+        // qty). Không chia lại từ tổng đã tròn — sẽ bịa ra đơn giá tiệm không niêm yết.
         result.unit,
         'thẻ'
     );
@@ -401,7 +428,7 @@ function uvdtfSpec({ params, result }) {
             'UV DTF',
         ],
         result.totalPrice,
-        qty > 0 ? result.totalPrice / qty : null,
+        unitFromRoundedTotal(result.totalPrice, qty),
         'tem'
     );
 }
@@ -438,7 +465,7 @@ function decalSpec({ params, result, config, row }) {
     return compose(
         [qtyPart(qty, 'con'), sizePart, stripPriceNote(row.decalType || ''), fin],
         total,
-        qty > 0 ? total / qty : null,
+        unitFromRoundedTotal(total, qty),
         'con'
     );
 }

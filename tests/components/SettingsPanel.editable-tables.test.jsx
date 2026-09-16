@@ -22,7 +22,10 @@ vi.mock('../../src/components/admin/PriceConfigHistoryPanel', () => ({
 }));
 
 import SettingsPanel from '../../src/components/smallprint/SettingsPanel.jsx';
-import { DEFAULT_CONFIG } from '../../src/modules/small-print/config/index.js';
+import {
+    DEFAULT_CONFIG,
+    validateSmallPrintConfig,
+} from '../../src/modules/small-print/config/index.js';
 
 // Lấy config đã lưu ở lần bấm "Lưu Cài Đặt" gần nhất.
 function renderPanel() {
@@ -311,6 +314,141 @@ describe('Cài Đặt — các bảng mới mở cho admin', () => {
             const nameInput = within(sec).getAllByRole('textbox')[0];
             fireEvent.blur(nameInput, { target: { value: 'Khổ 80 x 110 cm' } });
             expect((await save()).ART_PAPER_LARGE_SHEET_SIZES[0].name).toBe('Khổ 80 x 110 cm');
+        });
+    });
+
+    // Ép plastic (1.4.0). Bảng: hàng [0] header, [1..9] 9 bậc, [10] dòng sàn.
+    // Ô số mỗi hàng bậc: [max_qty, a6, a5, a4, a3, cccd] (dòng ∞ không có ô max_qty).
+    // Dưới bảng: mỗi độ dày 1 ô % + 5 checkbox khổ.
+    describe('Ép plastic — bảng giá khổ × bậc SL, sàn admin, độ dày tick khổ', () => {
+        const sec = () => section(/^Ép Plastic/);
+
+        it('render 5 cột khổ, 9 bậc + dòng sàn, dòng ∞ hiện "trở lên"', async () => {
+            renderPanel();
+            const s = sec();
+            expect(within(s).getByDisplayValue('CCCD (67 x 97 mm)')).toBeTruthy();
+            expect(within(s).getByText('trở lên')).toBeTruthy();
+            expect(within(s).getByText(/Giá tối thiểu \/ tấm/)).toBeTruthy();
+            expect(within(s).getAllByRole('row')).toHaveLength(11);
+            expect(within(s).getByDisplayValue('80 mic')).toBeTruthy();
+            expect(within(s).getByDisplayValue('125 mic')).toBeTruthy();
+        });
+
+        it('sửa ô A4 bậc 1 → tiers[0].price.a4 = 16000, ô khác giữ nguyên', async () => {
+            const { save } = renderPanel();
+            const row1 = within(sec()).getAllByRole('row')[1];
+            const cells = within(row1).getAllByRole('spinbutton');
+            expect(cells).toHaveLength(6);
+            fireEvent.change(cells[3], { target: { value: '16000' } });
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.tiers[0].price.a4).toBe(16000);
+            expect(pl.tiers[0].price.a5).toBe(10000);
+            expect(pl.tiers[1].price.a4).toBe(12000);
+        });
+
+        it('sửa dòng sàn A3 → minPrice.a3 = 3000', async () => {
+            const { save } = renderPanel();
+            const rows = within(sec()).getAllByRole('row');
+            const cells = within(rows[rows.length - 1]).getAllByRole('spinbutton');
+            expect(cells).toHaveLength(5);
+            fireEvent.change(cells[3], { target: { value: '3000' } });
+            expect((await save()).PLASTIC_LAMINATION_CONFIG.minPrice.a3).toBe(3000);
+        });
+
+        it('+ Thêm khổ → có mặt ở sizes, minPrice và mọi tiers[].price, id tiền tố sz_', async () => {
+            const { save } = renderPanel();
+            fireEvent.click(within(sec()).getByText('+ Thêm khổ'));
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.sizes).toHaveLength(6);
+            const id = pl.sizes[5].id;
+            expect(id.startsWith('sz_')).toBe(true);
+            expect(pl.minPrice[id]).toBe(0);
+            pl.tiers.forEach((t) => expect(t.price[id]).toBe(0));
+        });
+
+        it('xoá khổ A6 → mất ở sizes, minPrice, tiers[].price và thicknesses[].sizeIds', async () => {
+            const { save } = renderPanel();
+            fireEvent.click(within(sec()).getAllByTitle('Xóa khổ')[0]);
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.sizes.map((s) => s.id)).toEqual(['a5', 'a4', 'a3', 'cccd']);
+            expect(pl.minPrice.a6).toBeUndefined();
+            pl.tiers.forEach((t) => expect(t.price.a6).toBeUndefined());
+            expect(pl.thicknesses[0].sizeIds).toEqual(['a5', 'a4', 'a3']);
+            expect(validateSmallPrintConfig(await save()).isValid).toBe(true);
+        });
+
+        it('+ Thêm mức SL → chèn trước dòng ∞, ngưỡng 2001, giá copy dòng trên', async () => {
+            const { save } = renderPanel();
+            fireEvent.click(within(sec()).getByText('+ Thêm mức SL'));
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.tiers).toHaveLength(10);
+            expect(pl.tiers[8].max_qty).toBe(2001);
+            expect(pl.tiers[8].price.a4).toBe(2000);
+            expect(pl.tiers[9].max_qty).toBe(Infinity);
+        });
+
+        it('xoá bậc tới khi còn 1 → nút Xóa biến mất, dòng còn lại là ∞', async () => {
+            const { save } = renderPanel();
+            for (let i = 0; i < 8; i++) {
+                fireEvent.click(within(sec()).getAllByText('Xóa')[0]);
+            }
+            expect(within(sec()).queryByText('Xóa')).toBeNull();
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.tiers).toHaveLength(1);
+            expect(pl.tiers[0].max_qty).toBe(Infinity);
+        });
+
+        it('xoá đúng dòng ∞ → dòng cuối còn lại tự thành ∞', async () => {
+            const { save } = renderPanel();
+            fireEvent.click(within(sec()).getAllByText('Xóa')[8]);
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.tiers).toHaveLength(8);
+            expect(pl.tiers[7].max_qty).toBe(Infinity);
+            expect(pl.tiers[7].price.a4).toBe(2000);
+        });
+
+        it('+ Thêm độ dày, tick CCCD, nhập 20% → thicknesses[2] đúng, % lưu số thô', async () => {
+            const { save } = renderPanel();
+            fireEvent.click(within(sec()).getByText('+ Thêm độ dày'));
+            const s = sec();
+            const boxes = within(s).getAllByRole('checkbox');
+            expect(boxes).toHaveLength(15);
+            fireEvent.click(boxes[14]);
+            const pct = within(s).getAllByRole('spinbutton').at(-1);
+            fireEvent.change(pct, { target: { value: '20' } });
+            const saved = await save();
+            const pl = saved.PLASTIC_LAMINATION_CONFIG;
+            expect(pl.thicknesses).toHaveLength(3);
+            expect(pl.thicknesses[2].id.startsWith('mic_')).toBe(true);
+            expect(pl.thicknesses[2].sizeIds).toEqual(['cccd']);
+            expect(pl.thicknesses[2].percent).toBe(20);
+            expect(validateSmallPrintConfig(saved).isValid).toBe(true);
+        });
+
+        it('bỏ tick A4 ở 80 mic → sizeIds còn a6/a5/a3; tick lại → về đúng thứ tự cột', async () => {
+            const { save } = renderPanel();
+            const boxes = within(sec()).getAllByRole('checkbox');
+            expect(boxes[2].checked).toBe(true);
+            fireEvent.click(boxes[2]);
+            expect((await save()).PLASTIC_LAMINATION_CONFIG.thicknesses[0].sizeIds).toEqual([
+                'a6',
+                'a5',
+                'a3',
+            ]);
+            fireEvent.click(within(sec()).getAllByRole('checkbox')[2]);
+            expect((await save()).PLASTIC_LAMINATION_CONFIG.thicknesses[0].sizeIds).toEqual([
+                'a6',
+                'a5',
+                'a4',
+                'a3',
+            ]);
+        });
+
+        it('xoá độ dày 125 mic', async () => {
+            const { save } = renderPanel();
+            fireEvent.click(within(sec()).getAllByText('Xóa độ dày')[1]);
+            const pl = (await save()).PLASTIC_LAMINATION_CONFIG;
+            expect(pl.thicknesses.map((t) => t.id)).toEqual(['mic80']);
         });
     });
 });

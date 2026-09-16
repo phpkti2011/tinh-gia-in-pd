@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { roundToThousand } from '../../utils/money';
 import { useState, useRef, useEffect } from 'react';
 
 const ITEM_COLORS = [
@@ -95,7 +96,7 @@ export default function LPResultPanel({
                         </span>
                         <div className="text-center ml-auto">
                             <span className="text-xl font-bold text-yellow-300">
-                                {totalCost.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} đ
+                                {roundToThousand(totalCost)?.toLocaleString('vi-VN')} đ
                             </span>
                         </div>
                     </div>
@@ -115,7 +116,7 @@ export default function LPResultPanel({
                             : `${itemDetails[0].originalW}×${itemDetails[0].originalH} cm`}
                     </p>
                     <p className="text-3xl font-bold text-yellow-300 mt-1">
-                        {totalCost.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VNĐ
+                        {roundToThousand(totalCost)?.toLocaleString('vi-VN')} VNĐ
                     </p>
                 </div>
                 <div className="mt-3 flex justify-center">

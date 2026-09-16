@@ -30,7 +30,11 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   1.3.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
 //           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
 //           => gia khong doi.
+// 1.4.0 — thêm PLASTIC_LAMINATION_CONFIG (optional): ép plastic (màng nhiệt bỏ
+//   túi) theo độ dày × khổ × bậc SL + dòng sàn giá tối thiểu (chỉ admin thấy,
+//   cộng thẳng vào Giá Tối Thiểu). Thiếu field → engine trả 0, ô chọn ẩn ở màn
+//   tính giá → giá không đổi. Xem src/utils/plasticLamination.js.
 
-export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.3.0';
+export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.4.0';
 
-export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-14';
+export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-15';

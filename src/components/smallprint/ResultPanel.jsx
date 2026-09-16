@@ -8,6 +8,7 @@ import { calculateCustomerQuote } from '../../utils/customerQuote';
 import NumberField from '../common/NumberField';
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { roundToThousand } from '../../utils/money';
 import { LargeSheetVisualizer, PrintSheetVisualizer } from './SheetVisualizer';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
@@ -44,6 +45,7 @@ export default function ResultPanel({
     laborCost,
     variableDataCost,
     foilResult,
+    plasticResult,
     onChange,
 }) {
     // P2-03: Admin reveal (giá vốn / giá tối thiểu) giờ dựa vào Supabase role.
@@ -155,7 +157,10 @@ export default function ResultPanel({
     );
     const finalTotalCost = baseCost + surcharge;
 
-    const minPrice = finalTotalCost * (1 + getProfitMargin(finalTotalCost, config));
+    // Sàn bán ép plastic (engine tính sẵn) — CHỈ ADMIN, cộng SAU profit margin
+    // vì đây là giá bán sàn chứ không phải giá vốn. Không chọn ép plastic → 0.
+    const plasticFloor = plasticResult?.minPrice || 0;
+    const minPrice = finalTotalCost * (1 + getProfitMargin(finalTotalCost, config)) + plasticFloor;
     const isShowingMinPrice = minPrice >= 300000;
 
     // Đơn giá IN / trang — chỉ tính tiền giấy + tiền in (KHÔNG cán màng, KHÔNG
@@ -299,6 +304,22 @@ export default function ResultPanel({
                     </div>
                 </div>
 
+                {isAdmin && plasticFloor > 0 && plasticResult && (
+                    <div className="mt-4 text-center">
+                        <p className="text-sm text-gray-400">
+                            Sàn ép plastic (đã gồm trong Giá Tối Thiểu, không nhân lợi nhuận)
+                        </p>
+                        <p className="text-lg font-semibold text-cyan-300">
+                            {plasticResult.label}:{' '}
+                            {plasticResult.unitMinPrice.toLocaleString('vi-VN', {
+                                maximumFractionDigits: 0,
+                            })}{' '}
+                            đ/tấm × {productQuantity.toLocaleString('vi-VN')} ={' '}
+                            {plasticFloor.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} đ
+                        </p>
+                    </div>
+                )}
+
                 {absoluteBestOption.laminationWarning && (
                     <div className="mt-4 text-center">
                         <p
@@ -389,7 +410,10 @@ export default function ResultPanel({
                             <div className="text-center">
                                 <span className="text-xs text-gray-500 block">Giá</span>
                                 <span className="text-xl font-bold text-yellow-300">
-                                    {displayQuote.totalCustomerCost.toLocaleString('vi-VN')} đ
+                                    {roundToThousand(
+                                        displayQuote.totalCustomerCost
+                                    )?.toLocaleString('vi-VN')}{' '}
+                                    đ
                                 </span>
                             </div>
                         </div>
@@ -455,6 +479,22 @@ export default function ResultPanel({
                                     color="text-white"
                                     hideIfZero
                                 />
+                                {displayQuote.plasticLaminationCustomerPrice > 0 &&
+                                    plasticResult && (
+                                        <QuoteRow
+                                            label={`${plasticResult.label} (${Math.round(
+                                                plasticResult.unitPrice
+                                            ).toLocaleString('vi-VN')}đ/tấm)`}
+                                            value={displayQuote.plasticLaminationCustomerPrice}
+                                            color="text-white"
+                                        />
+                                    )}
+                                {plasticResult?.unset && (
+                                    <p className="text-xs text-yellow-400 border-b border-gray-700/40 pb-1.5">
+                                        ⚠ Chưa chọn khổ ép plastic ({plasticResult.thicknessName}) —
+                                        chưa tính tiền ép plastic vào báo giá.
+                                    </p>
+                                )}
                                 {displayQuote.totalPaperSurcharge > 0 && (
                                     <QuoteRow
                                         label="Phụ thu vật liệu (Decal)"
@@ -555,7 +595,10 @@ export default function ResultPanel({
                             <div className="text-center border-t border-gray-600 pt-4 mt-2">
                                 <p className="text-lg text-gray-300">Tổng Cộng Báo Khách</p>
                                 <p className="text-4xl font-bold text-yellow-300 mt-2">
-                                    {displayQuote.totalCustomerCost.toLocaleString('vi-VN')} VNĐ
+                                    {roundToThousand(
+                                        displayQuote.totalCustomerCost
+                                    )?.toLocaleString('vi-VN')}{' '}
+                                    VNĐ
                                 </p>
                                 <div className="mt-3 flex justify-center">
                                     <CopyButton
@@ -642,7 +685,8 @@ export default function ResultPanel({
                             );
                             const totalForRow = rowBaseCost + rowSurcharge;
                             const totalForRowWithProfit = isFinite(totalForRow)
-                                ? totalForRow * (1 + getProfitMargin(totalForRow, config))
+                                ? totalForRow * (1 + getProfitMargin(totalForRow, config)) +
+                                  plasticFloor
                                 : 0;
 
                             const title = isAdmin

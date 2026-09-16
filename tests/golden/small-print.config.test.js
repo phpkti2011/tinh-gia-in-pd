@@ -196,6 +196,118 @@ describe('TASK-0010: small-print config schema + version', () => {
         });
     });
 
+    describe('PLASTIC_LAMINATION_CONFIG (1.4.0) — ép plastic', () => {
+        it('giá trị mặc định đúng bảng Excel của tiệm', () => {
+            const pl = DEFAULT_CONFIG.PLASTIC_LAMINATION_CONFIG;
+            expect(pl.sizes).toHaveLength(5);
+            expect(pl.sizes.map((s) => s.id)).toEqual(['a6', 'a5', 'a4', 'a3', 'cccd']);
+            expect(pl.tiers).toHaveLength(9);
+            expect(pl.tiers.map((t) => t.max_qty)).toEqual([
+                3,
+                10,
+                50,
+                100,
+                200,
+                500,
+                1000,
+                2000,
+                Infinity,
+            ]);
+            expect(pl.tiers[0].price.a4).toBe(15000);
+            expect(pl.tiers[8].price.cccd).toBe(550);
+            expect(pl.minPrice).toEqual({ a6: 850, a5: 1000, a4: 1300, a3: 2900, cccd: 0 });
+            expect(pl.thicknesses.map((t) => t.id)).toEqual(['mic80', 'mic125']);
+            expect(pl.thicknesses[0].percent).toBe(0);
+            expect(pl.thicknesses[0].sizeIds).toEqual(['a6', 'a5', 'a4', 'a3']);
+            expect(pl.thicknesses[1].sizeIds).toEqual(['cccd']);
+        });
+
+        it('optional — config cũ xoá hẳn key vẫn hợp lệ', () => {
+            const cfg = { ...DEFAULT_CONFIG };
+            delete cfg.PLASTIC_LAMINATION_CONFIG;
+            expect(validateSmallPrintConfig(cfg).isValid).toBe(true);
+        });
+
+        it('thicknesses rỗng vẫn hợp lệ (tắt tính năng)', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.thicknesses = [];
+            expect(validateSmallPrintConfig(cfg).isValid).toBe(true);
+        });
+
+        it('không phải object → fail', () => {
+            const cfg = { ...DEFAULT_CONFIG, PLASTIC_LAMINATION_CONFIG: [] };
+            const r = validateSmallPrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('PLASTIC_LAMINATION_CONFIG'))).toBe(true);
+        });
+
+        it('sizes rỗng → fail', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.sizes = [];
+            const r = validateSmallPrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('PLASTIC_LAMINATION_CONFIG.sizes'))).toBe(true);
+        });
+
+        it('id khổ trùng → fail', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.sizes[1].id = 'a6';
+            const r = validateSmallPrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('sizes[1].id') && e.includes('trùng'))).toBe(
+                true
+            );
+        });
+
+        it('tiers[0].price.a4 là string → fail, message có path', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.tiers[0].price.a4 = '15000';
+            const r = validateSmallPrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(
+                r.errors.some((e) => e.includes('PLASTIC_LAMINATION_CONFIG.tiers[0].price.a4'))
+            ).toBe(true);
+        });
+
+        it('tiers rỗng → fail; max_qty string → fail', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.tiers = [];
+            expect(validateSmallPrintConfig(cfg).isValid).toBe(false);
+            const cfg2 = structuredClone(DEFAULT_CONFIG);
+            cfg2.PLASTIC_LAMINATION_CONFIG.tiers[0].max_qty = '3';
+            const r = validateSmallPrintConfig(cfg2);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('tiers[0].max_qty'))).toBe(true);
+        });
+
+        it('minPrice.a4 âm → fail', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.minPrice.a4 = -1;
+            const r = validateSmallPrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('minPrice.a4'))).toBe(true);
+        });
+
+        it('thicknesses[0].sizeIds trỏ khổ không tồn tại → fail', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.thicknesses[0].sizeIds = ['a4', 'zzz'];
+            const r = validateSmallPrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(
+                r.errors.some((e) => e.includes('thicknesses[0].sizeIds[1]') && e.includes('zzz'))
+            ).toBe(true);
+        });
+
+        it('thicknesses percent sai kiểu / id trùng → fail', () => {
+            const cfg = structuredClone(DEFAULT_CONFIG);
+            cfg.PLASTIC_LAMINATION_CONFIG.thicknesses[0].percent = '20';
+            expect(validateSmallPrintConfig(cfg).isValid).toBe(false);
+            const cfg2 = structuredClone(DEFAULT_CONFIG);
+            cfg2.PLASTIC_LAMINATION_CONFIG.thicknesses[1].id = 'mic80';
+            expect(validateSmallPrintConfig(cfg2).isValid).toBe(false);
+        });
+    });
+
     describe('immutability — validateSmallPrintConfig không mutate input', () => {
         it('config object không bị thay đổi sau khi validate', () => {
             const snapshot = JSON.stringify({

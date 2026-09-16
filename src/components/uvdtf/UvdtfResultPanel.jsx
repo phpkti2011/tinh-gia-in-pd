@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal } from '../../utils/money';
 import { useMemo } from 'react';
 
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
@@ -170,7 +171,7 @@ export default function UvdtfResultPanel({ result, params, config, isCalculating
             <div className="bg-gray-800 p-4 rounded-lg border-2 border-dashed border-yellow-500 mb-4">
                 <div className="text-center mb-3">
                     <p className="text-sm text-gray-400 mb-1">Thành tiền</p>
-                    <p className="text-3xl font-bold text-yellow-400">{fmt(totalPrice)}</p>
+                    <p className="text-3xl font-bold text-yellow-400">{fmtTotal(totalPrice)}</p>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-sm">
                     <div>
@@ -238,7 +239,9 @@ export default function UvdtfResultPanel({ result, params, config, isCalculating
                     </div>
                     <div className="flex justify-between border-t border-gray-700 pt-2">
                         <span className="text-gray-300 font-semibold">Tổng tiền</span>
-                        <span className="text-yellow-400 font-bold text-lg">{fmt(totalPrice)}</span>
+                        <span className="text-yellow-400 font-bold text-lg">
+                            {fmtTotal(totalPrice)}
+                        </span>
                     </div>
                 </div>
             </div>

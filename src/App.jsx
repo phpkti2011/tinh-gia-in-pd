@@ -52,6 +52,7 @@ import {
     calculateCustomFinishingCost,
     calculateDieCuttingCosts,
     calculateFoilStamping,
+    calculatePlasticLamination,
 } from './utils/calculator';
 import { calculateCustomerQuote } from './utils/customerQuote';
 import { calculateLargePrint } from './utils/largePrintCalculator';
@@ -277,6 +278,10 @@ function SmallPrintModule({ onBack, heading }) {
         mountingType: 'none',
         laminationType: 'none',
         laminationFilm: '',
+        // Ép plastic: độ dày ('none' = không ép) + khổ ('' = chưa chọn → chưa tính
+        // tiền, UI cảnh báo). Đổi độ dày thì handleChange tự reset khổ về ''.
+        plasticThickness: 'none',
+        plasticSize: '',
         creasingType: 'none',
         holePunchingType: 'none',
         customFinishingType: 'none',
@@ -303,7 +308,13 @@ function SmallPrintModule({ onBack, heading }) {
     }, []);
 
     const handleChange = useCallback((name, value) => {
-        setParams((prev) => ({ ...prev, [name]: value }));
+        setParams((prev) =>
+            // Mỗi độ dày ép plastic có danh sách khổ riêng → đổi độ dày phải xoá
+            // khổ đã chọn, tránh giữ khổ không được tick cho độ dày mới.
+            name === 'plasticThickness'
+                ? { ...prev, plasticThickness: value, plasticSize: '' }
+                : { ...prev, [name]: value }
+        );
     }, []);
 
     const calculateAll = useCallback(() => {
@@ -427,6 +438,14 @@ function SmallPrintModule({ onBack, heading }) {
                 params.customFinishingType,
                 config.CUSTOM_FINISHING_TYPES
             );
+            // Ép plastic — theo SỐ THÀNH PHẨM (mỗi sản phẩm 1 tấm). customerPrice
+            // vào báo giá khách; minPrice (sàn, admin) ResultPanel cộng vào Giá Tối Thiểu.
+            const plasticResult = calculatePlasticLamination(
+                totalQuantity,
+                params.plasticThickness,
+                params.plasticSize,
+                config.PLASTIC_LAMINATION_CONFIG
+            );
             const { moldCost, laborCost, laborCustomerPrice } = calculateDieCuttingCosts(
                 params,
                 totalPrintSheets,
@@ -438,6 +457,7 @@ function SmallPrintModule({ onBack, heading }) {
                 creasing: creasingCustomerPrice,
                 mounting: mountingCustomerPrice,
                 customFinishing: customFinishingCustomerPrice,
+                plasticLamination: plasticResult.customerPrice,
             };
             const dieCuttingCustomerPrice = { moldCost, laborCustomerPrice };
             const foilResult = calculateFoilStamping(params, config);
@@ -463,6 +483,7 @@ function SmallPrintModule({ onBack, heading }) {
                 finishingCustomerPrices,
                 dieCuttingCustomerPrice,
                 foilResult,
+                plasticResult,
                 variableDataCost: params.variableData === 'yes' ? 10 : 0,
             });
         } catch (e) {

@@ -8,6 +8,7 @@
 // KHÔNG đụng engine. KHÔNG mock. Số expected được tính tay từ formula gốc.
 //
 // SCOPE: 11 atomic case (A–K) cover các helper + 1 endpoint customer quote.
+//        + Case M (1.4.0): calculatePlasticLamination — ép plastic.
 // CHƯA cover (gap — note trong báo cáo):
 //   - processSheet / calculatePaperOptions / calculatePerSheetOptions / calculateDecalOptions
 //     (pipeline mutate allResults — cần end-to-end test riêng)
@@ -26,6 +27,7 @@ import {
     calculateDieCuttingCosts,
     calculateMaxCuttableSheetsLayout,
     calculateFoilStamping,
+    calculatePlasticLamination,
 } from '../../src/utils/calculator.js';
 import { calculateCustomerQuote } from '../../src/utils/customerQuote.js';
 import { DEFAULT_CONFIG } from '../../src/config/defaultConfig.js';
@@ -535,5 +537,131 @@ describe('Case L: calculateMaxCuttableSheetsLayout (smoke test only)', () => {
     it('cut quá lớn → count=0', () => {
         const r = calculateMaxCuttableSheetsLayout(65, 86, 100, 100);
         expect(r.count).toBe(0);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CASE M — calculatePlasticLamination (ép plastic — config 1.4.0)
+// PLASTIC_LAMINATION_CONFIG mặc định (bảng Excel của tiệm):
+//   tiers max_qty: 3, 10, 50, 100, 200, 500, 1000, 2000, ∞   (tra qty <= max_qty)
+//   price.a6:      10000, 8000, 4000, 3500, 2500, 2000, 1500, 1300, 1100
+//   price.a5:      10000, 8000, 5000, 4000, 3000, 2500, 2000, 1500, 1300
+//   price.a4:      15000, 12000, 8000, 6000, 5000, 4500, 3000, 2000, 1700
+//   price.cccd:    10000, 5000, 3000, 2500, 1500, 1000, 800, 700, 550
+//   minPrice (sàn bán, admin): a6 850, a5 1000, a4 1300, a3 2900, cccd 0
+//   thicknesses: mic80 (0%, a6/a5/a4/a3), mic125 (0%, cccd)
+// customerPrice = price[khổ][bậc] × (1 + %/100) × qty
+// minPrice      = minPrice[khổ]   × (1 + %/100) × qty
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case M: calculatePlasticLamination — ép plastic', () => {
+    const cfg = config.PLASTIC_LAMINATION_CONFIG;
+    const calc = (qty, th, sz, c = cfg) => calculatePlasticLamination(qty, th, sz, c);
+
+    it('M1: qty 3, 80 mic, A4 → 15.000×3 = 45.000 / sàn 1.300×3 = 3.900', () => {
+        const r = calc(3, 'mic80', 'a4');
+        expect(r.customerPrice).toBe(45000);
+        expect(r.minPrice).toBe(3900);
+        expect(r.unitPrice).toBe(15000);
+        expect(r.unitMinPrice).toBe(1300);
+        expect(r.active).toBe(true);
+        expect(r.unset).toBe(false);
+        expect(r.label).toBe('Ép plastic 80 mic — A4');
+        expect(r.thicknessName).toBe('80 mic');
+        expect(r.sizeName).toBe('A4');
+    });
+
+    it('M2: qty 4 (biên bậc 4-10) → 12.000×4 = 48.000 / sàn 5.200', () => {
+        const r = calc(4, 'mic80', 'a4');
+        expect(r.customerPrice).toBe(48000);
+        expect(r.minPrice).toBe(5200);
+    });
+
+    it('M3: qty 500 (biên trên bậc 201-500) → 4.500×500 = 2.250.000 / sàn 650.000', () => {
+        const r = calc(500, 'mic80', 'a4');
+        expect(r.customerPrice).toBe(2250000);
+        expect(r.minPrice).toBe(650000);
+    });
+
+    it('M4: qty 501 (bậc 501-1000) → 3.000×501 = 1.503.000 / sàn 651.300', () => {
+        const r = calc(501, 'mic80', 'a4');
+        expect(r.customerPrice).toBe(1503000);
+        expect(r.minPrice).toBe(651300);
+    });
+
+    it('M5: qty 100, 125 mic, CCCD → 2.500×100 = 250.000 / sàn 0 (chưa khai)', () => {
+        const r = calc(100, 'mic125', 'cccd');
+        expect(r.customerPrice).toBe(250000);
+        expect(r.minPrice).toBe(0);
+        expect(r.label).toBe('Ép plastic 125 mic — CCCD (67 x 97 mm)');
+    });
+
+    it('M6: qty 2001, A6 (bậc ∞) → 1.100×2001 = 2.201.100 / sàn 850×2001 = 1.700.850', () => {
+        const r = calc(2001, 'mic80', 'a6');
+        expect(r.customerPrice).toBe(2201100);
+        expect(r.minPrice).toBe(1700850);
+    });
+
+    it('M7: phụ thu 20% → 8.000×1,2×10 = 96.000 / sàn 1.000×1,2×10 = 12.000', () => {
+        const c = structuredClone(cfg);
+        c.thicknesses[0].percent = 20;
+        const r = calc(10, 'mic80', 'a5', c);
+        expect(r.customerPrice).toBeCloseTo(96000, 6);
+        expect(r.minPrice).toBeCloseTo(12000, 6);
+        expect(r.unitPrice).toBeCloseTo(9600, 6);
+        expect(r.unitMinPrice).toBeCloseTo(1200, 6);
+        expect(r.percent).toBe(20);
+    });
+
+    it("M8: 'none' (mặc định) → toàn 0, active false — giá cũ không đổi", () => {
+        for (const th of ['none', '', undefined, null]) {
+            const r = calc(500, th, 'a4');
+            expect(r.customerPrice).toBe(0);
+            expect(r.minPrice).toBe(0);
+            expect(r.active).toBe(false);
+            expect(r.unset).toBe(false);
+            expect(r.label).toBe('');
+        }
+    });
+
+    it('M9: 80 mic nhưng CHƯA chọn khổ → 0, unset:true, label chỉ độ dày', () => {
+        const r = calc(500, 'mic80', '');
+        expect(r.customerPrice).toBe(0);
+        expect(r.minPrice).toBe(0);
+        expect(r.active).toBe(true);
+        expect(r.unset).toBe(true);
+        expect(r.label).toBe('Ép plastic 80 mic');
+        expect(r.thicknessName).toBe('80 mic');
+    });
+
+    it('M10: 80 mic + CCCD (khổ không được tick cho độ dày này) → coi như chưa chọn', () => {
+        const r = calc(500, 'mic80', 'cccd');
+        expect(r.customerPrice).toBe(0);
+        expect(r.unset).toBe(true);
+    });
+
+    it('M11: qty 0 / cfg undefined / độ dày lạ → 0, không throw', () => {
+        expect(calc(0, 'mic80', 'a4').customerPrice).toBe(0);
+        expect(calc(0, 'mic80', 'a4').minPrice).toBe(0);
+        expect(calc(-5, 'mic80', 'a4').customerPrice).toBe(0);
+        // Gọi thẳng engine (helper calc có tham số mặc định nên undefined bị thay).
+        for (const bad of [undefined, null, {}, []]) {
+            const r = calculatePlasticLamination(3, 'mic80', 'a4', bad);
+            expect(r.customerPrice).toBe(0);
+            expect(r.minPrice).toBe(0);
+            expect(r.active).toBe(false);
+        }
+        expect(calc(3, 'mic999', 'a4').customerPrice).toBe(0);
+        expect(calc(3, 'mic999', 'a4').active).toBe(false);
+    });
+
+    it('M12: admin nhập bậc lộn thứ tự → engine sort lại, kết quả y như M1', () => {
+        const c = structuredClone(cfg);
+        c.tiers.reverse();
+        expect(calc(3, 'mic80', 'a4', c).customerPrice).toBe(45000);
+        expect(calc(501, 'mic80', 'a4', c).customerPrice).toBe(1503000);
+    });
+
+    it('M13: quantity dạng chuỗi "3" (params từ input) → 45.000', () => {
+        expect(calc('3', 'mic80', 'a4').customerPrice).toBe(45000);
     });
 });

@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal, unitFromRoundedTotal } from '../../utils/money';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
 
@@ -96,8 +97,12 @@ export default function CatalogueResultPanel({ result, params, config: _config, 
         stapleUnitText,
         giaVon,
         totalCustomerCost,
-        unitPerBook,
     } = result;
+
+    // Đơn giá/cuốn chỉ là "tổng chia đều" nên phải chia từ TỔNG ĐANG HIỆN (đã làm
+    // tròn nghìn), không phải result.unitPerBook (chia từ tổng thật) — nếu không,
+    // khách lấy con số trên màn hình chia cho số cuốn sẽ ra số khác.
+    const unitPerBook = unitFromRoundedTotal(totalCustomerCost, Number(params?.quantity));
 
     return (
         <div
@@ -107,7 +112,7 @@ export default function CatalogueResultPanel({ result, params, config: _config, 
             {/* Tổng + đơn giá/cuốn */}
             <div className="bg-gray-800 p-6 rounded-lg border-2 border-dashed border-yellow-500 mb-6 text-center">
                 <p className="text-sm text-gray-400 mb-1">Tổng báo giá khách (đã gồm bấm kim)</p>
-                <p className="text-4xl font-bold text-yellow-300">{fmt(totalCustomerCost)}</p>
+                <p className="text-4xl font-bold text-yellow-300">{fmtTotal(totalCustomerCost)}</p>
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá: <span className="font-bold">{fmt(unitPerBook)}</span> / cuốn
                 </p>
@@ -195,7 +200,7 @@ export default function CatalogueResultPanel({ result, params, config: _config, 
                             Tổng cộng (đã gồm bấm kim)
                         </span>
                         <span className="text-xl font-bold text-yellow-300">
-                            {fmt(totalCustomerCost)}
+                            {fmtTotal(totalCustomerCost)}
                         </span>
                     </div>
                 </div>

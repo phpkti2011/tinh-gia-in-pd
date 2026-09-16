@@ -1,7 +1,31 @@
 import { copyText } from '../common/CopyButton';
 import LaminationFilmSelect from '../common/LaminationFilmSelect';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced } from '../../utils/money';
 import { useMemo, useState } from 'react';
+
+// Số tờ in cần cho `quantity` con, với máy xếp được `perSheet` con mỗi tờ.
+// Giống hệt engine (pricing.js) nên con số hiện ra luôn khớp với giá.
+// Trả null khi chưa có SL hoặc máy không xếp được con nào ⇒ chỗ gọi ẩn dòng đi.
+function sheetsFor(quantity, perSheet) {
+    const q = Number(quantity);
+    const p = Number(perSheet);
+    if (!isFinite(q) || q <= 0 || !isFinite(p) || p <= 0) return null;
+    return Math.ceil(q / p);
+}
+
+// Bao hình (mm) của toàn bộ khối tem — để dịch CẢ CỤM vào giữa vùng in.
+// Engine trả blocks với toạ độ từ góc trên-trái vùng in (chỉ lo nhét được nhiều
+// nhất); tờ in thật thì tem phải nằm giữa giấy, nên sơ đồ tự canh giữa khi vẽ.
+function blocksExtent(blocks, gap) {
+    let w = 0;
+    let h = 0;
+    for (const b of blocks) {
+        w = Math.max(w, b.x + b.cols * b.iw + Math.max(0, b.cols - 1) * gap);
+        h = Math.max(h, b.y + b.rows * b.ih + Math.max(0, b.rows - 1) * gap);
+    }
+    return { w, h };
+}
 
 // P3-LINT.2: wrapper guard pattern.
 // Trước: LayoutVisualization có `if (!layout) return null` rồi gọi useMemo →
@@ -103,19 +127,17 @@ function LayoutVisualizationContent({ result, params }) {
                 }
             }
         } else {
-            // Xếp hỗn hợp: vẽ theo từng khối (block) tại offset trong vùng in (gốc góc trên-trái).
-            // Fallback: nếu không có blocks thì dựng 1 khối từ cols/rows/itemW/itemH (canh giữa).
+            // Xếp hỗn hợp: vẽ theo từng khối (block); toạ độ khối tính từ góc trên-trái
+            // vùng in nhưng CẢ CỤM được dịch vào giữa (xem blocksExtent).
+            // Fallback: nếu không có blocks thì dựng 1 khối từ cols/rows/itemW/itemH.
             const isCircleShape = shape === 'circle' || shape === 'oval';
             let blocks = layout.blocks;
-            let originX = paLeft;
-            let originY = paTop;
             if (!blocks || blocks.length === 0) {
                 blocks = [{ x: 0, y: 0, iw: itemW, ih: itemH, cols, rows }];
-                const contentW = cols > 0 ? cols * sw + (cols - 1) * g : 0;
-                const contentH = rows > 0 ? rows * sh + (rows - 1) * g : 0;
-                originX = paLeft + (paW - contentW) / 2;
-                originY = paTop + (paH - contentH) / 2;
             }
+            const ext = blocksExtent(blocks, gap);
+            const originX = paLeft + (paW - ext.w * scale) / 2;
+            const originY = paTop + (paH - ext.h * scale) / 2;
             let idx = 0;
             for (const b of blocks) {
                 const bw = b.iw * scale;
@@ -172,6 +194,15 @@ function LayoutVisualizationContent({ result, params }) {
             ? `Xếp được: ${sheetsPerPrintSheet} tờ decal / tờ in`
             : `Xếp được: ${count} con / tờ in`;
 
+    // Dòng "cần bao nhiêu tờ in" — chỉ hiện khi đã nhập SL tùy chỉnh, vì chưa
+    // nhập thì chưa có đơn hàng cụ thể nào để quy ra số tờ.
+    const isSheetMode = mode === 'sheet';
+    const orderQty =
+        Number(isSheetMode ? params?.sheetCustomQuantity : params?.customQuantity) || 0;
+    const perSheet = isSheetMode ? sheetsPerPrintSheet : count;
+    const neededSheets = sheetsFor(orderQty, perSheet);
+    const orderUnit = isSheetMode ? 'tờ decal' : 'con';
+
     return (
         <div className="flex flex-col items-center">
             <h3 className="text-base font-semibold text-gray-300 mb-3 text-center">
@@ -205,6 +236,13 @@ function LayoutVisualizationContent({ result, params }) {
                     {modeLabel.split(':')[0]}:{' '}
                     <span className="text-yellow-400 font-bold">{modeLabel.split(':')[1]}</span>
                 </p>
+                {neededSheets != null && (
+                    <p className="text-sm text-cyan-300">
+                        Cần{' '}
+                        <span className="font-bold">{neededSheets.toLocaleString('vi-VN')}</span> tờ
+                        in cho {orderQty.toLocaleString('vi-VN')} {orderUnit}
+                    </p>
+                )}
                 <p className="text-xs text-gray-500">
                     KT sticker: {itemW} × {itemH} mm · Khoảng cách: {gap} mm
                     {orientation &&
@@ -233,6 +271,10 @@ function SheetLayoutVisualization({ result, params }) {
     const { count, orientation, itemW, itemH, printableW, printableH } = layout;
     const gap = params?.stickerGap || 2;
 
+    // Số tờ in cho đơn hàng đang nhập (SL tùy chỉnh của chế độ Tờ Sticker).
+    const orderQty = Number(params?.sheetCustomQuantity) || 0;
+    const neededSheets = sheetsFor(orderQty, count);
+
     const MAX_VIS_W = 320;
     const MAX_VIS_H = 280;
     const scale = Math.min(MAX_VIS_W / sheetW, MAX_VIS_H / sheetH);
@@ -249,21 +291,19 @@ function SheetLayoutVisualization({ result, params }) {
         mockRows = 5;
     const mockGap = 2 * scale;
 
-    // Vẽ theo khối (block) xếp hỗn hợp; gốc góc trên-trái vùng in. Fallback 1 khối canh giữa.
+    // Vẽ theo khối (block) xếp hỗn hợp; toạ độ khối tính từ góc trên-trái vùng in,
+    // CẢ CỤM dịch vào giữa (xem blocksExtent). Fallback 1 khối khi engine không trả blocks.
     let blocks = layout.blocks;
-    let originX = paLeft;
-    let originY = paTop;
     if (!blocks || blocks.length === 0) {
         const fiw = orientation === 'vertical' ? itemW : itemH;
         const fih = orientation === 'vertical' ? itemH : itemW;
         const fcols = Math.floor((paW + g) / (fiw * scale + g));
         const frows = Math.floor((paH + g) / (fih * scale + g));
         blocks = [{ x: 0, y: 0, iw: fiw, ih: fih, cols: fcols, rows: frows }];
-        const contentW = fcols > 0 ? fcols * fiw * scale + (fcols - 1) * g : 0;
-        const contentH = frows > 0 ? frows * fih * scale + (frows - 1) * g : 0;
-        originX = paLeft + (paW - contentW) / 2;
-        originY = paTop + (paH - contentH) / 2;
     }
+    const ext = blocksExtent(blocks, gap);
+    const originX = paLeft + (paW - ext.w * scale) / 2;
+    const originY = paTop + (paH - ext.h * scale) / 2;
 
     const sheets = [];
     let idx = 0;
@@ -352,6 +392,13 @@ function SheetLayoutVisualization({ result, params }) {
                     Xếp được: <span className="text-yellow-400 font-bold">{count} tờ</span> / tờ in
                     lớn
                 </p>
+                {neededSheets != null && (
+                    <p className="text-sm text-cyan-300">
+                        Cần{' '}
+                        <span className="font-bold">{neededSheets.toLocaleString('vi-VN')}</span> tờ
+                        in cho {orderQty.toLocaleString('vi-VN')} tờ decal
+                    </p>
+                )}
                 <p className="text-xs text-gray-500">
                     KT tờ sticker: {itemW} × {itemH} mm ·{' '}
                     {orientation === 'vertical'
@@ -394,8 +441,8 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
         );
     }
 
-    const fmt = (v) =>
-        v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—';
+    // Mỗi ô trong bảng này LÀ một tổng tiền báo khách ⇒ tròn nghìn.
+    const fmt = formatVndRoundedSpaced;
     const perSheetLabel = mode === 'sheet' ? 'tờ/tờ in' : 'con/tờ';
     const hasDiscount = discountPercent > 0;
 
@@ -413,6 +460,9 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                 base: r.price,
                 price: r.finalPrice != null ? r.finalPrice : r.price,
                 floored: !!r.floored,
+                // Số tờ in của ĐÚNG máy này — cùng công thức engine dùng để ra giá
+                // (pricing.js: sheets = ceil(SL / số con mỗi tờ)), nên luôn khớp giá.
+                sheets: sheetsFor(row.quantity, m.layout?.count),
             };
         }),
     }));
@@ -466,7 +516,7 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                                     className="p-2 border-b border-gray-700 bg-gray-700 text-gray-300 text-right font-semibold"
                                 >
                                     {m.name}
-                                    <span className="block text-[9px] text-cyan-400/80 font-normal">
+                                    <span className="block text-[11px] text-cyan-300 font-bold">
                                         {m.layout?.count ?? 0} {perSheetLabel}
                                     </span>
                                 </th>
@@ -532,6 +582,11 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                                                 <span className="text-emerald-300">✓ đã copy</span>
                                             ) : (
                                                 fmt(cell.price)
+                                            )}
+                                            {cell.sheets != null && (
+                                                <span className="block text-[11px] font-bold text-gray-200">
+                                                    {cell.sheets.toLocaleString('vi-VN')} tờ in
+                                                </span>
                                             )}
                                             {cell.floored && (
                                                 <span className="block text-[9px] font-normal text-red-400">

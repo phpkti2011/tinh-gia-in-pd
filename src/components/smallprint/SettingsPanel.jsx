@@ -5,6 +5,7 @@ import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import { computeA4Factor } from '../../utils/customerQuote';
+import { newPlasticId } from '../../utils/plasticLamination';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 // Làm tròn 2 số lẻ cho hệ số quy đổi A4 tự tính (thân thiện, admin sửa được).
@@ -329,6 +330,131 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                       }
                     : gc
             ),
+        }));
+
+    // PLASTIC_LAMINATION_CONFIG (ép plastic) — bảng giá chung khổ × bậc SL, dòng
+    // sàn bán (chỉ admin), danh sách độ dày tick khổ. Mọi thao tác đi qua
+    // updatePlastic (immutable). Xoá khổ PHẢI gỡ id khỏi minPrice / tiers[].price
+    // / thicknesses[].sizeIds — schema kiểm tra tham chiếu, sót là không lưu được.
+    const EMPTY_PLASTIC = {
+        sizes: [],
+        minPrice: {},
+        tiers: [{ max_qty: Infinity, price: {} }],
+        thicknesses: [],
+    };
+    const updatePlastic = (fn) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            PLASTIC_LAMINATION_CONFIG: fn(prev.PLASTIC_LAMINATION_CONFIG || EMPTY_PLASTIC),
+        }));
+    const plMapTiers = (pl, mapFn) => ({ ...pl, tiers: (pl.tiers || []).map(mapFn) });
+    const updatePlasticCell = (tierIdx, sizeId, val) =>
+        updatePlastic((pl) =>
+            plMapTiers(pl, (t, i) =>
+                i === tierIdx ? { ...t, price: { ...(t.price || {}), [sizeId]: val } } : t
+            )
+        );
+    const updatePlasticTierMax = (tierIdx, val) =>
+        updatePlastic((pl) =>
+            plMapTiers(pl, (t, i) => (i === tierIdx ? { ...t, max_qty: val } : t))
+        );
+    const updatePlasticMinPrice = (sizeId, val) =>
+        updatePlastic((pl) => ({ ...pl, minPrice: { ...(pl.minPrice || {}), [sizeId]: val } }));
+    // Chèn bậc mới TRƯỚC dòng ∞, ngưỡng = ngưỡng hữu hạn lớn nhất + 1, giá copy
+    // từ dòng ngay trên để admin chỉ cần sửa số.
+    const addPlasticTier = () =>
+        updatePlastic((pl) => {
+            const tiers = pl.tiers || [];
+            const finite = tiers.map((t) => t.max_qty).filter((m) => Number.isFinite(m));
+            const nextMax = finite.length ? Math.max(...finite) + 1 : 1;
+            const infIdx = tiers.findIndex((t) => t.max_qty === Infinity);
+            const at = infIdx >= 0 ? infIdx : tiers.length;
+            const src = tiers[at - 1] || tiers[at] || { price: {} };
+            const row = { max_qty: nextMax, price: { ...(src.price || {}) } };
+            return { ...pl, tiers: [...tiers.slice(0, at), row, ...tiers.slice(at)] };
+        });
+    const delPlasticTier = (tierIdx) =>
+        updatePlastic((pl) => {
+            const tiers = pl.tiers || [];
+            if (tiers.length <= 1) return pl;
+            const next = tiers.filter((_, i) => i !== tierIdx);
+            // Luôn giữ 1 dòng ∞ để mọi số lượng đều tra được bậc.
+            if (!next.some((t) => t.max_qty === Infinity)) {
+                next[next.length - 1] = { ...next[next.length - 1], max_qty: Infinity };
+            }
+            return { ...pl, tiers: next };
+        });
+    const addPlasticSize = () =>
+        updatePlastic((pl) => {
+            const id = newPlasticId('sz');
+            return {
+                ...pl,
+                sizes: [...(pl.sizes || []), { id, name: 'Khổ mới' }],
+                minPrice: { ...(pl.minPrice || {}), [id]: 0 },
+                tiers: (pl.tiers || []).map((t) => ({
+                    ...t,
+                    price: { ...(t.price || {}), [id]: 0 },
+                })),
+            };
+        });
+    const delPlasticSize = (sizeId) =>
+        updatePlastic((pl) => {
+            if ((pl.sizes || []).length <= 1) return pl;
+            const strip = (map) => {
+                const m = { ...(map || {}) };
+                delete m[sizeId];
+                return m;
+            };
+            return {
+                ...pl,
+                sizes: pl.sizes.filter((s) => s.id !== sizeId),
+                minPrice: strip(pl.minPrice),
+                tiers: (pl.tiers || []).map((t) => ({ ...t, price: strip(t.price) })),
+                thicknesses: (pl.thicknesses || []).map((th) => ({
+                    ...th,
+                    sizeIds: (th.sizeIds || []).filter((id) => id !== sizeId),
+                })),
+            };
+        });
+    const updatePlasticSizeName = (sizeId, name) =>
+        updatePlastic((pl) => ({
+            ...pl,
+            sizes: (pl.sizes || []).map((s) => (s.id === sizeId ? { ...s, name } : s)),
+        }));
+    const addPlasticThickness = () =>
+        updatePlastic((pl) => ({
+            ...pl,
+            thicknesses: [
+                ...(pl.thicknesses || []),
+                { id: newPlasticId('mic'), name: 'Độ dày mới', percent: 0, sizeIds: [] },
+            ],
+        }));
+    const delPlasticThickness = (idx) =>
+        updatePlastic((pl) => ({
+            ...pl,
+            thicknesses: (pl.thicknesses || []).filter((_, i) => i !== idx),
+        }));
+    const updatePlasticThicknessField = (idx, field, val) =>
+        updatePlastic((pl) => ({
+            ...pl,
+            thicknesses: (pl.thicknesses || []).map((th, i) =>
+                i === idx ? { ...th, [field]: val } : th
+            ),
+        }));
+    const togglePlasticThicknessSize = (idx, sizeId, checked) =>
+        updatePlastic((pl) => ({
+            ...pl,
+            thicknesses: (pl.thicknesses || []).map((th, i) => {
+                if (i !== idx) return th;
+                const cur = (th.sizeIds || []).filter((id) => id !== sizeId);
+                const next = checked ? [...cur, sizeId] : cur;
+                // Giữ thứ tự cột trong bảng để dropdown ở màn tính giá xếp đúng.
+                const order = (pl.sizes || []).map((s) => s.id);
+                return {
+                    ...th,
+                    sizeIds: next.sort((a, b) => order.indexOf(a) - order.indexOf(b)),
+                };
+            }),
         }));
 
     // PRINTER_CONFIG[printer].clickTiers (ngưỡng chiều cao → số click) — quyết
@@ -2048,6 +2174,273 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                             </div>
                         ))}
                     </div>
+                </section>
+
+                {/* 10e. Ép plastic — bảng giá chung khổ × bậc SL + độ dày tick khổ */}
+                <section>
+                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-600">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                            Ép Plastic — Bảng Giá Theo Khổ
+                        </h3>
+                        <div className="space-x-2">
+                            <button
+                                onClick={addPlasticSize}
+                                className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                + Thêm khổ
+                            </button>
+                            <button
+                                onClick={addPlasticTier}
+                                className="px-3 py-1 rounded text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                + Thêm mức SL
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                        Giá đ/tấm theo khổ × bậc số lượng (số thành phẩm ≤ ngưỡng), dùng chung cho
+                        mọi độ dày. Dòng <strong>Giá tối thiểu</strong> là giá bán sàn — chỉ admin
+                        thấy ở màn tính giá, cộng thẳng vào Giá Tối Thiểu (không qua lợi nhuận).
+                        Nhân viên chỉ thấy giá khách.
+                    </p>
+                    {(() => {
+                        const pl = localConfig.PLASTIC_LAMINATION_CONFIG || EMPTY_PLASTIC;
+                        const plSizes = pl.sizes || [];
+                        const plTiers = pl.tiers || [];
+                        const plThs = pl.thicknesses || [];
+                        let prevMax = 0;
+                        return (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="text-gray-400 border-b border-gray-700">
+                                                <th className="text-left py-1.5 pr-3 whitespace-nowrap">
+                                                    Ngưỡng SL (≤)
+                                                </th>
+                                                {plSizes.map((s) => (
+                                                    <th
+                                                        key={s.id}
+                                                        className="text-left py-1.5 pr-3"
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <input
+                                                                type="text"
+                                                                value={s.name ?? ''}
+                                                                onChange={(e) =>
+                                                                    updatePlasticSizeName(
+                                                                        s.id,
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="w-32 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-yellow-400 text-sm font-medium"
+                                                            />
+                                                            {plSizes.length > 1 && (
+                                                                <button
+                                                                    onClick={() =>
+                                                                        delPlasticSize(s.id)
+                                                                    }
+                                                                    className="text-red-400 hover:text-red-300 text-xs"
+                                                                    title="Xóa khổ"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </th>
+                                                ))}
+                                                <th className="py-1.5"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {plTiers.map((tier, tierIdx) => {
+                                                const isUnlimited = tier.max_qty === Infinity;
+                                                const from = prevMax + 1;
+                                                const rangeLabel = isUnlimited
+                                                    ? `từ ${from}`
+                                                    : `${from}-${tier.max_qty}`;
+                                                if (!isUnlimited)
+                                                    prevMax = Number(tier.max_qty) || prevMax;
+                                                return (
+                                                    <tr
+                                                        key={tierIdx}
+                                                        className="border-b border-gray-700/50"
+                                                    >
+                                                        <td className="py-1.5 pr-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs text-gray-500 w-20 whitespace-nowrap">
+                                                                    {rangeLabel}
+                                                                </span>
+                                                                {isUnlimited ? (
+                                                                    <span className="text-yellow-400 font-medium">
+                                                                        trở lên
+                                                                    </span>
+                                                                ) : (
+                                                                    <NumInput
+                                                                        configValue={tier.max_qty}
+                                                                        step="1"
+                                                                        onCommit={(val) =>
+                                                                            updatePlasticTierMax(
+                                                                                tierIdx,
+                                                                                val
+                                                                            )
+                                                                        }
+                                                                        className={inputClsSm}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        {plSizes.map((s) => (
+                                                            <td key={s.id} className="py-1.5 pr-3">
+                                                                <NumInput
+                                                                    configValue={
+                                                                        tier.price?.[s.id] ?? 0
+                                                                    }
+                                                                    step="500"
+                                                                    onCommit={(val) =>
+                                                                        updatePlasticCell(
+                                                                            tierIdx,
+                                                                            s.id,
+                                                                            val
+                                                                        )
+                                                                    }
+                                                                    className={inputClsSm}
+                                                                />
+                                                            </td>
+                                                        ))}
+                                                        <td className="py-1.5">
+                                                            {plTiers.length > 1 && (
+                                                                <button
+                                                                    onClick={() =>
+                                                                        delPlasticTier(tierIdx)
+                                                                    }
+                                                                    className="text-red-400 hover:text-red-300 text-xs"
+                                                                >
+                                                                    Xóa
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            <tr className="bg-purple-900/30 border-t border-purple-500/40">
+                                                <td className="py-2 pr-3 text-xs text-purple-200 whitespace-nowrap">
+                                                    🔒 Giá tối thiểu / tấm
+                                                    <span className="block text-[10px] text-purple-300/70 whitespace-normal">
+                                                        chỉ admin — cộng thẳng vào Giá Tối Thiểu
+                                                    </span>
+                                                </td>
+                                                {plSizes.map((s) => (
+                                                    <td key={s.id} className="py-2 pr-3">
+                                                        <NumInput
+                                                            configValue={pl.minPrice?.[s.id] ?? 0}
+                                                            step="50"
+                                                            onCommit={(val) =>
+                                                                updatePlasticMinPrice(s.id, val)
+                                                            }
+                                                            className={inputClsSm}
+                                                        />
+                                                    </td>
+                                                ))}
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="mt-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="text-sm font-semibold text-gray-200">
+                                            Độ dày màng &amp; khổ được chọn
+                                        </h4>
+                                        <button
+                                            onClick={addPlasticThickness}
+                                            className="px-3 py-1 rounded text-xs font-medium bg-gray-700 hover:bg-gray-600 text-white"
+                                        >
+                                            + Thêm độ dày
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-3">
+                                        Nhân viên chọn độ dày rồi chọn khổ trong các khổ đã tick.
+                                        Phụ thu % nhân vào cả giá khách lẫn sàn tối thiểu — để 0 thì
+                                        dùng đúng bảng.
+                                    </p>
+                                    {plThs.length === 0 && (
+                                        <p className="text-gray-500 text-sm">
+                                            Chưa có độ dày nào — ô chọn ở màn tính giá sẽ ẩn.
+                                        </p>
+                                    )}
+                                    <div className="space-y-2">
+                                        {plThs.map((th, idx) => (
+                                            <div
+                                                key={th.id}
+                                                className="p-3 bg-gray-900/50 rounded-lg border border-gray-700 flex flex-wrap items-center gap-3"
+                                            >
+                                                <input
+                                                    type="text"
+                                                    value={th.name ?? ''}
+                                                    onChange={(e) =>
+                                                        updatePlasticThicknessField(
+                                                            idx,
+                                                            'name',
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-32 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm font-semibold"
+                                                />
+                                                <label className="flex items-center gap-1 text-xs text-gray-400">
+                                                    Phụ thu
+                                                    <input
+                                                        type="number"
+                                                        step={1}
+                                                        value={th.percent ?? 0}
+                                                        onChange={(e) =>
+                                                            updatePlasticThicknessField(
+                                                                idx,
+                                                                'percent',
+                                                                parseFloat(e.target.value) || 0
+                                                            )
+                                                        }
+                                                        className="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
+                                                    />
+                                                    %
+                                                </label>
+                                                <div className="flex flex-wrap gap-3">
+                                                    {plSizes.map((s) => (
+                                                        <label
+                                                            key={s.id}
+                                                            className="flex items-center gap-1 text-sm text-gray-300"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={(
+                                                                    th.sizeIds || []
+                                                                ).includes(s.id)}
+                                                                onChange={(e) =>
+                                                                    togglePlasticThicknessSize(
+                                                                        idx,
+                                                                        s.id,
+                                                                        e.target.checked
+                                                                    )
+                                                                }
+                                                            />
+                                                            {s.name}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    onClick={() => delPlasticThickness(idx)}
+                                                    className="ml-auto text-red-400 hover:text-red-300 text-xs whitespace-nowrap"
+                                                >
+                                                    Xóa độ dày
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
                 </section>
 
                 {/* 11. Dữ liệu biến đổi */}

@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal, unitFromRoundedTotal } from '../../utils/money';
 import { useAuth } from '../../auth/useAuth';
 import { useUserRole } from '../../auth/useUserRole';
 
@@ -103,8 +104,10 @@ export default function SpiralResultPanel({ result, params, config: _config, isC
         extraPaperCustomer,
         giaVon,
         totalCustomerCost,
-        unitPerBook,
     } = result;
+
+    // Chia từ TỔNG ĐANG HIỆN (đã làm tròn nghìn) — xem unitFromRoundedTotal().
+    const unitPerBook = unitFromRoundedTotal(totalCustomerCost, Number(params?.quantity));
 
     return (
         <div
@@ -113,7 +116,7 @@ export default function SpiralResultPanel({ result, params, config: _config, isC
         >
             <div className="bg-gray-800 p-6 rounded-lg border-2 border-dashed border-yellow-500 mb-6 text-center">
                 <p className="text-sm text-gray-400 mb-1">Tổng báo giá khách (đã gồm lò xo)</p>
-                <p className="text-4xl font-bold text-yellow-300">{fmt(totalCustomerCost)}</p>
+                <p className="text-4xl font-bold text-yellow-300">{fmtTotal(totalCustomerCost)}</p>
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá: <span className="font-bold">{fmt(unitPerBook)}</span> / cuốn
                 </p>
@@ -214,7 +217,7 @@ export default function SpiralResultPanel({ result, params, config: _config, isC
                             Tổng cộng (đã gồm lò xo)
                         </span>
                         <span className="text-xl font-bold text-yellow-300">
-                            {fmt(totalCustomerCost)}
+                            {fmtTotal(totalCustomerCost)}
                         </span>
                     </div>
                 </div>

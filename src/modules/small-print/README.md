@@ -14,7 +14,9 @@ src/modules/small-print/
 │   │                        calculateVariableDataCost, calculatePrintContentSurcharge,
 │   │                        calculateFinishingCost)
 │   ├── finishing.js       — finishing operations (public: calculateLamination,
-│   │                        calculateDieCuttingCosts, calculateFoilStamping)
+│   │                        calculateDieCuttingCosts, calculateFoilStamping,
+│   │                        calculatePlasticLamination — ép plastic, xem
+│   │                        src/utils/plasticLamination.js)
 │   │                        imports: ./pricing (calculateFinishingCost)
 │   ├── options.js         — option pipeline (public: processSheet,
 │   │                        calculatePaperOptions, calculatePerSheetOptions,

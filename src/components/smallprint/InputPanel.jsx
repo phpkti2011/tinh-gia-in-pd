@@ -2,6 +2,7 @@
 import LaminationFilmSelect from '../common/LaminationFilmSelect';
 import { useEffect } from 'react';
 import NumberField from '../common/NumberField';
+import { plasticSizesFor } from '../../utils/plasticLamination';
 
 export default function InputPanel({ config, params, onChange, isAutoCalculating }) {
     // Handler cho select + checkbox. Number field dùng NumberField shared để fix
@@ -56,6 +57,14 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
         sheetOptions[params.largeSheetSelector].w === 'custom';
 
     const isSidesDisabled = isSqm || isPerSheet || params.mountingType === 'yes';
+
+    // Ép plastic: danh sách độ dày admin khai; chọn độ dày rồi mới hiện ô khổ
+    // (chỉ các khổ admin tick cho độ dày đó). Config cũ thiếu key → không render.
+    const plasticCfg = config.PLASTIC_LAMINATION_CONFIG;
+    const plasticThicknesses = Array.isArray(plasticCfg?.thicknesses) ? plasticCfg.thicknesses : [];
+    const plasticTh = plasticThicknesses.find((t) => t && t.id === params.plasticThickness);
+    const plasticSizes = plasticSizesFor(plasticCfg, params.plasticThickness);
+    const plasticUnset = !!plasticTh && !params.plasticSize;
 
     // BUG fix: khi chuyển sang decal/per_sheet/bồi, select "Số mặt in" bị disable
     // với display value=1, nhưng state `params.printSides` giữ nguyên giá trị cũ
@@ -323,6 +332,56 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                             value={params.laminationFilm}
                             onChange={onChange}
                         />
+                    </div>
+                )}
+                {plasticThicknesses.length > 0 && (
+                    <div className="mb-4">
+                        <label htmlFor="plasticThickness">Ép plastic</label>
+                        <select
+                            id="plasticThickness"
+                            name="plasticThickness"
+                            value={params.plasticThickness || 'none'}
+                            onChange={handleChange}
+                        >
+                            <option value="none">Không ép plastic</option>
+                            {plasticThicknesses.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.name}
+                                    {t.percent ? ` (+${t.percent}%)` : ''}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {plasticTh && (
+                    <div className="mb-4">
+                        <label htmlFor="plasticSize">Khổ ép plastic</label>
+                        <select
+                            id="plasticSize"
+                            name="plasticSize"
+                            value={params.plasticSize || ''}
+                            onChange={handleChange}
+                            className={plasticUnset ? 'border-yellow-500' : undefined}
+                        >
+                            <option value="">— chọn khổ —</option>
+                            {plasticSizes.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.name}
+                                </option>
+                            ))}
+                        </select>
+                        {plasticSizes.length === 0 ? (
+                            <p className="mt-1 text-xs text-gray-400">
+                                Độ dày này chưa được tick khổ nào trong Cài Đặt.
+                            </p>
+                        ) : (
+                            plasticUnset && (
+                                <p className="mt-1 text-xs text-yellow-400">
+                                    Chưa chọn khổ ép plastic — chưa tính tiền ép plastic; quy cách
+                                    gửi xưởng sẽ ghi rõ là chưa chọn.
+                                </p>
+                            )
+                        )}
                     </div>
                 )}
                 <div className="mb-4">

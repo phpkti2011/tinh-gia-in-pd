@@ -20,6 +20,7 @@ export {
     calculateLamination,
     calculateDieCuttingCosts,
     calculateFoilStamping,
+    calculatePlasticLamination,
     processSheet,
     calculatePaperOptions,
     calculatePerSheetOptions,

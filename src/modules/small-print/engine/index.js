@@ -24,6 +24,7 @@ export {
     calculateLamination,
     calculateDieCuttingCosts,
     calculateFoilStamping,
+    calculatePlasticLamination,
 } from './finishing.js';
 
 export {

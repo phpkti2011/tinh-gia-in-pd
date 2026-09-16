@@ -384,4 +384,43 @@ describe('E2E-3: Full pipeline → customer quote (500 card visit C300 2 mặt)'
             expect(r.customerPrice).toBe(0);
         });
     });
+
+    // Sub-case 3.3: ép plastic (config 1.4.0) — key mới `plasticLamination` trong
+    // finishingCustomerPrices. App.jsx truyền calculatePlasticLamination().customerPrice.
+    describe('Sub 3.3: ép plastic cộng vào giá khách + chịu phụ thu nội dung', () => {
+        const base = { holePunching: 0, creasing: 0, mounting: 0 };
+        const die = { moldCost: 0, laborCustomerPrice: 0 };
+
+        it('không có key plasticLamination (object cũ 3 key) → tổng y như Sub 3.1 = 300.000đ', () => {
+            const q = calculateCustomerQuote(bestOption, params, base, die, null, config);
+            expect(q.totalCustomerCost).toBe(300000);
+            expect(q.plasticLaminationCustomerPrice).toBe(0);
+        });
+
+        it('plasticLamination 45.000 (3 tấm A4 80 mic) → 300.000 + 45.000 = 345.000đ', () => {
+            const q = calculateCustomerQuote(
+                bestOption,
+                params,
+                { ...base, plasticLamination: 45000 },
+                die,
+                null,
+                config
+            );
+            expect(q.plasticLaminationCustomerPrice).toBe(45000);
+            expect(q.totalCustomerCost).toBe(345000);
+        });
+
+        it('5 nội dung → phụ thu 10% áp lên CẢ tiền ép: 345.000 × 1,1 = 379.500đ', () => {
+            const q = calculateCustomerQuote(
+                bestOption,
+                { ...params, printContents: 5 },
+                { ...base, plasticLamination: 45000 },
+                die,
+                null,
+                config
+            );
+            expect(q.customerSurcharge).toBeCloseTo(34500, 6);
+            expect(q.totalCustomerCost).toBeCloseTo(379500, 6);
+        });
+    });
 });

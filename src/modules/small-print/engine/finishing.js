@@ -8,6 +8,7 @@
 
 import { calculateFinishingCost } from './pricing.js';
 import { filmMultiplier } from '../../../utils/laminationFilm.js';
+import { resolvePlastic, plasticLabel } from '../../../utils/plasticLamination.js';
 
 // Cán màng (lamination)
 export function calculateLamination(
@@ -41,6 +42,72 @@ export function calculateLamination(
         costPerSheet: cost,
         costPerProduct: productsPerSheet > 0 ? cost / productsPerSheet : 0,
         warning: warning,
+    };
+}
+
+// Ép plastic (màng nhiệt bỏ túi) — bảng giá chung khổ × bậc SL, mỗi độ dày có
+// % phụ thu riêng + các khổ được phép. Xem src/utils/plasticLamination.js.
+//   - customerPrice = đơn giá(khổ, bậc) × (1 + %/100) × SL   → giá báo khách.
+//   - minPrice      = sàn bán/tấm(khổ) × (1 + %/100) × SL    → CHỈ ADMIN: ResultPanel
+//     cộng thẳng vào "Giá Tối Thiểu" (KHÔNG qua profit margin).
+//   - quantity = SỐ THÀNH PHẨM (mỗi sản phẩm ép 1 tấm), không phải số tờ in.
+//   - Chưa chọn độ dày → toàn 0, active:false (giá cũ không đổi). Chọn độ dày mà
+//     chưa chọn khổ / khổ không được tick → 0 + unset:true để UI cảnh báo.
+// Không làm tròn ở đây (rule money.js: chỉ làm tròn TỔNG ở tầng hiển thị).
+const EMPTY_PLASTIC = {
+    customerPrice: 0,
+    minPrice: 0,
+    unitPrice: 0,
+    unitMinPrice: 0,
+    percent: 0,
+    label: '',
+    thicknessName: '',
+    sizeName: '',
+    active: false,
+    unset: false,
+};
+
+export function calculatePlasticLamination(quantity, thicknessId, sizeId, cfg) {
+    const { thickness, size } = resolvePlastic(cfg, thicknessId, sizeId);
+    if (!thickness) return { ...EMPTY_PLASTIC };
+
+    const pct = Number(thickness.percent);
+    const percent = Number.isFinite(pct) ? pct : 0;
+    const mult = 1 + percent / 100;
+    const thicknessName = typeof thickness.name === 'string' ? thickness.name : '';
+
+    if (!size) {
+        return {
+            ...EMPTY_PLASTIC,
+            percent,
+            thicknessName,
+            label: plasticLabel(cfg, thicknessId, '') || '',
+            active: true,
+            unset: true,
+        };
+    }
+
+    const qty = parseInt(quantity, 10) || 0;
+    // Tra trên bản sao đã sort theo max_qty (∞ cuối) — admin nhập bậc lộn thứ
+    // tự trong Cài Đặt vẫn tra đúng; không có bậc phù hợp → 0.
+    const tiers = (Array.isArray(cfg.tiers) ? [...cfg.tiers] : [])
+        .filter((t) => t && typeof t === 'object')
+        .sort((a, b) => Number(a.max_qty) - Number(b.max_qty));
+    const tier = tiers.find((t) => qty <= Number(t.max_qty));
+    const unitPrice = (Number(tier?.price?.[size.id]) || 0) * mult;
+    const unitMinPrice = (Number(cfg.minPrice?.[size.id]) || 0) * mult;
+
+    return {
+        customerPrice: qty > 0 ? unitPrice * qty : 0,
+        minPrice: qty > 0 ? unitMinPrice * qty : 0,
+        unitPrice,
+        unitMinPrice,
+        percent,
+        label: plasticLabel(cfg, thicknessId, sizeId) || '',
+        thicknessName,
+        sizeName: typeof size.name === 'string' ? size.name : '',
+        active: true,
+        unset: false,
     };
 }
 

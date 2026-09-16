@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal } from '../../utils/money';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 
 function Row({ label, value, strong }) {
@@ -105,7 +106,7 @@ export default function CardResultPanel({ result, config, isCalculating }) {
                 <p className="text-sm text-gray-400 mb-1">Đơn giá bán</p>
                 <p className="text-4xl font-bold text-yellow-300">{fmt(result.unit)} / thẻ</p>
                 <p className="mt-2 text-lg text-yellow-200">
-                    Tổng tiền: <span className="font-bold">{fmt(result.total)}</span>
+                    Tổng tiền: <span className="font-bold">{fmtTotal(result.total)}</span>
                 </p>
                 <div className="mt-3 flex justify-center">
                     <CopyButton text={buildJobSpec('card', { result })} />
@@ -125,7 +126,7 @@ export default function CardResultPanel({ result, config, isCalculating }) {
                     <div className="flex justify-between items-baseline border-t border-gray-600 pt-3 mt-1">
                         <span className="text-base font-semibold text-gray-200">Tổng tiền</span>
                         <span className="text-xl font-bold text-yellow-300">
-                            {fmt(result.total)}
+                            {fmtTotal(result.total)}
                         </span>
                     </div>
                 </div>

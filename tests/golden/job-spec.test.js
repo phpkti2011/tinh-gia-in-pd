@@ -12,6 +12,7 @@ import {
     formatSize,
 } from '../../src/utils/jobSpec.js';
 import { LARGE_PRINT_DEFAULT_CONFIG } from '../../src/modules/large-print/config/defaultConfig.js';
+import { DEFAULT_CONFIG as SMALL_PRINT_DEFAULT } from '../../src/modules/small-print/config/index.js';
 
 describe('Formatter dùng chung', () => {
     it('formatVnd — dấu chấm nghìn kiểu VN', () => {
@@ -55,6 +56,7 @@ describe('small-print — In KTS khổ nhỏ', () => {
     const config = {
         PAPER_STOCK_DATA: [{ name: 'Ford 100gsm' }, {}, {}, { name: 'Couche 300gsm' }],
         CUSTOM_FINISHING_TYPES: [],
+        PLASTIC_LAMINATION_CONFIG: SMALL_PRINT_DEFAULT.PLASTIC_LAMINATION_CONFIG,
     };
     const params = {
         paperType: '3',
@@ -121,6 +123,51 @@ describe('small-print — In KTS khổ nhỏ', () => {
             config,
         });
         expect(out).toContain(' _ 2 mặt _ ');
+    });
+
+    describe('ép plastic (1.4.0)', () => {
+        it('đã chọn độ dày + khổ → ghi "ép plastic 80 mic khổ A4" ngay sau cán màng', () => {
+            const out = buildJobSpec('small-print', {
+                params: { ...params, plasticThickness: 'mic80', plasticSize: 'a4' },
+                result,
+                config,
+            });
+            expect(out).toContain(
+                'cán màng mờ 2 mặt, ép plastic 80 mic khổ A4, cắt thành phẩm chữ nhật'
+            );
+        });
+
+        it('chọn độ dày mà chưa chọn khổ → nói thẳng "(CHƯA CHỌN khổ)"', () => {
+            const out = buildJobSpec('small-print', {
+                params: { ...params, plasticThickness: 'mic80', plasticSize: '' },
+                result,
+                config,
+            });
+            expect(out).toContain('ép plastic 80 mic (CHƯA CHỌN khổ)');
+        });
+
+        it("'none' hoặc params cũ không có field → chuỗi y như trước", () => {
+            const before = buildJobSpec('small-print', { params, result, config });
+            const out = buildJobSpec('small-print', {
+                params: { ...params, plasticThickness: 'none', plasticSize: '' },
+                result,
+                config,
+            });
+            expect(out).toBe(before);
+            expect(out).not.toContain('ép plastic');
+        });
+
+        it('config cũ thiếu PLASTIC_LAMINATION_CONFIG → không ghi gì, không lỗi', () => {
+            const cfg = { ...config };
+            delete cfg.PLASTIC_LAMINATION_CONFIG;
+            const out = buildJobSpec('small-print', {
+                params: { ...params, plasticThickness: 'mic80', plasticSize: 'a4' },
+                result,
+                config: cfg,
+            });
+            expect(out).not.toContain('ép plastic');
+            expect(out).not.toMatch(/undefined|NaN|null/);
+        });
     });
 });
 
@@ -519,5 +566,176 @@ describe('Chưa có kết quả hợp lệ → null (nút tự ẩn)', () => {
         expect(out).not.toContain('undefined');
         expect(out).not.toContain('_  _');
         expect(out).toBe('170 _ A5 _ 2 mặt\nGiá: 1.020.000đ (6.000đ/tờ)');
+    });
+});
+
+// Ca người dùng nêu: "không để giá 568.500, từ 500 trở lên làm tròn lên 1.000".
+// Chốt kèm theo: CHỈ tổng mới tròn, đơn giá trong ngoặc vẫn giữ số lẻ.
+describe('Dòng Giá — tổng tròn nghìn, đơn giá giữ số lẻ', () => {
+    const decalCtx = (finalPrice, quantity) => ({
+        params: { stickerW: 50, stickerH: 90, shape: 'rectangle' },
+        result: { mode: 'single' },
+        row: { quantity, decalType: 'Decal giấy', laminated: false, finalPrice },
+    });
+
+    it('568.500 → 569.000đ, đơn giá lẻ 568,5đ/con vẫn hiện thật', () => {
+        // 568.500 / 1.000 con = 568,5đ/con → formatVnd làm tròn đồng thành 569đ,
+        // KHÔNG bị kéo lên 1.000đ. Đây là điểm dễ làm sai nhất.
+        const out = buildJobSpec('decal', decalCtx(568500, 1000));
+        expect(out).toContain('Giá: 569.000đ');
+        expect(out).toContain('(569đ/con)');
+        expect(out).not.toContain('568.500');
+    });
+
+    it('đuôi dưới 500 thì tổng xuống', () => {
+        const out = buildJobSpec('decal', decalCtx(568400, 1000));
+        expect(out).toContain('Giá: 568.000đ');
+    });
+
+    it('tổng đã tròn thì giữ nguyên — các ca cũ không đổi', () => {
+        const out = buildJobSpec('decal', decalCtx(570000, 1000));
+        expect(out).toContain('Giá: 570.000đ (570đ/con)');
+    });
+});
+
+// Ca người dùng nêu ở Catalogue: tổng hiện 480.000đ nhưng đơn giá ghi 160.133đ/cuốn
+// cho 3 cuốn — lấy con số trong CHÍNH chuỗi này chia cho số lượng phải ra đúng đơn
+// giá đang ghi. Trước đây đơn giá chia từ tổng THẬT nên lệch.
+//
+// ⚠ Mọi fixture ở các describe trên đều có tổng chia hết 1.000 nên KHÔNG bắt được
+// lỗi này — đó là lý do phải có riêng khối dưới với tổng lẻ.
+describe('Dòng Giá — đơn giá "chia đều" = TỔNG ĐÃ TRÒN ÷ số lượng', () => {
+    const bookResult = (total) => ({
+        error: null,
+        cover: { paperName: 'C300', sides: 2 },
+        inner: { paperName: 'C150', sides: 2 },
+        coverSingleSide: false,
+        lamLabel: 'Không cán',
+        totalCustomerCost: total,
+        // Đơn giá THẬT do engine trả về — cố ý để lệch, builder phải bỏ qua nó.
+        unitPerBook: total / 3,
+    });
+    const bookParams = { quantity: 3, numPages: 16, finishedW: 210, finishedH: 297 };
+
+    it('catalogue — 480.400đ / 3 cuốn → "480.000đ (160.000đ/cuốn)", không còn 160.133đ', () => {
+        const out = buildJobSpec('catalogue', { params: bookParams, result: bookResult(480400) });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/cuốn)');
+        expect(out).not.toContain('160.133');
+    });
+
+    it('spiral — cùng luật', () => {
+        const out = buildJobSpec('spiral', {
+            params: bookParams,
+            result: { ...bookResult(480400), linerName: '' },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/cuốn)');
+        expect(out).not.toContain('160.133');
+    });
+
+    it('small-print — 480.400đ / 3 cái', () => {
+        const out = buildJobSpec('small-print', {
+            params: {
+                paperType: '3',
+                productW: 9,
+                productH: 5.5,
+                productQuantity: 3,
+                printSides: '2',
+                laminationType: 'none',
+                mountingType: 'none',
+                creasingType: 'none',
+                holePunchingType: 'none',
+                dieCuttingType: 'none',
+                foilStamping: 'none',
+                customFinishingType: 'none',
+            },
+            result: { printSides: 2, totalCustomerCost: 480400, error: null },
+            config: { PAPER_STOCK_DATA: [{}, {}, {}, { name: 'Couche 300gsm' }] },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/cái)');
+    });
+
+    it('flyer — 480.400đ / 3 tờ', () => {
+        const out = buildJobSpec('flyer', {
+            result: {
+                error: null,
+                requiresManualQuote: false,
+                sizeName: 'Kích thước A5',
+                quantity: 3,
+                paperName: 'Giấy C150',
+                sidesName: 'In 2 mặt',
+                lamination: 'no',
+                creasingType: 'none',
+                total: 480400,
+            },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/tờ)');
+    });
+
+    it('cheapdecal — 480.400đ / 3 cái', () => {
+        const out = buildJobSpec('cheapdecal', {
+            result: {
+                error: null,
+                sizeName: '3x3 cm',
+                quantity: 3,
+                materialName: 'Decal giấy',
+                shapeName: 'Tròn',
+                lamination: false,
+                total: 480400,
+                unitPrice: 480400 / 3,
+            },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/cái)');
+    });
+
+    it('sticker — chia theo SỐ TỜ TÍNH TIỀN', () => {
+        const out = buildJobSpec('sticker', {
+            result: {
+                error: null,
+                sizeName: 'Tờ sticker A5',
+                finishName: 'Không',
+                qty: 3,
+                billableQty: 3,
+                total: 480400,
+                unitPerSheet: 480400 / 3,
+            },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/tờ)');
+    });
+
+    it('uvdtf — 480.400đ / 3 tem', () => {
+        const out = buildJobSpec('uvdtf', {
+            params: { quantity: 3 },
+            result: { error: null, originalW: 50, originalH: 90, totalPrice: 480400 },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/tem)');
+    });
+
+    it('large-print — chia theo số tấm', () => {
+        const out = buildJobSpec('large-print', {
+            params: { materialTypeKey: 'hiflex' },
+            result: {
+                totalCost: 480400,
+                totalPanels: 3,
+                itemDetails: [{ quantity: 3, originalW: 100, originalH: 200 }],
+            },
+            config: { MATERIAL_TYPES: { hiflex: { name: 'Bạt Hiflex' } } },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.000đ/tấm)');
+    });
+
+    it('NGOẠI LỆ — thẻ nhựa giữ ĐƠN GIÁ GỐC theo mốc SL, không chia lại', () => {
+        // total = unit × qty do engine tính ngược. Chia lại từ tổng đã tròn sẽ bịa
+        // ra đơn giá tiệm không niêm yết (160.133 → 160.000).
+        const out = buildJobSpec('card', {
+            result: {
+                error: null,
+                isContact: false,
+                productName: 'Thẻ nhựa trắng',
+                qty: 3,
+                unit: 160133.33,
+                total: 480400,
+            },
+        });
+        expect(out).toContain('Giá: 480.000đ (160.133đ/thẻ)');
     });
 });

@@ -10,6 +10,8 @@
 //     * trường numeric thiết yếu (ART_PAPER_SURCHARGE)
 //     * inner sanity: LAMINATION_CONFIG, PROFIT_MARGIN_TIERS,
 //       CUSTOMER_PRICE_TIERS, PRINTER_CONFIG, PAPER_STOCK_DATA
+//     * optional (config cũ thiếu vẫn hợp lệ, có thì phải đúng shape):
+//       LAMINATION_FILMS, PLASTIC_LAMINATION_CONFIG, PAPER_REFERENCE_CONFIG…
 // - Cho phép Infinity ở các trường upper-bound (typeof Infinity === 'number').
 // - Pure JS, không thư viện ngoài.
 
@@ -216,6 +218,93 @@ function validateLaminationFilms(list, prefix, errors) {
     });
 }
 
+// Optional — ép plastic (1.4.0). Config cũ chưa có vẫn hợp lệ. Admin sửa từ Cài
+// Đặt nên có thì phải đúng hình dạng; đặc biệt sizeIds của độ dày phải trỏ tới
+// khổ có thật (xoá khổ mà quên gỡ khỏi độ dày → nhân viên chọn được "khổ ma"
+// giá 0). Xem src/utils/plasticLamination.js.
+function validatePlasticLamination(cfg, errors) {
+    if (cfg == null) return;
+    const P = 'PLASTIC_LAMINATION_CONFIG';
+    if (!isPlainObject(cfg)) {
+        errors.push(`${P}: phải là object`);
+        return;
+    }
+
+    const sizeIds = new Set();
+    if (!Array.isArray(cfg.sizes) || cfg.sizes.length === 0) {
+        errors.push(`${P}.sizes: phải là array non-empty`);
+    } else {
+        cfg.sizes.forEach((s, i) => {
+            const p = `${P}.sizes[${i}]`;
+            if (!isPlainObject(s)) {
+                errors.push(`${p}: phải là object`);
+                return;
+            }
+            if (typeof s.id !== 'string' || !s.id)
+                errors.push(`${p}.id: phải là string không rỗng`);
+            else if (sizeIds.has(s.id)) errors.push(`${p}.id: trùng id '${s.id}'`);
+            else sizeIds.add(s.id);
+            if (typeof s.name !== 'string') errors.push(`${p}.name: phải là string`);
+        });
+    }
+
+    // Map khổ → tiền: value phải là number ≥ 0 (thiếu khổ cho phép — engine coi 0).
+    const checkPriceMap = (label, map) => {
+        if (!isPlainObject(map)) {
+            errors.push(`${label}: phải là object`);
+            return;
+        }
+        for (const [k, v] of Object.entries(map)) {
+            if (typeof v !== 'number' || !(v >= 0))
+                errors.push(`${label}.${k}: phải là number ≥ 0`);
+        }
+    };
+    checkPriceMap(`${P}.minPrice`, cfg.minPrice);
+
+    if (!Array.isArray(cfg.tiers) || cfg.tiers.length === 0) {
+        errors.push(`${P}.tiers: phải là array non-empty`);
+    } else {
+        cfg.tiers.forEach((t, i) => {
+            const p = `${P}.tiers[${i}]`;
+            if (!isPlainObject(t)) {
+                errors.push(`${p}: phải là object`);
+                return;
+            }
+            if (typeof t.max_qty !== 'number')
+                errors.push(`${p}.max_qty: phải là number (cho phép Infinity)`);
+            checkPriceMap(`${p}.price`, t.price);
+        });
+    }
+
+    if (!Array.isArray(cfg.thicknesses)) {
+        errors.push(`${P}.thicknesses: phải là array`);
+    } else {
+        const thIds = new Set();
+        cfg.thicknesses.forEach((t, i) => {
+            const p = `${P}.thicknesses[${i}]`;
+            if (!isPlainObject(t)) {
+                errors.push(`${p}: phải là object`);
+                return;
+            }
+            if (typeof t.id !== 'string' || !t.id)
+                errors.push(`${p}.id: phải là string không rỗng`);
+            else if (thIds.has(t.id)) errors.push(`${p}.id: trùng id '${t.id}'`);
+            else thIds.add(t.id);
+            if (typeof t.name !== 'string') errors.push(`${p}.name: phải là string`);
+            if (t.percent != null && typeof t.percent !== 'number')
+                errors.push(`${p}.percent: phải là number`);
+            if (!Array.isArray(t.sizeIds)) {
+                errors.push(`${p}.sizeIds: phải là array`);
+            } else {
+                t.sizeIds.forEach((id, j) => {
+                    if (typeof id !== 'string' || !sizeIds.has(id))
+                        errors.push(`${p}.sizeIds[${j}]: khổ '${id}' không có trong sizes`);
+                });
+            }
+        });
+    }
+}
+
 export function validateSmallPrintConfig(config) {
     if (!config || typeof config !== 'object' || Array.isArray(config)) {
         return { isValid: false, errors: ['Config phải là object'] };
@@ -344,6 +433,7 @@ export function validateSmallPrintConfig(config) {
     }
 
     validateLaminationFilms(config.LAMINATION_FILMS, 'LAMINATION_FILMS', errors);
+    validatePlasticLamination(config.PLASTIC_LAMINATION_CONFIG, errors);
 
     return { isValid: errors.length === 0, errors };
 }

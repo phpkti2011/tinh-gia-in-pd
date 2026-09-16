@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal } from '../../utils/money';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 
 function Row({ label, value, strong, negative }) {
@@ -110,7 +111,7 @@ export default function FlyerResultPanel({ result, config, isCalculating }) {
         requiresManualQuote,
     } = result;
 
-    const totalText = requiresManualQuote ? `${fmt(total)} + phí cấn` : fmt(total);
+    const totalText = requiresManualQuote ? `${fmtTotal(total)} + phí cấn` : fmtTotal(total);
 
     return (
         <div

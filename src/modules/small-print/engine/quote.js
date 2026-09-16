@@ -3,6 +3,9 @@
 // Tách từ src/utils/customerQuote.js ở TASK-0009.
 // KHÔNG đổi behavior — nhận bestOption + finishing customer prices,
 // quy đổi sang trang A4 + áp CUSTOMER_PRICE_TIERS.
+//
+// finishingCustomerPrices: { holePunching, creasing, mounting, customFinishing?,
+// plasticLamination? } — key thiếu coi như 0 (test cũ truyền object 3 key).
 
 import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pricing.js';
 import { filmMultiplier } from '../../../utils/laminationFilm.js';
@@ -199,6 +202,7 @@ export function calculateCustomerQuote(
         finishingCustomerPrices.creasing +
         finishingCustomerPrices.mounting +
         (finishingCustomerPrices.customFinishing || 0) +
+        (finishingCustomerPrices.plasticLamination || 0) +
         dieCuttingCustomerPrice.moldCost +
         dieCuttingCustomerPrice.laborCustomerPrice +
         variableDataCost +
@@ -227,6 +231,7 @@ export function calculateCustomerQuote(
         creasingCustomerPrice: finishingCustomerPrices.creasing || 0,
         mountingCustomerPrice: finishingCustomerPrices.mounting || 0,
         customFinishingCustomerPrice: finishingCustomerPrices.customFinishing || 0,
+        plasticLaminationCustomerPrice: finishingCustomerPrices.plasticLamination || 0,
         dieCuttingMoldCustomerPrice: dieCuttingCustomerPrice.moldCost || 0,
         dieCuttingLaborCustomerPrice: dieCuttingCustomerPrice.laborCustomerPrice || 0,
         variableDataCost,

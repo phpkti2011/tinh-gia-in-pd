@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal, unitFromRoundedTotal } from '../../utils/money';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 
 function Row({ label, value, strong }) {
@@ -92,10 +93,12 @@ export default function CheapDecalResultPanel({ result, config, isCalculating })
         laminationFee,
         rushFee,
         total,
-        unitPrice,
         sheets,
         leadTimeNote,
     } = result;
+
+    // Chia từ TỔNG ĐANG HIỆN (đã làm tròn nghìn) — xem unitFromRoundedTotal().
+    const unitPrice = unitFromRoundedTotal(total, quantity);
 
     return (
         <div
@@ -104,7 +107,7 @@ export default function CheapDecalResultPanel({ result, config, isCalculating })
         >
             <div className="bg-gray-800 p-6 rounded-lg border-2 border-dashed border-yellow-500 mb-6 text-center">
                 <p className="text-sm text-gray-400 mb-1">Thành tiền</p>
-                <p className="text-4xl font-bold text-yellow-300">{fmt(total)}</p>
+                <p className="text-4xl font-bold text-yellow-300">{fmtTotal(total)}</p>
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá: <span className="font-bold">{fmt(unitPrice)}</span> / nhãn
                 </p>
@@ -137,7 +140,7 @@ export default function CheapDecalResultPanel({ result, config, isCalculating })
                     {rushFee > 0 && <Row label="Phụ phí lấy trong ngày" value={fmt(rushFee)} />}
                     <div className="flex justify-between items-baseline border-t border-gray-600 pt-3 mt-1">
                         <span className="text-base font-semibold text-gray-200">Thành tiền</span>
-                        <span className="text-xl font-bold text-yellow-300">{fmt(total)}</span>
+                        <span className="text-xl font-bold text-yellow-300">{fmtTotal(total)}</span>
                     </div>
                     <p className="text-xs text-gray-500 pt-2">
                         ≈ {sheets.toLocaleString('vi-VN')} tờ in. {leadTimeNote}

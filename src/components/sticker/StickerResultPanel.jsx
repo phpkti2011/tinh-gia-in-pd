@@ -1,5 +1,6 @@
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { formatVndRoundedSpaced as fmtTotal, unitFromRoundedTotal } from '../../utils/money';
 const fmt = (v) => (v != null && !isNaN(v) ? Math.round(v).toLocaleString('vi-VN') + ' đ' : '—');
 const pct = (v) => `${(+v || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%`;
 
@@ -129,11 +130,15 @@ export default function StickerResultPanel({ result, config, isCalculating }) {
         totalPct,
         percentSurcharge,
         total,
-        unitPerSheet,
         size,
     } = result;
     const s = config.STICKER_CONFIG || {};
     const belowMin = qty < s.minBillableQty;
+
+    // "Đơn giá thực tế" là tổng chia đều cho số tờ tính tiền → phải chia từ TỔNG
+    // ĐANG HIỆN (đã làm tròn nghìn), không phải result.unitPerSheet. Đơn giá theo
+    // mốc số lượng ở bảng bên dưới là đơn giá GỐC, giữ nguyên số thật.
+    const unitPerSheet = unitFromRoundedTotal(total, billableQty);
 
     return (
         <div
@@ -142,7 +147,7 @@ export default function StickerResultPanel({ result, config, isCalculating }) {
         >
             <div className="bg-gray-800 p-6 rounded-lg border-2 border-dashed border-yellow-500 mb-6 text-center">
                 <p className="text-sm text-gray-400 mb-1">Tổng giá dự kiến</p>
-                <p className="text-4xl font-bold text-yellow-300">{fmt(total)}</p>
+                <p className="text-4xl font-bold text-yellow-300">{fmtTotal(total)}</p>
                 <p className="mt-2 text-lg text-yellow-200">
                     Đơn giá thực tế: <span className="font-bold">{fmt(unitPerSheet)}</span> / tờ
                 </p>
@@ -203,7 +208,7 @@ export default function StickerResultPanel({ result, config, isCalculating }) {
                     />
                     <div className="flex justify-between items-baseline border-t border-gray-600 pt-3 mt-1">
                         <span className="text-base font-semibold text-gray-200">Tổng cộng</span>
-                        <span className="text-xl font-bold text-yellow-300">{fmt(total)}</span>
+                        <span className="text-xl font-bold text-yellow-300">{fmtTotal(total)}</span>
                     </div>
                     <p className="text-xs text-gray-500 pt-2">
                         Giá chưa gồm VAT, vận chuyển và phí thanh toán.
