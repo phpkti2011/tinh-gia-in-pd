@@ -117,6 +117,12 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         { name: 'Poster 50×70', width: 50, height: 70 },
         { name: 'Poster 60×90', width: 60, height: 90 },
     ],
+    // Khổ ngang IN THẬT ĐƯỢC của máy (mét). Máy khổ 1m8 nhưng trừ lề chỉ in được 1m6.
+    // Khổ in tại xưởng = min(số này, khổ cuộn lớn nhất của vật liệu đang chọn).
+    // Tấm luôn được xoay, nên chỉ CẠNH NGẮN phải lọt; cạnh dài chạy dọc cuộn, không giới hạn.
+    // Cả 2 chiều đều lớn hơn ⇒ KHÔNG báo giá, phải in gia công ở ngoài.
+    // Đơn vị MÉT cho khớp MATERIAL_TYPES[*].options[*].width — so sánh thẳng, không quy đổi.
+    MACHINE_MAX_PRINT_WIDTH_M: 1.6,
     MIN_PRINT_PRICE: 30000,
     MIN_LAMINATION_PRICE: 15000,
     MIN_EDGE_TAPING_PRICE: 20000,

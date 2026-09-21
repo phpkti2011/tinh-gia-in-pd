@@ -264,12 +264,12 @@ describe('Case F: 50×90mm × 200 cái — vừa qua tier 1 → tier 2 (390k)', 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CASE G — structural check: object trả về có đủ 13 trường
+// CASE G — structural check: object trả về có đủ 15 trường
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Case G: structural — object output có đủ 13 trường', () => {
+describe('Case G: structural — object output có đủ 15 trường', () => {
     const r = calculateUvDtf({ widthMM: 50, heightMM: 90, quantity: 100 }, config);
 
-    it('có đủ 13 trường public', () => {
+    it('có đủ 15 trường public', () => {
         const expectedKeys = [
             'totalLengthCM',
             'totalMeters',
@@ -284,10 +284,17 @@ describe('Case G: structural — object output có đủ 13 trường', () => {
             'rowsPerMeter',
             'originalW',
             'originalH',
+            'dieCut',
+            'usingDieCutTable',
         ];
         for (const key of expectedKeys) {
             expect(r).toHaveProperty(key);
         }
-        expect(Object.keys(r).length).toBe(13);
+        expect(Object.keys(r).length).toBe(15);
+    });
+
+    it('params không khai dieCut ⇒ KHÔNG được tự bật chế độ có bế', () => {
+        expect(r.dieCut).toBe(false);
+        expect(r.usingDieCutTable).toBe(false);
     });
 });

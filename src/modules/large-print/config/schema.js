@@ -242,6 +242,16 @@ export function validateLargePrintConfig(config) {
         }
     }
 
+    // Optional (thêm ở v1.3.0) — khổ ngang máy in thật được, đơn vị MÉT.
+    // Thiếu field = không có giới hạn máy ⇒ config lưu trước v1.3.0 vẫn hợp lệ.
+    // Chỉ check TYPE theo đúng giao kèo của file này; giá trị <= 0 được
+    // getPrintLimits() xử lý dễ dãi (coi như không giới hạn).
+    if (config.MACHINE_MAX_PRINT_WIDTH_M != null) {
+        if (typeof config.MACHINE_MAX_PRINT_WIDTH_M !== 'number') {
+            errors.push('MACHINE_MAX_PRINT_WIDTH_M: phải là number (mét)');
+        }
+    }
+
     validateFinishingPrices(config.FINISHING_PRICES, errors);
 
     return { isValid: errors.length === 0, errors };

@@ -123,6 +123,50 @@ describe('TASK-0005: decal config schema + version', () => {
         });
     });
 
+    // contentSurcharge (1.8.0) — OPTIONAL: config lưu trước bản này vẫn hợp lệ.
+    describe('contentSurcharge — phụ thu nhiều nội dung', () => {
+        it('thiếu hẳn key → vẫn hợp lệ (config cũ)', () => {
+            const cfg = { ...DECAL_DEFAULT_CONFIG };
+            delete cfg.contentSurcharge;
+            expect(validateDecalConfig(cfg).isValid).toBe(true);
+        });
+
+        it('singleContentPercent sai kiểu → fail', () => {
+            const cfg = structuredClone(DECAL_DEFAULT_CONFIG);
+            cfg.contentSurcharge.singleContentPercent = '20';
+            const r = validateDecalConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('singleContentPercent'))).toBe(true);
+        });
+
+        it('bậc thiếu trường số → fail', () => {
+            const cfg = structuredClone(DECAL_DEFAULT_CONFIG);
+            cfg.contentSurcharge.tiers = [{ min: 4, max: 9 }];
+            const r = validateDecalConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('contentSurcharge.tiers[0].percent'))).toBe(
+                true
+            );
+        });
+
+        it('tiers không phải array → fail', () => {
+            const cfg = structuredClone(DECAL_DEFAULT_CONFIG);
+            cfg.contentSurcharge.tiers = {};
+            const r = validateDecalConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('contentSurcharge.tiers'))).toBe(true);
+        });
+
+        it('bậc cuối dùng Infinity ở max vẫn hợp lệ', () => {
+            const cfg = structuredClone(DECAL_DEFAULT_CONFIG);
+            cfg.contentSurcharge = {
+                singleContentPercent: 20,
+                tiers: [{ min: 4, max: Infinity, percent: 10 }],
+            };
+            expect(validateDecalConfig(cfg).isValid).toBe(true);
+        });
+    });
+
     describe('immutability — validateDecalConfig không mutate input', () => {
         it('config object không bị thay đổi sau khi validate', () => {
             const snapshot = structuredClone(DECAL_DEFAULT_CONFIG);

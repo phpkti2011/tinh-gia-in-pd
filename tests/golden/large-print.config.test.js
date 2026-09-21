@@ -180,6 +180,32 @@ describe('TASK-0017: large-print config schema + version', () => {
         });
     });
 
+    describe('validateLargePrintConfig — MACHINE_MAX_PRINT_WIDTH_M (optional, v1.3.0)', () => {
+        it('default khai 1.6 (mét, KHÔNG phải 160 cm)', () => {
+            expect(LARGE_PRINT_DEFAULT_CONFIG.MACHINE_MAX_PRINT_WIDTH_M).toBe(1.6);
+        });
+
+        it('xoá hẳn field → vẫn valid (config lưu trước v1.3.0)', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            delete cfg.MACHINE_MAX_PRINT_WIDTH_M;
+            expect(validateLargePrintConfig(cfg).isValid).toBe(true);
+        });
+
+        it('string thay vì number → fail', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.MACHINE_MAX_PRINT_WIDTH_M = '1.6';
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('MACHINE_MAX_PRINT_WIDTH_M'))).toBe(true);
+        });
+
+        it('số <= 0 → vẫn valid: schema chỉ kiểm TYPE, engine tự xử lý dễ dãi', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.MACHINE_MAX_PRINT_WIDTH_M = 0;
+            expect(validateLargePrintConfig(cfg).isValid).toBe(true);
+        });
+    });
+
     describe('validateLargePrintConfig — negative: inner sanity', () => {
         it('MATERIAL_TYPES.pp_co_keo.options[0].printPrice sai kiểu → fail', () => {
             const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);

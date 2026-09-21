@@ -55,6 +55,21 @@ export const DECAL_DEFAULT_CONFIG = {
         { upTo: 30, percent: 35 },
         { upTo: Infinity, percent: 45 },
     ],
+    // Phụ thu nhiều nội dung — một đơn in nhiều mẫu khác nhau tốn công dàn trang,
+    // canh máy hơn. Phụ thu tính trên TỔNG tiền của dòng báo giá.
+    // Optional: config lưu trước 1.8.0 thiếu key này ⇒ phụ thu 0 ⇒ giá y như cũ.
+    //   singleContentPercent — áp riêng khi số nội dung bằng ĐÚNG số lượng (mỗi
+    //     mẫu chỉ in 1 cái), BỎ QUA bảng bậc bên dưới.
+    //   tiers — khoảng trống giữa các bậc (vd 2-3 nội dung) là cố ý: không phụ thu.
+    contentSurcharge: {
+        singleContentPercent: 20,
+        tiers: [
+            { min: 4, max: 9, percent: 10 },
+            { min: 10, max: 14, percent: 20 },
+            { min: 15, max: 25, percent: 30 },
+            { min: 26, max: Infinity, percent: 35 },
+        ],
+    },
     decalCosts: {
         'Decal giấy': 0,
         'Decal nhựa': 1200,

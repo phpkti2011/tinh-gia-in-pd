@@ -16,3 +16,11 @@ export {
     UVDTF_CONFIG_SCHEMA_VERSION,
     UVDTF_CONFIG_LAST_UPDATED,
 } from './version.js';
+
+export {
+    normalizePriceTiers,
+    sortPriceTiers,
+    hasDieCutTiers,
+    getActiveTiers,
+    seedDieCutTiers,
+} from './priceTiers.js';

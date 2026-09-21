@@ -57,6 +57,24 @@ export default function LPResultPanel({
         );
     }
 
+    // Vượt khổ in được tại xưởng → CỐ Ý không có giá và không có nút copy quy cách:
+    // đặt trước phần destructure nên toàn bộ khung giá, sticky bar và buildJobSpec
+    // phía dưới đều không chạy. Một con số ở đây là hứa với khách việc máy không làm được.
+    if (result.error) {
+        return (
+            <div className="h-full min-h-[400px]">
+                <div className="h-full flex flex-col items-center justify-center gap-3 p-8 bg-gray-800 rounded-lg border-2 border-dashed border-red-600/50 shadow-inner">
+                    <p className="text-lg font-bold text-red-400 text-center">
+                        {result.outsource
+                            ? '⚠ Phải in gia công ở ngoài'
+                            : '⚠ Vượt khổ cuộn vật liệu'}
+                    </p>
+                    <p className="text-red-300 text-center text-sm">{result.error}</p>
+                </div>
+            </div>
+        );
+    }
+
     const {
         totalCost,
         rollWidth,

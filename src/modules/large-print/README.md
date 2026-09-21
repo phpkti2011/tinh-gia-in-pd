@@ -25,7 +25,7 @@ src/modules/large-print/
 ```
 layout.js    (no deps)
 finishing.js (no deps)
-pricing.js   → layout.js, finishing.js
+pricing.js   → layout.js, finishing.js, ../config/finishingOps.js, ../config/printLimits.js
 index.js     → pricing.js
 ```
 
@@ -33,7 +33,8 @@ index.js     → pricing.js
 
 - **Pure function**: không React, DOM, storage, alert, fetch.
 - Đầu vào: `params + config = LARGE_PRINT_DEFAULT_CONFIG`.
-- Đầu ra: object 13 fields hoặc `null` (item không fit roll nào).
+- Đầu ra: object 14 fields (báo giá) · `{ error, outsource, oversizeItems }` (tấm vượt khổ
+  in được tại xưởng, xem `config/printLimits.js`) · `null` (vật liệu lạ / config hỏng).
 - Helpers (4 fn) là internal — file gốc cũng không export.
 
 ## Lưu ý quan trọng

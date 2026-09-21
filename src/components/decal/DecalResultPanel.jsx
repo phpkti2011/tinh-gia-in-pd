@@ -1,4 +1,4 @@
-import { copyText } from '../common/CopyButton';
+import CopyButton, { copyText } from '../common/CopyButton';
 import LaminationFilmSelect from '../common/LaminationFilmSelect';
 import { buildJobSpec } from '../../utils/jobSpec';
 import { formatVndRoundedSpaced } from '../../utils/money';
@@ -428,9 +428,15 @@ function SheetLayoutVisualization({ result, params }) {
 
 // Bảng giá SO SÁNH nhiều máy bế — mỗi máy 1 cột giá. Zip các priceTable theo index
 // (cùng thứ tự hàng: quantity × decalType × lamination).
-function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
+function ComparisonPriceTable({ machines, mode, discountPercent = 0, params, config }) {
     // Bấm thẳng vào ô giá để copy quy cách của đúng mức SL + máy đó.
     const [copied, setCopied] = useState(null);
+    const [copyMachine, setCopyMachine] = useState(() => {
+        const index = (machines || []).findIndex(
+            (machine) => machine.name?.trim().toLowerCase() === 'graptech'
+        );
+        return String(index >= 0 ? index : 0);
+    });
     const list = machines || [];
     const base = list[0]?.priceTable || [];
     if (list.length === 0 || base.length === 0) {
@@ -460,6 +466,8 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                 base: r.price,
                 price: r.finalPrice != null ? r.finalPrice : r.price,
                 floored: !!r.floored,
+                // % phụ thu nhiều nội dung đã cộng vào giá này (0 = không có).
+                contentPercent: r.contentPercent || 0,
                 // Số tờ in của ĐÚNG máy này — cùng công thức engine dùng để ra giá
                 // (pricing.js: sheets = ceil(SL / số con mỗi tờ)), nên luôn khớp giá.
                 sheets: sheetsFor(row.quantity, m.layout?.count),
@@ -480,9 +488,33 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
     const tableRows = [];
     groups.forEach((g) => {
         g.rows.forEach((row, i) => {
-            tableRows.push({ ...row, isFirst: i === 0, groupSize: g.rows.length });
+            tableRows.push({
+                ...row,
+                isFirst: i === 0,
+                groupSize: g.rows.length,
+                groupRows: g.rows,
+            });
         });
     });
+
+    const groupText = (rows) => {
+        const specs = rows.map((row) => {
+            const prices = (copyMachine === 'lowest' ? row.cells : [row.cells[Number(copyMachine)]])
+                .map((cell) => cell?.price)
+                .filter((price) => Number.isFinite(price) && price > 0);
+            if (!prices.length) return null;
+            const spec = buildJobSpec('decal', {
+                params,
+                config,
+                result: { mode },
+                row: { ...row, finalPrice: Math.min(...prices) },
+            });
+            return (
+                spec && (!row.laminated ? spec.replace('bế demi', 'không cán màng, bế demi') : spec)
+            );
+        });
+        return specs.every(Boolean) ? specs.join('\n\n') : '';
+    };
 
     return (
         <div className="mt-4">
@@ -492,6 +524,24 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                     <span className="ml-1 text-amber-400">· Đã giảm {discountPercent}%</span>
                 )}
             </h3>
+            <div className="mb-3 text-sm text-gray-300">
+                <label htmlFor="decal-copy-machine">Giá dùng khi copy theo số lượng: </label>
+                <select
+                    id="decal-copy-machine"
+                    value={copyMachine}
+                    onChange={(e) => setCopyMachine(e.target.value)}
+                >
+                    <option value="lowest">Giá thấp nhất mỗi quy cách</option>
+                    {list.map((m, i) => (
+                        <option key={i} value={i}>
+                            {m.name}
+                        </option>
+                    ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-400">
+                    Bấm số lượng để copy tất cả quy cách và giá trong nhóm gửi khách.
+                </p>
+            </div>
             {anyFloored && (
                 <div className="mb-3 rounded border border-amber-500/60 bg-amber-900/30 px-3 py-2 text-xs text-amber-300">
                     ⚠ Một số mức giá đã chạm giá tối thiểu — không thể giảm thêm (ô tô đỏ).
@@ -536,7 +586,11 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                                             className={`p-2 text-center font-bold ${isCus ? 'text-yellow-300' : 'text-gray-200'}`}
                                             rowSpan={row.groupSize}
                                         >
-                                            {row.quantity.toLocaleString('vi-VN')}
+                                            <CopyButton
+                                                text={groupText(row.groupRows)}
+                                                label={row.quantity.toLocaleString('vi-VN')}
+                                                title={`Copy tất cả quy cách số lượng ${row.quantity}`}
+                                            />
                                             {isCus && (
                                                 <span className="block text-[9px] text-yellow-400/80 font-normal">
                                                     (tùy chỉnh)
@@ -556,6 +610,7 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                                             onClick={async () => {
                                                 const text = buildJobSpec('decal', {
                                                     params,
+                                                    config,
                                                     result: { mode },
                                                     row: {
                                                         quantity: row.quantity,
@@ -591,6 +646,11 @@ function ComparisonPriceTable({ machines, mode, discountPercent = 0, params }) {
                                             {cell.floored && (
                                                 <span className="block text-[9px] font-normal text-red-400">
                                                     sàn
+                                                </span>
+                                            )}
+                                            {cell.contentPercent > 0 && (
+                                                <span className="block text-[9px] font-normal text-yellow-400">
+                                                    +{cell.contentPercent}% nội dung
                                                 </span>
                                             )}
                                             {hasDiscount &&
@@ -674,6 +734,7 @@ export default function DecalResultPanel({ result, params, config, isCalculating
                     mode={result.mode}
                     discountPercent={result.discountPercent || 0}
                     params={params}
+                    config={config}
                 />
             </div>
         </div>

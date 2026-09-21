@@ -17,8 +17,8 @@
 
 const REQUIRED_NUMBERS = ['materialWidthCM', 'printableWidthCM', 'paddingCM', 'minBillableMeters'];
 
-function validatePriceTier(tier, index, errors) {
-    const prefix = `priceTiers[${index}]`;
+function validatePriceTier(tier, index, errors, key = 'priceTiers') {
+    const prefix = `${key}[${index}]`;
     if (!tier || typeof tier !== 'object' || Array.isArray(tier)) {
         errors.push(`${prefix}: phải là object`);
         return;
@@ -52,7 +52,21 @@ export function validateUvDtfConfig(config) {
     } else if (config.priceTiers.length === 0) {
         errors.push('priceTiers: array rỗng');
     } else {
-        config.priceTiers.forEach((t, i) => validatePriceTier(t, i, errors));
+        config.priceTiers.forEach((t, i) => validatePriceTier(t, i, errors, 'priceTiers'));
+    }
+
+    // 3. dieCutPriceTiers (thêm ở v1.1.0) — OPTIONAL, chỉ kiểm tra KHI CÓ.
+    //    Thiếu field (mặc định) = hàng có bế tính theo priceTiers.
+    //    Mảng RỖNG được chấp nhận có chủ ý: admin xoá hết bậc ở bảng có bế phải lưu
+    //    được (nghĩa là dùng chung bảng không bế), không bị chặn như priceTiers.
+    if (config.dieCutPriceTiers !== undefined) {
+        if (!Array.isArray(config.dieCutPriceTiers)) {
+            errors.push('dieCutPriceTiers: phải là array (hoặc bỏ hẳn field)');
+        } else {
+            config.dieCutPriceTiers.forEach((t, i) =>
+                validatePriceTier(t, i, errors, 'dieCutPriceTiers')
+            );
+        }
     }
 
     return { isValid: errors.length === 0, errors };

@@ -4,6 +4,11 @@ import {
     getBlockedFinishing,
     finishingOpLabel,
 } from '../../modules/large-print/config/finishingOps';
+import {
+    getPrintLimits,
+    itemLimitKind,
+    itemLimitNote,
+} from '../../modules/large-print/config/printLimits';
 
 export default function LPInputPanel({ config, params, onChange }) {
     // Handler cho select + checkbox. Number field dùng NumberField shared.
@@ -67,6 +72,12 @@ export default function LPInputPanel({ config, params, onChange }) {
     const lockedLabelCls = 'flex items-center text-sm opacity-50 cursor-not-allowed';
     const freeLabelCls = 'flex items-center cursor-pointer text-sm';
     const lockNoteCls = 'text-xs text-orange-400 mt-1';
+    // Tấm vượt khổ in được tại xưởng — báo NGAY KHI NHẬP, đỏ chứ không cam: đây là
+    // chặn cứng (không ra giá) chứ không phải một lựa chọn bị khoá. Cùng một hàm luật
+    // với engine để ghi chú ở đây không bao giờ lệch với thông báo bên khung kết quả.
+    const printLimits = getPrintLimits(config, params.materialTypeKey);
+    const itemLimitKinds = items.map((it) => itemLimitKind(it, printLimits));
+    const overNoteCls = 'text-xs text-red-400 mt-1 font-medium pl-6';
     const blockedFinishingLabels = ['edgeTaping', 'grommets', 'dieCutting']
         .filter((id) => blocked.has(id))
         .map(finishingOpLabel);
@@ -159,6 +170,11 @@ export default function LPInputPanel({ config, params, onChange }) {
                                             <span className="unit !text-xs">tấm</span>
                                         </div>
                                     </div>
+                                    {itemLimitKinds[idx] && (
+                                        <p className={overNoteCls}>
+                                            🚫 {itemLimitNote(itemLimitKinds[idx], printLimits)}
+                                        </p>
+                                    )}
                                 </div>
                             ))}
                         </div>

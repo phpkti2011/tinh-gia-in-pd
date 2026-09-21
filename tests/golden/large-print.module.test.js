@@ -60,7 +60,7 @@ describe('TASK-0016: large-print module path + compat shim', () => {
         expect(r.formexCost).toBeCloseTo(702000, 0);
     });
 
-    it('null cases: invalid input vẫn return null qua module mới', () => {
+    it('vật liệu lạ → null; tấm vượt khổ → object báo lỗi (v1.3.0)', () => {
         const invalidMaterial = {
             width: 100,
             height: 100,
@@ -81,6 +81,8 @@ describe('TASK-0016: large-print module path + compat shim', () => {
             formexTypeKey: 'none',
             standeeKey: 'none',
         };
-        expect(newPath.calculateLargePrint(tooLarge, LARGE_PRINT_DEFAULT_CONFIG)).toBeNull();
+        const tooLargeResult = newPath.calculateLargePrint(tooLarge, LARGE_PRINT_DEFAULT_CONFIG);
+        expect(tooLargeResult.outsource).toBe(true);
+        expect(tooLargeResult.totalCost).toBeUndefined();
     });
 });

@@ -164,6 +164,8 @@ const MODULES = [
     },
 ];
 
+import HomeTitle from './components/home/HomeTitle';
+
 function HomePage({ onSelect, isAdmin, uiConfig, onSaveUiConfig }) {
     // null | 'saving' | 'cloud' | 'local' | 'error'
     const [saveStatus, setSaveStatus] = useState(null);
@@ -186,6 +188,7 @@ function HomePage({ onSelect, isAdmin, uiConfig, onSaveUiConfig }) {
                 return;
             }
             setSaveStatus(res?.cloud ? 'cloud' : 'local');
+            return true;
         } catch (e) {
             setSaveStatus('error');
             setSaveError(e?.message || 'Không lưu được');
@@ -211,9 +214,11 @@ function HomePage({ onSelect, isAdmin, uiConfig, onSaveUiConfig }) {
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-screen-xl">
             <header className="text-center mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-white">
-                    Công Cụ Tính Giá In Ấn
-                </h1>
+                <HomeTitle
+                    title={uiConfig.HOME_TITLE || MODULE_VISIBILITY_DEFAULT_CONFIG.HOME_TITLE}
+                    isAdmin={isAdmin}
+                    onSave={(title) => persist({ ...uiConfig, HOME_TITLE: title })}
+                />
                 <p className="text-gray-400 mt-2">Chọn loại hình in để bắt đầu tính giá</p>
                 {isAdmin && (
                     <p className="mt-3 text-xs">
@@ -730,6 +735,7 @@ function DecalModule({ onBack, heading }) {
         decalType: 'Decal giấy',
         shape: 'rectangle',
         discountPercent: 0,
+        printContents: 1,
         sheetSizeKey: '0',
         customSheetW: 210,
         customSheetH: 297,
@@ -772,6 +778,8 @@ function DecalModule({ onBack, heading }) {
 
             // Chiết khấu % (báo giá). Giá sàn/tờ theo (khổ đang chọn × loại decal của dòng).
             const discountPercent = parseFloat(params.discountPercent) || 0;
+            // Số nội dung (mẫu) khác nhau trong đơn → phụ thu nhiều nội dung.
+            const contentCount = parseInt(params.printContents, 10) || 1;
             const selectedSize = (config.printSheetSizes || []).find(
                 (s) => s.w === params.printSheetW && s.h === params.printSheetH
             );
@@ -816,7 +824,8 @@ function DecalModule({ onBack, heading }) {
                             params.printSheetH,
                             config,
                             parseInt(params.customQuantity) || 0,
-                            params.laminationFilm || ''
+                            params.laminationFilm || '',
+                            contentCount
                         );
                         return {
                             name: m.name,
@@ -876,7 +885,8 @@ function DecalModule({ onBack, heading }) {
                             params.printSheetH,
                             config,
                             parseInt(params.sheetCustomQuantity) || 0,
-                            params.laminationFilm || ''
+                            params.laminationFilm || '',
+                            contentCount
                         );
                         return {
                             name: m.name,
@@ -986,7 +996,12 @@ function DecalModule({ onBack, heading }) {
 function UvdtfModule({ onBack, heading }) {
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('main');
-    const [params, setParams] = useState({ widthMM: 50, heightMM: 90, quantity: 1000 });
+    const [params, setParams] = useState({
+        widthMM: 50,
+        heightMM: 90,
+        quantity: 1000,
+        dieCut: false,
+    });
     const [result, setResult] = useState(null);
     const [isCalculating, setIsCalculating] = useState(false);
 
@@ -1931,6 +1946,7 @@ function App() {
                     ...c.MODULE_VISIBILITY,
                 },
                 MODULE_LABELS: mergeModuleLabels(c.MODULE_LABELS),
+                HOME_TITLE: c.HOME_TITLE || MODULE_VISIBILITY_DEFAULT_CONFIG.HOME_TITLE,
             });
         });
     }, []);

@@ -1064,6 +1064,7 @@ export function loadModuleVisibilityConfig() {
                         ...parsed.MODULE_VISIBILITY,
                     },
                     MODULE_LABELS: mergeModuleLabels(parsed.MODULE_LABELS),
+                    HOME_TITLE: parsed.HOME_TITLE || MODULE_VISIBILITY_DEFAULT_CONFIG.HOME_TITLE,
                 };
             }
         }

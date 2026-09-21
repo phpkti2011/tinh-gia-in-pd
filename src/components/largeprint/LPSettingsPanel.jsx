@@ -387,6 +387,35 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
                     ))}
                 </section>
 
+                {/* ===== KHỔ IN TỐI ĐA CỦA MÁY ===== */}
+                <section>
+                    <h3 className={sectionTitle}>Khổ in tối đa của máy</h3>
+                    <p className="text-xs text-gray-500 mb-2">
+                        Chiều ngang lớn nhất máy in THẬT được, tính bằng MÉT (vd 1.6). Khổ in của
+                        mỗi tấm = số này hoặc khổ cuộn lớn nhất của vật liệu, lấy cái NHỎ HƠN. Tấm
+                        nào xoay kiểu gì cả 2 chiều cũng vượt số này thì phần mềm KHÔNG báo giá —
+                        phải in gia công ở ngoài.
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <NumInput
+                            configValue={localConfig.MACHINE_MAX_PRINT_WIDTH_M ?? 1.6}
+                            step={0.01}
+                            className={numCls}
+                            onCommit={(v) =>
+                                updateConfig((c) => {
+                                    c.MACHINE_MAX_PRINT_WIDTH_M = v;
+                                })
+                            }
+                        />
+                        {/* Echo ra cm: gõ nhầm 160 (tưởng cm) sẽ hiện "= 16000 cm" — sai
+                            đơn vị kiểu này vô hiệu hoá luật trong im lặng nên phải thấy ngay. */}
+                        <span className="text-gray-500 text-sm">
+                            m (= {Math.round((localConfig.MACHINE_MAX_PRINT_WIDTH_M ?? 1.6) * 100)}{' '}
+                            cm)
+                        </span>
+                    </div>
+                </section>
+
                 {/* ===== CÁN MÀNG ===== */}
                 <section>
                     <div className="flex items-center justify-between mb-3">

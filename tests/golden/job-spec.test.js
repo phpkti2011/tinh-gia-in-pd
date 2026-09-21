@@ -436,6 +436,35 @@ describe('sticker / card / uvdtf — module thiếu mục thì bỏ hẳn', () =
             })
         ).toBe('1.000 tem _ 5x9cm _ UV DTF\nGiá: 2.000.000đ (2.000đ/tem)');
     });
+
+    it('uvdtf có bế → thêm "có bế" ở cuối', () => {
+        expect(
+            buildJobSpec('uvdtf', {
+                params: { quantity: 1000, dieCut: true },
+                result: { originalW: 50, originalH: 90, totalPrice: 2000000, dieCut: true },
+            })
+        ).toBe('1.000 tem _ 5x9cm _ UV DTF _ có bế\nGiá: 2.000.000đ (2.000đ/tem)');
+    });
+
+    it('uvdtf không bế → KHÔNG thêm mục nào, không sinh dấu "_" thừa', () => {
+        expect(
+            buildJobSpec('uvdtf', {
+                params: { quantity: 1000, dieCut: false },
+                result: { originalW: 50, originalH: 90, totalPrice: 2000000, dieCut: false },
+            })
+        ).toBe('1.000 tem _ 5x9cm _ UV DTF\nGiá: 2.000.000đ (2.000đ/tem)');
+    });
+
+    it('params nói có bế nhưng result tính không bế → tin RESULT', () => {
+        // App.jsx debounce 150ms: params đổi trước, result đổi sau. Quy cách gửi khách
+        // phải khớp với CON SỐ đang hiện, không khớp với ô vừa bấm.
+        expect(
+            buildJobSpec('uvdtf', {
+                params: { quantity: 1000, dieCut: true },
+                result: { originalW: 50, originalH: 90, totalPrice: 2000000, dieCut: false },
+            })
+        ).not.toContain('có bế');
+    });
 });
 
 describe('decal — copy theo từng dòng bảng giá', () => {

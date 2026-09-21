@@ -160,7 +160,13 @@ export default function UvdtfResultPanel({ result, params, config, isCalculating
         rowsPerMeter,
         originalW,
         originalH,
+        dieCut,
+        usingDieCutTable,
     } = result;
+
+    const dieCutLabel = dieCut ? 'Có bế' : 'Không bế';
+    // Chọn có bế mà chưa cài bảng riêng ⇒ con số đang hiện CHÍNH LÀ giá không bế.
+    const noDieCutTable = dieCut && !usingDieCutTable;
 
     return (
         <div
@@ -172,6 +178,15 @@ export default function UvdtfResultPanel({ result, params, config, isCalculating
                 <div className="text-center mb-3">
                     <p className="text-sm text-gray-400 mb-1">Thành tiền</p>
                     <p className="text-3xl font-bold text-yellow-400">{fmtTotal(totalPrice)}</p>
+                    <p className={`text-xs mt-1 ${dieCut ? 'text-orange-300' : 'text-gray-400'}`}>
+                        {dieCutLabel}
+                    </p>
+                    {noDieCutTable && (
+                        <p className="mt-2 text-xs text-amber-300 bg-amber-900/20 border border-amber-700/50 rounded px-2 py-1">
+                            ⚠ Chưa có bảng giá riêng cho hàng có bế — đang tính theo bảng giá không
+                            bế (giá y hệt).
+                        </p>
+                    )}
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-sm">
                     <div>
@@ -207,6 +222,12 @@ export default function UvdtfResultPanel({ result, params, config, isCalculating
                         </span>
                     </div>
                     <div className="flex justify-between">
+                        <span className="text-gray-400">Kiểu bế</span>
+                        <span className={dieCut ? 'text-orange-300' : 'text-gray-200'}>
+                            {dieCutLabel}
+                        </span>
+                    </div>
+                    <div className="flex justify-between">
                         <span className="text-gray-400">Kích thước xếp</span>
                         <span className="text-gray-200">
                             {finalItemW} × {finalItemH} mm
@@ -235,7 +256,12 @@ export default function UvdtfResultPanel({ result, params, config, isCalculating
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-400">Đơn giá / mét</span>
-                        <span className="text-gray-200">{fmt(pricePerMeter)}</span>
+                        <span className="text-gray-200">
+                            {fmt(pricePerMeter)}
+                            <span className="text-gray-500 text-xs ml-1">
+                                ({usingDieCutTable ? 'bảng có bế' : 'bảng không bế'})
+                            </span>
+                        </span>
                     </div>
                     <div className="flex justify-between border-t border-gray-700 pt-2">
                         <span className="text-gray-300 font-semibold">Tổng tiền</span>

@@ -23,6 +23,7 @@ import { calculateFormexCost, calculateFinishingCost } from './finishing.js';
 // Import thẳng file, KHÔNG qua config/index.js — barrel kéo cả defaultConfig.js
 // vào bundle engine trong khi engine vốn nhận config qua tham số.
 import { getBlockedFinishing } from '../config/finishingOps.js';
+import { getPrintLimits, itemLimitKind, oversizeMessage } from '../config/printLimits.js';
 
 export function calculateLargePrint(params, config) {
     const { materialTypeKey, laminationTypeKey, formexTypeKey } = params;
@@ -55,6 +56,33 @@ export function calculateLargePrint(params, config) {
     // liệu" (vd bạt Hiflex không cán màng được) quyết định input của 2 bước đó.
     const materialType = config.MATERIAL_TYPES[materialTypeKey];
     if (!materialType) return null;
+
+    // Khổ in tại xưởng = min(khổ máy, khổ cuộn lớn nhất của vật liệu). Tấm xoay kiểu gì
+    // cạnh ngắn cũng vượt ⇒ KHÔNG ra giá: báo "in gia công ngoài" thay vì một con số
+    // xưởng không làm được. Trả object có .error thay vì null để panel phân biệt được
+    // "không in được" với "chưa nhập gì" — trước đây 2 trạng thái này hiện giống hệt nhau.
+    //
+    // Điều kiện này THAY THẾ CHÍNH XÁC đường `return null` cũ ở cuối hàm: optimizeItemOnRoll
+    // chỉ fit khi min(wM,hM) <= khổ, các item độc lập nhau ⇒ "không khổ cuộn nào xếp đủ"
+    // ⟺ "có item mà min(wM,hM) > khổ lớn nhất".
+    const limits = getPrintLimits(config, materialTypeKey);
+    const machineOver = [];
+    const rollOver = [];
+    items.forEach((it) => {
+        const kind = itemLimitKind(it, limits);
+        if (kind === 'machine') machineOver.push({ width: it.width, height: it.height });
+        else if (kind === 'roll') rollOver.push({ width: it.width, height: it.height });
+    });
+    if (machineOver.length > 0 || rollOver.length > 0) {
+        // Vượt khổ MÁY nặng hơn: đổi vật liệu cũng không cứu được cả đơn.
+        const kind = machineOver.length > 0 ? 'machine' : 'roll';
+        const offenders = machineOver.length > 0 ? machineOver : rollOver;
+        return {
+            error: oversizeMessage(kind, limits, offenders),
+            outsource: kind === 'machine',
+            oversizeItems: offenders,
+        };
+    }
 
     // Engine là nơi chốt cuối: params cũ KHÔNG bị xoá (user đổi vật liệu qua lại
     // là khôi phục lựa chọn), chỉ bị bỏ qua khi tính tiền. UI chỉ khoá control
@@ -101,7 +129,8 @@ export function calculateLargePrint(params, config) {
                 rollOption,
                 effLaminationKey,
                 config,
-                printDiscount
+                printDiscount,
+                limits.machineM
             );
             if (!optimized) {
                 allFit = false;

@@ -187,7 +187,15 @@ function smallPrintSpec({ params, result, config }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function largePrintSpec({ params, result, config }) {
-    if (!params || !result || !Array.isArray(result.itemDetails) || !result.itemDetails.length)
+    // result.error = tấm vượt khổ in được tại xưởng: KHÔNG có giá thì cũng không có
+    // quy cách để gửi khách (itemDetails đã chặn sẵn, đây là chặn cho rõ ý).
+    if (
+        !params ||
+        !result ||
+        result.error ||
+        !Array.isArray(result.itemDetails) ||
+        !result.itemDetails.length
+    )
         return null;
 
     // Engine bỏ tính tiền thành phẩm bị vật liệu chặn nhưng KHÔNG xoá params →
@@ -421,11 +429,14 @@ function uvdtfSpec({ params, result }) {
 
     const qty = Number(params?.quantity);
     // originalW/H là mm → đổi sang cm cho khách dễ hình dung.
+    // Lấy result.dieCut (thứ engine THỰC SỰ đã tính), KHÔNG lấy params.dieCut: params đổi
+    // trước, result debounce 150ms sau — quy cách gửi khách phải khớp với con số đang hiện.
     return compose(
         [
             qtyPart(qty, 'tem'),
             formatSize(Number(result.originalW) / 10, Number(result.originalH) / 10, 'cm'),
             'UV DTF',
+            result.dieCut === true ? 'có bế' : null,
         ],
         result.totalPrice,
         unitFromRoundedTotal(result.totalPrice, qty),
@@ -441,8 +452,14 @@ function uvdtfSpec({ params, result }) {
 function decalSpec({ params, result, config, row }) {
     if (!row || !result) return null;
 
-    const w = Number(params?.stickerW);
-    const h = Number(params?.stickerH);
+    const isSheet = result.mode === 'sheet';
+    const sheet =
+        params?.sheetSizeKey !== 'custom'
+            ? config?.stickerSheetSizes?.[Number(params?.sheetSizeKey)]
+            : null;
+    const w = Number(isSheet ? (sheet?.w ?? params?.customSheetW) : params?.stickerW);
+    const h = Number(isSheet ? (sheet?.h ?? params?.customSheetH) : params?.stickerH);
+    const unit = isSheet ? 'tờ' : 'con';
     const fin = joinFinishing([
         row.laminated
             ? `cán màng ${filmPhrase(config?.laminationFilms, params?.laminationFilm)}`
@@ -458,15 +475,17 @@ function decalSpec({ params, result, config, row }) {
     // tròn 48mm là sai hẳn với xưởng. Màn nhập đã ép W = H, nhưng báo giá lưu
     // từ trước có thể còn lệch ⇒ lấy cạnh lớn, đúng như engine đang tính.
     const sizePart =
-        params?.shape === 'circle' ? `Tròn ${num(Math.max(w, h))} mm` : formatSize(w, h, 'mm');
+        !isSheet && params?.shape === 'circle'
+            ? `Tròn ${num(Math.max(w, h))} mm`
+            : formatSize(w, h, 'mm');
 
     const qty = Number(row.quantity);
     const total = row.finalPrice != null ? row.finalPrice : row.price;
     return compose(
-        [qtyPart(qty, 'con'), sizePart, stripPriceNote(row.decalType || ''), fin],
+        [qtyPart(qty, unit), sizePart, stripPriceNote(row.decalType || ''), fin],
         total,
         unitFromRoundedTotal(total, qty),
-        'con'
+        unit
     );
 }
 

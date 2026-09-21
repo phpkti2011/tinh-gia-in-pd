@@ -47,6 +47,26 @@ function getDemiCutSurchargePercent(stickerCount, config) {
     return config.demiCutSurchargeTiers[config.demiCutSurchargeTiers.length - 1]?.percent || 0;
 }
 
+// ---------------------------------------------------------------------------
+// Public helpers
+// ---------------------------------------------------------------------------
+
+// % phụ thu nhiều nội dung — một đơn nhiều mẫu khác nhau tốn công dàn trang, canh máy.
+//   quantity     = số sản phẩm của dòng báo giá (tem lẻ: số con; tờ sticker: số tờ)
+//   contentCount = số nội dung (mẫu) khác nhau trong đơn
+// Trả 0 khi: 1 nội dung, config cũ chưa có `contentSurcharge`, hoặc số nội dung rơi
+// vào khoảng trống giữa các bậc (vd 2-3) — chủ ý ưu đãi, không phụ thu.
+// Mỗi nội dung chỉ in 1 cái (quantity === contentCount) ⇒ mức riêng, BỎ QUA bảng bậc.
+export function getContentSurchargePercent(quantity, contentCount, config) {
+    const cfg = config.contentSurcharge;
+    const n = Number(contentCount) || 0;
+    const q = Number(quantity) || 0;
+    if (!cfg || n <= 1 || q <= 0) return 0;
+    if (Math.abs(q / n - 1) < 0.001) return Number(cfg.singleContentPercent) || 0;
+    const tier = (cfg.tiers || []).find((t) => n >= t.min && n <= t.max);
+    return tier ? Number(tier.percent) || 0 : 0;
+}
+
 // Áp chiết khấu % cho 1 dòng giá, chặn theo giá sàn/tờ (không giảm dưới sàn, không tăng giá gốc).
 //   floorTotal = sheets × minPricePerSheet
 //   final = max(base×(1−d/100), min(base, floorTotal))
@@ -69,7 +89,9 @@ export function applyDiscount(base, sheets, discountPercent, minPricePerSheet) {
 // Calculate price for single sticker mode — NGUYÊN TỜ (ceil) cho toàn bộ.
 //   sheets   = ceil(quantity / stickersPerSheet)
 //   giá tờ   = progressive(sheets) + vật liệu×sheets + cán×sheets
-//   × (1 + percent/100)  — percent theo khổ giấy in (khổ gốc = 0%).
+//   × (1 + percent/100)       — percent theo khổ giấy in (khổ gốc = 0%)
+//   × (1 + contentPercent/100) — phụ thu nhiều nội dung (1 nội dung = 0%).
+// contentCount mặc định 1 ⇒ lời gọi cũ (8 tham số) giữ nguyên giá.
 export function calculateSingleStickerPrice(
     quantity,
     decalType,
@@ -78,7 +100,8 @@ export function calculateSingleStickerPrice(
     sheetW,
     sheetH,
     config,
-    filmId = ''
+    filmId = '',
+    contentCount = 1
 ) {
     if (stickersPerSheet <= 0) return 0;
     const sheets = Math.ceil(quantity / stickersPerSheet);
@@ -91,10 +114,13 @@ export function calculateSingleStickerPrice(
         : 0;
 
     const percent = getSizePercent(config, sheetW, sheetH);
-    return (printCost + materialCost + lamCost) * (1 + percent / 100);
+    const contentPercent = getContentSurchargePercent(quantity, contentCount, config);
+    return (printCost + materialCost + lamCost) * (1 + percent / 100) * (1 + contentPercent / 100);
 }
 
-// Calculate price for sticker sheet mode — NGUYÊN TỜ + % khổ + phụ phí bế demi.
+// Calculate price for sticker sheet mode — NGUYÊN TỜ + % khổ + phụ phí bế demi
+// + phụ thu nhiều nội dung (nhân sau bế demi, trước chiết khấu).
+// contentCount mặc định 1 ⇒ lời gọi cũ (9 tham số) giữ nguyên giá.
 export function calculateSheetPrice(
     quantity,
     decalType,
@@ -104,7 +130,8 @@ export function calculateSheetPrice(
     sheetW,
     sheetH,
     config,
-    filmId = ''
+    filmId = '',
+    contentCount = 1
 ) {
     if (sheetsPerPrintSheet <= 0) return 0;
     const numPrintSheets = Math.ceil(quantity / sheetsPerPrintSheet);
@@ -119,5 +146,6 @@ export function calculateSheetPrice(
     const sheetPrice = (printCost + materialCost + lamCost) * (1 + percent / 100);
 
     const surchargePercent = getDemiCutSurchargePercent(stickersOnSheet, config);
-    return sheetPrice * (1 + surchargePercent / 100);
+    const contentPercent = getContentSurchargePercent(quantity, contentCount, config);
+    return sheetPrice * (1 + surchargePercent / 100) * (1 + contentPercent / 100);
 }

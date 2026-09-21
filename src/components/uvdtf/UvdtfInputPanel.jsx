@@ -54,6 +54,25 @@ export default function UvdtfInputPanel({ config, params, onChange }) {
                 </div>
             </div>
 
+            <div className="input-group">
+                <h2 className="!text-base !mb-2">
+                    <span className="text-blue-400">3.</span> Bế Thành Phẩm
+                </h2>
+                <label htmlFor="dieCut">Kiểu bế</label>
+                {/* Quy đổi ngay tại đây để params.dieCut LUÔN là boolean thật: nó chảy vào
+                    engine, jobSpec và ternary ở panel kết quả — chuỗi 'no' là truthy nên
+                    để nguyên chuỗi sẽ báo giá bế trong khi màn hình ghi "Không bế". */}
+                <select
+                    id="dieCut"
+                    name="dieCut"
+                    value={params.dieCut ? 'yes' : 'no'}
+                    onChange={(e) => onChange('dieCut', e.target.value === 'yes')}
+                >
+                    <option value="no">Không bế</option>
+                    <option value="yes">Có bế</option>
+                </select>
+            </div>
+
             {config && (
                 <div className="input-group">
                     <p className="text-xs text-gray-400">

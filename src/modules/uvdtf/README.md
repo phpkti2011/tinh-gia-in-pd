@@ -18,8 +18,10 @@ src/modules/uvdtf/
 ## Nguyên tắc engine
 
 - **Pure function**: không React, DOM, storage, alert, fetch, localStorage.
-- Đầu vào: `params = { widthMM, heightMM, quantity }` + `config = UVDTF_DEFAULT_CONFIG`.
-- Đầu ra: object 13 fields hoặc `null` (input invalid).
+- Đầu vào: `params = { widthMM, heightMM, quantity, dieCut? }` + `config = UVDTF_DEFAULT_CONFIG`.
+  `dieCut` (boolean, mặc định false) chọn bảng giá — xem `config/priceTiers.js`.
+- Đầu ra: object 15 fields hoặc `null` (input invalid). Hai field cuối `dieCut` +
+  `usingDieCutTable` cho panel biết con số vừa tính ra bằng BẢNG NÀO.
 
 ## Compatibility
 

@@ -106,6 +106,35 @@ function validateSurchargeTier(tier, index, errors) {
     }
 }
 
+// Optional — phụ thu nhiều nội dung. Config cũ chưa có key này vẫn hợp lệ
+// (thiếu ⇒ engine trả 0% ⇒ giá không đổi). Cho phép Infinity ở `max` của bậc cuối.
+function validateContentSurcharge(cfg, errors) {
+    if (cfg == null) return;
+    if (typeof cfg !== 'object' || Array.isArray(cfg)) {
+        errors.push('contentSurcharge: phải là object');
+        return;
+    }
+    if (typeof cfg.singleContentPercent !== 'number') {
+        errors.push('contentSurcharge.singleContentPercent: phải là number');
+    }
+    if (!Array.isArray(cfg.tiers)) {
+        errors.push('contentSurcharge.tiers: phải là array');
+        return;
+    }
+    cfg.tiers.forEach((t, i) => {
+        const prefix = `contentSurcharge.tiers[${i}]`;
+        if (!t || typeof t !== 'object' || Array.isArray(t)) {
+            errors.push(`${prefix}: phải là object`);
+            return;
+        }
+        for (const f of ['min', 'max', 'percent']) {
+            if (typeof t[f] !== 'number') {
+                errors.push(`${prefix}.${f}: phải là number (cho phép Infinity ở max)`);
+            }
+        }
+    });
+}
+
 // Optional — loại màng cán (thêm ở phiên bản này). Config cũ chưa có vẫn hợp lệ.
 // Xem src/utils/laminationFilm.js. Thiếu ⇒ mặc định Mờ/Bóng 0% ⇒ giá không đổi.
 function validateLaminationFilms(list, prefix, errors) {
@@ -194,6 +223,7 @@ export function validateDecalConfig(config) {
     }
 
     validateLaminationFilms(config.laminationFilms, 'laminationFilms', errors);
+    validateContentSurcharge(config.contentSurcharge, errors);
 
     return { isValid: errors.length === 0, errors };
 }

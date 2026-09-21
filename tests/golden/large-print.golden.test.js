@@ -358,7 +358,7 @@ describe('Case F: Multi-items mixed (Hiflex)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CASE G — Input invalid → null
+// CASE G — Input invalid → null / vượt khổ → object báo lỗi
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Case G: input invalid → return null', () => {
     it('materialTypeKey không tồn tại → null', () => {
@@ -378,8 +378,9 @@ describe('Case G: input invalid → return null', () => {
         expect(calculateLargePrint(params, config)).toBeNull();
     });
 
-    it('item quá lớn (4×4m, không roll PP nào fit) → null', () => {
-        // PP rolls max = 1.52m, item 4m × 4m không fit cả 2 hướng
+    it('item quá lớn (4×4m) → object báo in gia công ngoài, KHÔNG phải null', () => {
+        // v1.3.0: trước đây trả null, nhưng null hiện ra màn hình y hệt "chưa nhập gì".
+        // 4m × 4m vượt cả khổ máy (1.6m) lẫn khổ cuộn PP (1.52m) → kind = 'machine'.
         const params = {
             width: 400,
             height: 400,
@@ -393,7 +394,11 @@ describe('Case G: input invalid → return null', () => {
             dieCutting: false,
             standeeKey: 'none',
         };
-        expect(calculateLargePrint(params, config)).toBeNull();
+        const r = calculateLargePrint(params, config);
+        expect(r.outsource).toBe(true);
+        expect(r.error).toMatch(/IN GIA CÔNG Ở NGOÀI/);
+        expect(r.error).toMatch(/160 cm/);
+        expect(r.totalCost).toBeUndefined();
     });
 });
 

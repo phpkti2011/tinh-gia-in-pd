@@ -14,12 +14,18 @@
 //             lengthRot = rowsRot × itemWcm
 //   Chọn orientation ngắn hơn (lengthUp <= lengthRot → upright)
 //   totalMeters = totalLengthCM / 100
-//   pricePerMeter = tier đầu tiên thoả totalMeters <= maxMeters
+//   pricePerMeter = tier đầu tiên thoả totalMeters <= maxMeters, LẤY TỪ BẢNG ĐANG DÙNG
+//                   (có bế → dieCutPriceTiers nếu đã cài; ngược lại → priceTiers)
 //   billableMeters = max(minBillableMeters, totalMeters)
 //   totalPrice = billableMeters × pricePerMeter
 
+import { getActiveTiers } from '../config/priceTiers.js';
+
 export function calculateUvDtf(params, config) {
     const { widthMM, heightMM, quantity } = params;
+    // Ép kiểu MỘT LẦN tại đây: <select> trả chuỗi, mà chuỗi 'no' là truthy — không ép
+    // thì UI ghi "Không bế" trong khi engine tính theo bảng có bế.
+    const dieCut = !!params.dieCut;
     if (!widthMM || !heightMM || !quantity || widthMM <= 0 || heightMM <= 0 || quantity <= 0)
         return null;
 
@@ -56,8 +62,9 @@ export function calculateUvDtf(params, config) {
     }
 
     const totalMeters = totalLengthCM / 100;
-    let pricePerMeter = config.priceTiers[config.priceTiers.length - 1].price;
-    for (const tier of config.priceTiers) {
+    const { tiers, usingDieCutTable } = getActiveTiers(config, dieCut);
+    let pricePerMeter = tiers[tiers.length - 1].price;
+    for (const tier of tiers) {
         if (totalMeters <= tier.maxMeters) {
             pricePerMeter = tier.price;
             break;
@@ -85,5 +92,10 @@ export function calculateUvDtf(params, config) {
         rowsPerMeter,
         originalW: widthMM,
         originalH: heightMM,
+        // 2 field này để panel dán nhãn theo thứ engine THẬT SỰ đã tính. App.jsx debounce
+        // 150ms nên params/config lệch với result trong khoảng đó — panel mà tự suy từ
+        // params/config sẽ ghi "giá có bế" lên con số tính bằng bảng không bế.
+        dieCut,
+        usingDieCutTable,
     };
 }

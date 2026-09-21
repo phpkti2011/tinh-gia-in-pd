@@ -14,7 +14,8 @@ src/modules/decal/
 │   ├── pricing.js       — calculateProgressivePrice, getPriceMultiplier,
 │   │                      getDemiCutSurchargePercent (private)
 │   │                      + calculateSingleStickerPrice,
-│   │                        calculateSheetPrice (public)
+│   │                        calculateSheetPrice,
+│   │                        getContentSurchargePercent (public)
 │   ├── priceTables.js   — generateSinglePriceTable,
 │   │                      generateSheetPriceTable (public)
 │   └── index.js         — barrel export 6 public functions

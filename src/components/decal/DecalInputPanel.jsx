@@ -364,6 +364,25 @@ export default function DecalInputPanel({ config, params, onChange }) {
                         </div>
                     </>
                 )}
+
+                {/* Số nội dung — dùng chung cả 2 chế độ. Nhiều mẫu khác nhau tốn
+                    công dàn trang, canh máy → phụ thu % theo bậc trong Cài đặt. */}
+                <div className="mt-3">
+                    <label htmlFor="printContents">Số nội dung in</label>
+                    <div className="relative">
+                        <NumberField
+                            id="printContents"
+                            value={params.printContents}
+                            onCommit={(v) => onChange('printContents', v)}
+                            step={1}
+                            min={1}
+                        />
+                        <span className="unit">Nội dung</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Số mẫu khác nhau trong đơn. Nhiều nội dung → phụ thu công dàn trang.
+                    </p>
+                </div>
             </div>
 
             {/* Chiết khấu (áp cho cả bảng giá) */}

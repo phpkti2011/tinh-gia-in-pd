@@ -77,19 +77,20 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('decalConfig → decal + DECAL_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 3 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.7.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.8.0', null);
         });
 
         it('largePrintConfig → large-print + LARGE_PRINT_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('largePrintConfig', VALID_LARGE);
             // Literal cố ý (không import hằng số) — chốt chặn để mỗi lần đổi shape
-            // config phải bump version có chủ đích. 1.2.0: thêm
-            // MATERIAL_TYPES[*].disallowedFinishing (thành phẩm theo vật liệu).
+            // config phải bump version có chủ đích. 1.3.0: thêm
+            // MACHINE_MAX_PRINT_WIDTH_M (khổ in tối đa của máy, mét).
+            // 1.2.0: thêm MATERIAL_TYPES[*].disallowedFinishing (thành phẩm theo vật liệu).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'large-print',
                 VALID_LARGE,
-                '1.2.0',
+                '1.3.0',
                 null
             );
         });
@@ -97,7 +98,9 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('uvdtfConfig → uvdtf + UVDTF_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('uvdtfConfig', VALID_UVDTF);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('uvdtf', VALID_UVDTF, '1.0.0', null);
+            // Literal cố ý — chốt chặn để mỗi lần đổi shape config phải bump version có
+            // chủ đích. 1.1.0: thêm dieCutPriceTiers (bảng giá riêng cho hàng có bế).
+            expect(mockSaveSupabase).toHaveBeenCalledWith('uvdtf', VALID_UVDTF, '1.1.0', null);
         });
 
         it('moduleVisibilityConfig → ui-visibility + MODULE_VISIBILITY_SCHEMA_VERSION', async () => {
@@ -105,7 +108,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             await saveConfigToCloud('moduleVisibilityConfig', VALID_UI);
             // Literal cố ý. 1.2.0: bỏ field `heading`, tile và tiêu đề trong module
             // dùng chung `title`.
-            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', VALID_UI, '1.2.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', VALID_UI, '1.3.0', null);
         });
     });
 
@@ -125,7 +128,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             const res = await saveConfigToCloud('moduleVisibilityConfig', legacy);
 
             expect(res.cloud).toBe(true);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', legacy, '1.2.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('ui-visibility', legacy, '1.3.0', null);
         });
 
         it('tên module sai kiểu → chặn trước Supabase, không ghi localStorage', async () => {
@@ -151,7 +154,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('Save thành công gọi Supabase với đúng 4 RPC args', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.7.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.8.0', null);
         });
     });
 

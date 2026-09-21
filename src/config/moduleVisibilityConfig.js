@@ -18,7 +18,7 @@
 
 // 1.0.0 → 1.1.0 — thêm MODULE_LABELS (field optional, không breaking).
 // 1.1.0 → 1.2.0 — bỏ field `heading`, dùng chung `title` cho cả tile lẫn <h1>.
-export const MODULE_VISIBILITY_SCHEMA_VERSION = '1.2.0';
+export const MODULE_VISIBILITY_SCHEMA_VERSION = '1.3.0';
 
 export const MODULE_VISIBILITY_DEFAULT_LABELS = {
     small: {
@@ -68,6 +68,7 @@ export const LABEL_FIELDS = ['title', 'desc'];
 export const LABEL_MAX_LEN = { title: 60, desc: 300 };
 
 export const MODULE_VISIBILITY_DEFAULT_CONFIG = {
+    HOME_TITLE: 'Công Cụ Tính Giá In Ấn',
     MODULE_VISIBILITY: {
         small: true,
         large: true,
@@ -92,6 +93,14 @@ export function validateModuleVisibilityConfig(config) {
         return { isValid: false, errors: ['MODULE_VISIBILITY: thiếu hoặc không phải object'] };
     }
     const errors = [];
+    if (
+        config.HOME_TITLE !== undefined &&
+        (typeof config.HOME_TITLE !== 'string' ||
+            !config.HOME_TITLE.trim() ||
+            config.HOME_TITLE.length > 120)
+    ) {
+        errors.push('HOME_TITLE: phải là chuỗi có nội dung, tối đa 120 ký tự');
+    }
     for (const [k, val] of Object.entries(v)) {
         if (typeof val !== 'boolean') errors.push(`MODULE_VISIBILITY.${k}: phải là boolean`);
     }

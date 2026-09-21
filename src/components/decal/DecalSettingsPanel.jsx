@@ -138,6 +138,25 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
             machines: (prev.machines || []).map((m, i) => (i === idx ? { ...m, name } : m)),
         }));
 
+    // contentSurcharge.tiers — phu thu theo so noi dung khac nhau trong don.
+    // Config cu chua co key nay => tao moi voi singleContentPercent = 0.
+    const addContentTier = () =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            contentSurcharge: {
+                singleContentPercent: prev.contentSurcharge?.singleContentPercent ?? 0,
+                tiers: [...(prev.contentSurcharge?.tiers || []), { min: 0, max: 0, percent: 0 }],
+            },
+        }));
+    const delContentTier = (idx) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            contentSurcharge: {
+                singleContentPercent: prev.contentSurcharge?.singleContentPercent ?? 0,
+                tiers: (prev.contentSurcharge?.tiers || []).filter((_, i) => i !== idx),
+            },
+        }));
+
     const inputCls =
         'w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500';
     const inputClsPr = inputCls + ' pr-12';
@@ -490,6 +509,114 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
                                                     %
                                                 </span>
                                             </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                {/* Section 2b: Phu Thu Nhieu Noi Dung */}
+                <section>
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-600">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                            Phu Thu Nhieu Noi Dung
+                        </h3>
+                        <button
+                            onClick={addContentTier}
+                            className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            + Them bac
+                        </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">
+                        Mot don in nhieu mau khac nhau ton cong dan trang va canh may hon. Phu thu
+                        tinh tren tong tien cua dong bao gia.
+                    </p>
+                    <div className="relative mb-4 max-w-xs">
+                        <label className={labelCls}>Moi noi dung chi in 1 cai</label>
+                        {fi(
+                            'contentSurcharge.singleContentPercent',
+                            localConfig.contentSurcharge?.singleContentPercent ?? 0,
+                            '5'
+                        )}
+                        <span className="absolute right-3 top-[32px] text-gray-500">%</span>
+                        <p className="mt-1 text-xs text-gray-500">
+                            Ap rieng khi so noi dung bang dung so luong san pham, bo qua bang bac
+                            ben duoi.
+                        </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-gray-400 border-b border-gray-700">
+                                    <th className="text-left py-2 pr-4">Tu</th>
+                                    <th className="text-left py-2 pr-4">Den</th>
+                                    <th className="text-left py-2 pr-4">Phu thu</th>
+                                    <th className="py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(localConfig.contentSurcharge?.tiers || []).map((tier, idx) => (
+                                    <tr key={idx} className="border-b border-gray-700/50">
+                                        <td className="py-2 pr-4">
+                                            <NumInput
+                                                configValue={tier.min}
+                                                step="1"
+                                                className={inputClsSm}
+                                                onCommit={(val) =>
+                                                    updateNestedField(
+                                                        `contentSurcharge.tiers.${idx}.min`,
+                                                        val
+                                                    )
+                                                }
+                                            />
+                                        </td>
+                                        <td className="py-2 pr-4">
+                                            {tier.max === Infinity ? (
+                                                <span className="text-yellow-400 font-medium">
+                                                    tro len
+                                                </span>
+                                            ) : (
+                                                <NumInput
+                                                    configValue={tier.max}
+                                                    step="1"
+                                                    className={inputClsSm}
+                                                    onCommit={(val) =>
+                                                        updateNestedField(
+                                                            `contentSurcharge.tiers.${idx}.max`,
+                                                            val
+                                                        )
+                                                    }
+                                                />
+                                            )}
+                                        </td>
+                                        <td className="py-2 pr-4">
+                                            <div className="relative inline-block">
+                                                <NumInput
+                                                    configValue={tier.percent}
+                                                    step="5"
+                                                    className={inputClsSm}
+                                                    onCommit={(val) =>
+                                                        updateNestedField(
+                                                            `contentSurcharge.tiers.${idx}.percent`,
+                                                            val
+                                                        )
+                                                    }
+                                                />
+                                                <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                                    %
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-2">
+                                            <button
+                                                onClick={() => delContentTier(idx)}
+                                                className="text-red-400 hover:text-red-300 text-xs"
+                                            >
+                                                Xoa
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

@@ -39,25 +39,32 @@ export function calcItemOnRoll(
     return { totalCost, printedArea, unprintedArea, laminationChoice };
 }
 
-// Tối ưu 1 item (W, H) trên 1 khổ cuộn: thử cả 2 hướng xoay
+// Tối ưu 1 item (W, H) trên 1 khổ cuộn: thử cả 2 hướng xoay.
+// maxPrintWidthM: khổ ngang máy in THẬT được (mét). Mặc định Infinity = chỉ ràng buộc
+// khổ cuộn, giữ nguyên hành vi cho config cũ / config dựng tay không có field này.
 export function optimizeItemOnRoll(
     wM,
     hM,
     rollOption,
     laminationTypeKey,
     config,
-    printDiscount = 0
+    printDiscount = 0,
+    maxPrintWidthM = Infinity
 ) {
+    // Khổ ĐẶT được = min(khổ cuộn, khổ máy). Cuộn 1m8 trên máy 1m6 chỉ in được 1m6 ngang.
+    // Không chặn ở đây thì tấm 80×180 sẽ được chọn hướng XOAY trên cuộn 1m8 (waste = 0
+    // nên rẻ nhất) → báo giá cho một phương án đặt 180cm ngang qua máy 160cm.
+    const fitLimit = Math.min(rollOption.width, maxPrintWidthM);
     let bestResult = null;
     let bestRotated = false;
     // Hướng gốc: W nằm ngang trên cuộn
-    if (wM <= rollOption.width) {
+    if (wM <= fitLimit) {
         const r = calcItemOnRoll(wM, hM, rollOption, laminationTypeKey, config, printDiscount);
         bestResult = r;
         bestRotated = false;
     }
     // Hướng xoay: H nằm ngang trên cuộn
-    if (hM <= rollOption.width) {
+    if (hM <= fitLimit) {
         const r = calcItemOnRoll(hM, wM, rollOption, laminationTypeKey, config, printDiscount);
         if (!bestResult || r.totalCost < bestResult.totalCost) {
             bestResult = r;

@@ -9,6 +9,11 @@
 
 export { calculateStickersPerSheet, calculateSheetsPerPrintSheet } from './layout.js';
 
-export { calculateSingleStickerPrice, calculateSheetPrice, applyDiscount } from './pricing.js';
+export {
+    calculateSingleStickerPrice,
+    calculateSheetPrice,
+    applyDiscount,
+    getContentSurchargePercent,
+} from './pricing.js';
 
 export { generateSinglePriceTable, generateSheetPriceTable } from './priceTables.js';
