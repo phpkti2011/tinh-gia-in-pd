@@ -166,6 +166,49 @@ describe('TASK-0010: validateSmallPrintConfig wired vào configStorage', () => {
         });
     });
 
+    // ─────────────────────────────────────────────────────────────────────
+    describe('withMountingDefaults — bơm lại kiểu bồi còn thiếu (v1.5.0)', () => {
+        // Merge config ở configStorage chỉ NÔNG cấp 1. MOUNTING_CONFIG là key cấp 1, nên
+        // config admin lưu trước v1.5.0 (chỉ có `yes`) sẽ NUỐT TRỌN object mặc định ⇒
+        // MOUNTING_CONFIG['3_lop'] thành undefined và công bồi 3 lớp thành 0đ trong im lặng.
+        it('config đã lưu chỉ có bồi 2 lớp → loadConfig trả về CÓ bồi 3 lớp', () => {
+            const legacy = structuredClone(DEFAULT_CONFIG);
+            delete legacy.MOUNTING_CONFIG['3_lop'];
+            expect(saveConfig(legacy)).toBe(true);
+
+            const loaded = loadConfig();
+            expect(loaded.MOUNTING_CONFIG['3_lop']).toBeDefined();
+            expect(loaded.MOUNTING_CONFIG['3_lop'].cost_tiers.length).toBeGreaterThan(0);
+        });
+
+        it('bơm lại giữ nguyên Infinity ở bậc cuối (không thành null)', () => {
+            const legacy = structuredClone(DEFAULT_CONFIG);
+            delete legacy.MOUNTING_CONFIG['3_lop'];
+            saveConfig(legacy);
+
+            const m = loadConfig().MOUNTING_CONFIG['3_lop'];
+            expect(m.cost_tiers[m.cost_tiers.length - 1].max_qty).toBe(Infinity);
+            expect(m.customer_tiers[m.customer_tiers.length - 1].max_qty).toBe(Infinity);
+        });
+
+        it('KHÔNG đè bảng 2 lớp admin đã chỉnh', () => {
+            const legacy = structuredClone(DEFAULT_CONFIG);
+            delete legacy.MOUNTING_CONFIG['3_lop'];
+            legacy.MOUNTING_CONFIG.yes.cost_tiers[0].price = 77000;
+            saveConfig(legacy);
+
+            expect(loadConfig().MOUNTING_CONFIG.yes.cost_tiers[0].price).toBe(77000);
+        });
+
+        it('config đã có đủ 2 kiểu → giữ nguyên, không đụng gì', () => {
+            const edited = structuredClone(DEFAULT_CONFIG);
+            edited.MOUNTING_CONFIG['3_lop'].cost_tiers[0].price = 88000;
+            saveConfig(edited);
+
+            expect(loadConfig().MOUNTING_CONFIG['3_lop'].cost_tiers[0].price).toBe(88000);
+        });
+    });
+
     // Backward-compat describe block removed in TASK-0017:
     // largePrintConfig đã được gate ở TASK-0017 → không còn module nào "ungated"
     // để test backward compat. All 4 module config đều đã wire validation.

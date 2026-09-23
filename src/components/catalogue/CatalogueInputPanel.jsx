@@ -1,6 +1,7 @@
 // React 18+ auto JSX transform — không cần import React.
 import NumberField from '../common/NumberField';
 import LaminationFilmSelect from '../common/LaminationFilmSelect';
+import { visiblePapers } from '../../modules/small-print/config/paperStock';
 
 const SIZE_PRESETS = [
     { label: 'A4', w: 210, h: 297 },
@@ -165,11 +166,13 @@ export default function CatalogueInputPanel({ config, params, onChange }) {
                             value={params.coverPaperType}
                             onChange={handleSelect}
                         >
-                            {paperData.map((paper, index) => (
-                                <option key={index} value={index}>
-                                    {paper.name}
-                                </option>
-                            ))}
+                            {visiblePapers(paperData, params.coverPaperType).map(
+                                ({ paper, index }) => (
+                                    <option key={index} value={index}>
+                                        {paper.name}
+                                    </option>
+                                )
+                            )}
                         </select>
                     </div>
                     <div>
@@ -180,11 +183,13 @@ export default function CatalogueInputPanel({ config, params, onChange }) {
                             value={params.innerPaperType}
                             onChange={handleSelect}
                         >
-                            {paperData.map((paper, index) => (
-                                <option key={index} value={index}>
-                                    {paper.name}
-                                </option>
-                            ))}
+                            {visiblePapers(paperData, params.innerPaperType).map(
+                                ({ paper, index }) => (
+                                    <option key={index} value={index}>
+                                        {paper.name}
+                                    </option>
+                                )
+                            )}
                         </select>
                     </div>
                 </div>

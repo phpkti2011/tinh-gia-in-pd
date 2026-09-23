@@ -30,11 +30,23 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   1.3.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
 //           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
 //           => gia khong doi.
+// 1.6.0 — PAPER_STOCK_DATA[*].hidden (optional boolean): ẩn một loại giấy khỏi mọi ô
+//   chọn ở màn tính giá mà KHÔNG xoá khỏi mảng. Giấy nhận diện bằng VỊ TRÍ trong mảng
+//   (params.paperType = '3') nên xoá thật sẽ làm mọi giấy phía sau tụt 1 bậc — đơn đang
+//   mở lặng lẽ đổi giấy, lan sang cả Catalogue và Lò xo (dùng chung bảng giấy).
+//   Admin thêm giấy (luôn nối vào CUỐI) và đổi cách tính giá ngay trong Cài Đặt.
+//   Thiếu field = hiện bình thường → config cũ vẫn hợp lệ, giá không đổi.
+// 1.5.0 — bồi thành phẩm: thêm kiểu MOUNTING_CONFIG['3_lop'] (bồi 3 lớp) + 2 field
+//   blankPaperType / blankPaperMarkup cho mỗi kiểu, và ĐẾM ĐÚNG SỐ TỜ GIẤY khi bồi:
+//   tờ in = số mặt in, tờ trắng = số lớp − số mặt in (xem engine/mounting.js).
+//   ĐỔI GIÁ CÓ CHỦ ĐÍCH: trước đây bồi ép số mặt in về 1 và không tính tờ giấy lót, nên
+//   đơn bồi 1 mặt bị thiếu tiền 1 tờ giấy và đơn bồi 2 mặt không báo đúng được.
+//   Subkey mới KHÔNG được merge nông bù cho ⇒ phải đi qua withMountingDefaults().
 // 1.4.0 — thêm PLASTIC_LAMINATION_CONFIG (optional): ép plastic (màng nhiệt bỏ
 //   túi) theo độ dày × khổ × bậc SL + dòng sàn giá tối thiểu (chỉ admin thấy,
 //   cộng thẳng vào Giá Tối Thiểu). Thiếu field → engine trả 0, ô chọn ẩn ở màn
 //   tính giá → giá không đổi. Xem src/utils/plasticLamination.js.
 
-export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.4.0';
+export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.6.0';
 
-export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-15';
+export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-23';

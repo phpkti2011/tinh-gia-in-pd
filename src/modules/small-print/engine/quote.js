@@ -10,6 +10,8 @@
 import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pricing.js';
 import { filmMultiplier } from '../../../utils/laminationFilm.js';
 import { computeA4Factor } from './a4.js';
+import { printedSheetsPerSet, blankSheetsPerSet } from './mounting.js';
+import { blankSheetCostPerCutSheet } from './paper.js';
 
 export function calculateCustomerQuote(
     bestOption,
@@ -63,6 +65,13 @@ export function calculateCustomerQuote(
             ? bestOption.numCuttableSheets
             : 1;
     const totalPrintSheets = Math.ceil(totalQuantity / bestOption.productsPerSheet);
+    // Khi bồi, mỗi tờ chỉ in 1 mặt ⇒ phải mua gấp (số mặt in) lần số tờ giấy in.
+    // Xem engine/mounting.js. Không bồi ⇒ hệ số 1, mọi con số cũ y nguyên.
+    const sheetsPerSet = printedSheetsPerSet(params.mountingType, params.printSides);
+    const blanksPerSet = blankSheetsPerSet(params.mountingType, params.printSides);
+    // ceil(tổng tờ in ÷ số tờ cắt được) — CỐ Ý ceil SAU khi nhân: mua tờ lớn rồi cắt hết,
+    // phần dư dùng chung chứ không bỏ.
+    const totalLargeSheets = Math.ceil((totalPrintSheets * sheetsPerSet) / numCutSheets);
 
     let totalA4Pages = 0;
     let unitPriceText = 'Lỗi';
@@ -137,11 +146,30 @@ export function calculateCustomerQuote(
 
     let totalArtPaperCustomerCost = 0;
     if (selectedPaper.pricingModel === 'custom') {
-        const validNumCutSheets =
-            typeof numCutSheets === 'number' && numCutSheets > 0 ? numCutSheets : 1;
-        const totalLargeSheetsNeeded = Math.ceil(totalPrintSheets / validNumCutSheets);
-        const paperMaterialCost = totalLargeSheetsNeeded * params.artPaperPrice;
+        const paperMaterialCost = totalLargeSheets * params.artPaperPrice;
+        // ART_PAPER_SURCHARGE là phí xử lý trọn gói → giữ ×1, không nhân theo số lớp.
         totalArtPaperCustomerCost = paperMaterialCost + config.ART_PAPER_SURCHARGE;
+    }
+
+    // Giấy TRẮNG (lót / giữa) của thành phẩm bồi. Là VẬT TƯ nên tính giá vốn × hệ số,
+    // không đi qua bảng giá theo trang in như giấy in.
+    let totalBlankPaperCost = 0;
+    if (blanksPerSet > 0) {
+        const mountCfg = config.MOUNTING_CONFIG?.[params.mountingType] || {};
+        const blankPaper = (config.PAPER_STOCK_DATA || [])[params.blankPaperType];
+        const perCutSheet = blankSheetCostPerCutSheet(
+            blankPaper,
+            {
+                largeSheet: { w: bestOption.largeSheetW, h: bestOption.largeSheetH },
+                numCuttableSheets: numCutSheets,
+                cutW: bestOption.cutSheetW,
+                cutH: bestOption.cutSheetH,
+            },
+            config
+        );
+        const markup =
+            typeof mountCfg.blankPaperMarkup === 'number' ? mountCfg.blankPaperMarkup : 2;
+        totalBlankPaperCost = Math.round(perCutSheet * blanksPerSet * totalPrintSheets * markup);
     }
 
     const variableDataCost =
@@ -179,9 +207,8 @@ export function calculateCustomerQuote(
                 const targetArea = bestOption.largeSheetW * bestOption.largeSheetH;
                 const scale = baseArea > 0 ? targetArea / baseArea : 1;
                 const diffPerLargeSheet = (pricePerReamDiff / 500) * scale;
-                const validNumCutSheets =
-                    typeof numCutSheets === 'number' && numCutSheets > 0 ? numCutSheets : 1;
-                const totalLargeSheets = Math.ceil(totalPrintSheets / validNumCutSheets);
+                // Dùng chung totalLargeSheets (đã nhân theo số lớp bồi): không nhân thì
+                // đơn bồi trên giấy đắt chỉ bị phụ thu một nửa.
                 const ratio =
                     typeof refCfg.adjustmentRatio === 'number' ? refCfg.adjustmentRatio : 1;
                 paperAdjustment = Math.round(diffPerLargeSheet * totalLargeSheets * ratio);
@@ -197,10 +224,14 @@ export function calculateCustomerQuote(
         totalPrintCost +
         totalLaminationCost +
         totalArtPaperCustomerCost +
+        totalBlankPaperCost +
+        // totalPaperSurcharge CỐ Ý KHÔNG nhân theo số lớp bồi: nó tính theo TRANG IN
+        // (customerSurcharge × totalA4Pages), mà số trang in không đổi khi bồi —
+        // nhân nữa là tính hai lần. Xem engine/mounting.js.
         totalPaperSurcharge +
         finishingCustomerPrices.holePunching +
         finishingCustomerPrices.creasing +
-        finishingCustomerPrices.mounting +
+        (finishingCustomerPrices.mounting || 0) +
         (finishingCustomerPrices.customFinishing || 0) +
         (finishingCustomerPrices.plasticLamination || 0) +
         dieCuttingCustomerPrice.moldCost +
@@ -230,6 +261,9 @@ export function calculateCustomerQuote(
         holePunchingCustomerPrice: finishingCustomerPrices.holePunching || 0,
         creasingCustomerPrice: finishingCustomerPrices.creasing || 0,
         mountingCustomerPrice: finishingCustomerPrices.mounting || 0,
+        totalBlankPaperCost,
+        blanksPerSet,
+        sheetsPerSet,
         customFinishingCustomerPrice: finishingCustomerPrices.customFinishing || 0,
         plasticLaminationCustomerPrice: finishingCustomerPrices.plasticLamination || 0,
         dieCuttingMoldCustomerPrice: dieCuttingCustomerPrice.moldCost || 0,

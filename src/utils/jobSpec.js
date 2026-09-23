@@ -17,6 +17,7 @@ import { getBlockedFinishing } from '../modules/large-print/config/finishingOps.
 import { filmPhrase } from './laminationFilm.js';
 import { plasticPhrase } from './plasticLamination.js';
 import { formatVndRounded, unitFromRoundedTotal } from './money.js';
+import { MOUNTING_LABELS } from '../modules/small-print/engine/mounting.js';
 
 const SEP = ' _ ';
 
@@ -145,7 +146,9 @@ function smallPrintSpec({ params, result, config }) {
         params.plasticSize
     );
     if (plastic) fin.push(plastic);
-    if (params.mountingType === 'yes') fin.push('bồi carton');
+    // Nhãn theo kiểu bồi — nguồn ở modules/small-print/engine/mounting.js.
+    // Vị trí push PHẢI giữ nguyên: job-spec.test.js khoá cứng thứ tự các mục thành phẩm.
+    if (MOUNTING_LABELS[params.mountingType]) fin.push(MOUNTING_LABELS[params.mountingType]);
     if (SP_CREASING[params.creasingType]) fin.push(SP_CREASING[params.creasingType]);
     if (SP_HOLE[params.holePunchingType]) fin.push(SP_HOLE[params.holePunchingType]);
     if (params.foilStamping === 'yes') fin.push('ép kim');

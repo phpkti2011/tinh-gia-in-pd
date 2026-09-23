@@ -8,6 +8,7 @@ import { calculateCustomerQuote } from '../../utils/customerQuote';
 import NumberField from '../common/NumberField';
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
+import { visiblePapers } from '../../modules/small-print/config/paperStock';
 import { roundToThousand } from '../../utils/money';
 import { LargeSheetVisualizer, PrintSheetVisualizer } from './SheetVisualizer';
 import { useAuth } from '../../auth/useAuth';
@@ -384,11 +385,13 @@ export default function ResultPanel({
                                     onChange={(e) => onChange('paperType', e.target.value)}
                                     className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500 max-w-[140px]"
                                 >
-                                    {(config.PAPER_STOCK_DATA || []).map((paper, idx) => (
-                                        <option key={idx} value={idx}>
-                                            {paper.name}
-                                        </option>
-                                    ))}
+                                    {visiblePapers(config.PAPER_STOCK_DATA, params.paperType).map(
+                                        ({ paper, index }) => (
+                                            <option key={index} value={index}>
+                                                {paper.name}
+                                            </option>
+                                        )
+                                    )}
                                 </select>
                             </div>
                         </div>
@@ -525,8 +528,19 @@ export default function ResultPanel({
                                 )}
                                 {displayQuote.mountingCustomerPrice > 0 && (
                                     <QuoteRow
-                                        label="Bồi carton"
+                                        label={
+                                            params.mountingType === '3_lop'
+                                                ? 'Công bồi 3 lớp'
+                                                : 'Công bồi 2 lớp'
+                                        }
                                         value={displayQuote.mountingCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.totalBlankPaperCost > 0 && (
+                                    <QuoteRow
+                                        label={`Giấy trắng bồi (${displayQuote.blanksPerSet} tờ/bộ)`}
+                                        value={displayQuote.totalBlankPaperCost}
                                         color="text-white"
                                     />
                                 )}

@@ -16,3 +16,13 @@ export {
     SMALL_PRINT_CONFIG_SCHEMA_VERSION,
     SMALL_PRINT_CONFIG_LAST_UPDATED,
 } from './version.js';
+
+export { withMountingDefaults } from './mountingDefaults.js';
+
+export {
+    PAPER_PRICING_MODELS,
+    pricingModelLabel,
+    visiblePapers,
+    makeNewPaper,
+    withPricingModel,
+} from './paperStock.js';

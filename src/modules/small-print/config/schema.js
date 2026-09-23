@@ -195,6 +195,30 @@ function validatePaperStock(paper, i, errors) {
             `PAPER_STOCK_DATA[${i}].pricingModel: phải là 'ream'|'sqm'|'per_sheet'|'custom'`
         );
     }
+    // hidden (thêm ở v1.6.0): ẩn khỏi các ô chọn, KHÔNG xoá khỏi mảng để số thứ tự
+    // giấy không xê dịch. Thiếu field = hiện bình thường.
+    if (paper.hidden !== undefined && typeof paper.hidden !== 'boolean') {
+        errors.push(`PAPER_STOCK_DATA[${i}].hidden: phải là boolean`);
+    }
+    // Field giá: CHỈ kiểm tra khi CÓ mặt. Cố ý dễ dãi — bắt buộc phải có sẽ khiến một
+    // config cũ thiếu field bị loại nguyên khối và admin mất sạch bảng giá đã sửa
+    // (configStorage thay cả mảng PAPER_STOCK_DATA, không merge từng phần tử).
+    // Thiếu giá thì engine bỏ qua giấy đó → báo "không tìm thấy phương án", có lỗi
+    // nhìn thấy được chứ không ra giá sai.
+    if (paper.pricingModel === 'sqm' && paper.pricePerSqm !== undefined) {
+        if (typeof paper.pricePerSqm !== 'number')
+            errors.push(`PAPER_STOCK_DATA[${i}].pricePerSqm: phải là number`);
+    }
+    if (paper.pricingModel === 'per_sheet') {
+        if (paper.sheetPrice !== undefined && typeof paper.sheetPrice !== 'number')
+            errors.push(`PAPER_STOCK_DATA[${i}].sheetPrice: phải là number`);
+        if (paper.sheetSize !== undefined) {
+            const sz = paper.sheetSize;
+            if (!isPlainObject(sz) || typeof sz.w !== 'number' || typeof sz.h !== 'number')
+                errors.push(`PAPER_STOCK_DATA[${i}].sheetSize: phải là { w: number, h: number }`);
+        }
+    }
+    // 'ream' cố ý không ép kiểu pricePerReam: bản 'custom' để chuỗi 'custom' ở field này.
 }
 
 // Optional — loại màng cán (thêm ở phiên bản này). Config cũ chưa có vẫn hợp lệ.

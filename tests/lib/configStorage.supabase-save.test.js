@@ -66,10 +66,13 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             // customerA4Tiers + a4ConversionRates theo máy, và mở các bảng khổ /
             // quy đổi A4 cho admin sửa. 1.3.0: thêm LAMINATION_FILMS (loại màng cán).
             // 1.4.0: thêm PLASTIC_LAMINATION_CONFIG (ép plastic theo độ dày × khổ).
+            // 1.5.0: thêm MOUNTING_CONFIG['3_lop'] (bồi 3 lớp) + blankPaperType/Markup,
+            // và đếm đúng số tờ giấy khi bồi.
+            // 1.6.0: thêm PAPER_STOCK_DATA[*].hidden (ẩn giấy thay vì xoá).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'small-print',
                 VALID_PRINT,
-                '1.4.0',
+                '1.6.0',
                 null
             );
         });

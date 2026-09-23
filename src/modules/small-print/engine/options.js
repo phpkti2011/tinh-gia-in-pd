@@ -15,6 +15,8 @@ import {
     calculateMaxCuttableSheetsLayout,
 } from './layout.js';
 import { calculateLamination } from './finishing.js';
+import { largeSheetPrice as calcLargeSheetPrice, blankSheetCostPerCutSheet } from './paper.js';
+import { printedSheetsPerSet, blankSheetsPerSet } from './mounting.js';
 
 // Atom: tính 1 result cho 1 (cut sheet × printer) combination, push vào allResults
 export function processSheet(
@@ -68,8 +70,22 @@ export function processSheet(
     const clicks = getClicks(pressH, printer);
     if (clicks === Infinity) return;
 
-    const paperCostPerSheet =
+    // Khi bồi, mỗi tờ giấy chỉ in được 1 mặt ⇒ số tờ GIẤY IN = số mặt in, và có thêm
+    // (số lớp − số mặt in) tờ giấy TRẮNG. Trang in KHÔNG đổi: 2 tờ × 1 mặt = 1 tờ × 2 mặt.
+    // Xem engine/mounting.js. Không bồi ⇒ hệ số 1 và 0 ⇒ mọi con số cũ y nguyên.
+    const sheetsPerSet = printedSheetsPerSet(params.mountingType, params.printSides);
+    const blanksPerSet = blankSheetsPerSet(params.mountingType, params.printSides);
+    const baseSheetPaperCost =
         numCuttableSheets > 0 ? largeSheetPrice / numCuttableSheets : Infinity;
+    const paperCostPerSheet = baseSheetPaperCost * sheetsPerSet;
+    const blankPaperCostPerSheet =
+        blanksPerSet > 0
+            ? blankSheetCostPerCutSheet(
+                  (config.PAPER_STOCK_DATA || [])[params.blankPaperType],
+                  { largeSheet, numCuttableSheets, cutW: pressW, cutH: pressH },
+                  config
+              ) * blanksPerSet
+            : 0;
     const printCostPerSheet = clicks * clickPrice * params.printSides;
     const lamination = calculateLamination(
         pressH,
@@ -79,11 +95,16 @@ export function processSheet(
         config,
         params.laminationFilm
     );
-    const totalCostPerSheet = paperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
+    const totalCostPerSheet =
+        paperCostPerSheet + blankPaperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
 
     const costPerProduct = productsPerSheet > 0 ? totalCostPerSheet / productsPerSheet : Infinity;
+    // paperCostPerProduct CỐ Ý chỉ gồm giấy IN (đã nhân theo số mặt): panel dùng nó cho
+    // dòng "Đơn giá IN / trang". Giấy trắng là vật tư bồi nên đứng riêng.
     const paperCostPerProduct =
         productsPerSheet > 0 ? paperCostPerSheet / productsPerSheet : Infinity;
+    const blankPaperCostPerProduct =
+        productsPerSheet > 0 ? blankPaperCostPerSheet / productsPerSheet : 0;
     const printCostPerProduct =
         productsPerSheet > 0 ? printCostPerSheet / productsPerSheet : Infinity;
 
@@ -102,12 +123,16 @@ export function processSheet(
         clicks,
         productsPerSheet,
         paperCostPerProduct,
+        blankPaperCostPerProduct,
         printCostPerProduct,
         laminationCostPerProduct: lamination.costPerProduct,
         laminationWarning: lamination.warning,
         costPerProduct,
         debug: {
             paperCostPerSheet,
+            blankPaperCostPerSheet,
+            sheetsPerSet,
+            blanksPerSet,
             printCostPerSheet,
             laminationCostPerSheet: lamination.costPerSheet,
             totalCostPerSheet,
@@ -364,18 +389,15 @@ export function calculatePaperOptions(
         largeSheet = selectedSheetData;
     }
 
-    let largeSheetPrice;
-    if (isArtPaper) {
-        if (isNaN(params.artPaperPrice) || params.artPaperPrice < 0) return;
-        largeSheetPrice = params.artPaperPrice;
-    } else {
-        if (isNaN(selectedPaper.pricePerReam) || selectedPaper.pricePerReam <= 0) return;
-        const pricePerSheet65x86 = selectedPaper.pricePerReam / 500;
-        const baseArea =
-            config.STANDARD_LARGE_SHEET_SIZES[0].w * config.STANDARD_LARGE_SHEET_SIZES[0].h;
-        const targetArea = largeSheet.w * largeSheet.h;
-        largeSheetPrice = baseArea > 0 ? (pricePerSheet65x86 / baseArea) * targetArea : 0;
-    }
+    // Công thức đã chuyển sang engine/paper.js để dùng chung với giấy lót/giấy giữa
+    // của thành phẩm bồi. null = giá không hợp lệ → bỏ qua phương án này (như cũ).
+    const largeSheetPrice = calcLargeSheetPrice(
+        selectedPaper,
+        largeSheet,
+        config,
+        params.artPaperPrice
+    );
+    if (largeSheetPrice == null) return;
 
     const isLargeProduct = productWithBleedW > 48 || productWithBleedH > 48;
     let sheetsToProcess = [];

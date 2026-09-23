@@ -6,6 +6,12 @@ import { saveConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import { computeA4Factor } from '../../utils/customerQuote';
 import { newPlasticId } from '../../utils/plasticLamination';
+import {
+    PAPER_PRICING_MODELS,
+    makeNewPaper,
+    withPricingModel,
+    visiblePapers,
+} from '../../modules/small-print/config/paperStock';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 // Làm tròn 2 số lẻ cho hệ số quy đổi A4 tự tính (thân thiện, admin sửa được).
@@ -732,6 +738,114 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
 
     const inputCls =
         'w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500';
+    // --- PAPER_STOCK_DATA: thêm giấy / đổi cách tính giá / ẩn-hiện ---
+    // Giấy nhận diện bằng VỊ TRÍ trong mảng (params.paperType = '3'), nên:
+    //   - thêm chỉ được NỐI VÀO CUỐI,
+    //   - bỏ giấy là đánh dấu hidden, KHÔNG splice.
+    // Xem src/modules/small-print/config/paperStock.js.
+    const addPaper = () =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            PAPER_STOCK_DATA: [...(prev.PAPER_STOCK_DATA || []), makeNewPaper('ream')],
+        }));
+
+    const setPaperModel = (idx, model) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            PAPER_STOCK_DATA: (prev.PAPER_STOCK_DATA || []).map((p, i) =>
+                i === idx ? withPricingModel(p, model) : p
+            ),
+        }));
+
+    const togglePaperHidden = (idx) =>
+        setLocalConfig((prev) => {
+            const arr = prev.PAPER_STOCK_DATA || [];
+            const cur = arr[idx];
+            if (!cur) return prev;
+            if (!cur.hidden) {
+                // Ẩn hết giấy thì mọi ô chọn ở màn tính giá thành rỗng → chặn dòng cuối.
+                const visibleLeft = arr.filter((p, i) => !p.hidden && i !== idx).length;
+                if (visibleLeft === 0) {
+                    alert('Phải còn ít nhất 1 loại giấy đang hiện.');
+                    return prev;
+                }
+                const refName = prev.PAPER_REFERENCE_CONFIG?.referencePaperName;
+                const msg =
+                    cur.name === refName
+                        ? `Ẩn "${cur.name}"? Đây đang là GIẤY CHUẨN để so giá — ẩn xong vẫn còn dùng để so, nhưng nên đổi giấy chuẩn sang loại khác.`
+                        : `Ẩn "${cur.name}"? Giấy này sẽ biến mất khỏi các ô chọn ở màn tính giá. Bật lại được bất cứ lúc nào.`;
+                if (!confirm(msg)) return prev;
+            }
+            return {
+                ...prev,
+                PAPER_STOCK_DATA: arr.map((p, i) => (i === idx ? { ...p, hidden: !p.hidden } : p)),
+            };
+        });
+
+    // Hai kiểu bồi, render chung một code path → thêm kiểu sau này là free.
+    const MOUNTING_MODES = [
+        { key: 'yes', title: 'Bồi 2 lớp' },
+        { key: '3_lop', title: 'Bồi 3 lớp (có tờ giấy ở giữa)' },
+    ];
+
+    // --- MOUNTING_CONFIG: bảng CÔNG BỒI theo bậc số TỜ IN, thêm/xoá được ---
+    // cost_tiers và customer_tiers PHẢI luôn cùng độ dài: JSX tra customer_tiers[idx] theo
+    // index của cost_tiers. Mọi thao tác thêm/xoá đi qua đây để 2 mảng không bao giờ lệch.
+    const updateMounting = (mode, fn) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            MOUNTING_CONFIG: { ...prev.MOUNTING_CONFIG, [mode]: fn(prev.MOUNTING_CONFIG[mode]) },
+        }));
+
+    // Chèn bậc mới TRƯỚC dòng ∞ (chèn sau là tạo ra bậc chết, find() không bao giờ tới),
+    // ngưỡng = ngưỡng hữu hạn lớn nhất + 1, giá copy dòng ngay trên để admin chỉ sửa số.
+    const addMountingTier = (mode) =>
+        updateMounting(mode, (m) => {
+            const cost = m.cost_tiers || [];
+            const cust = m.customer_tiers || [];
+            const finite = cost.map((t) => t.max_qty).filter((x) => Number.isFinite(x));
+            const nextMax = finite.length ? Math.max(...finite) + 1 : 1;
+            const infIdx = cost.findIndex((t) => t.max_qty === Infinity);
+            const at = infIdx >= 0 ? infIdx : cost.length;
+            const mk = (arr) => {
+                const src = arr[at - 1] || arr[at] || { price: 0, type: 'package' };
+                const row = {
+                    max_qty: nextMax,
+                    price: src.price ?? 0,
+                    type: src.type || 'package',
+                };
+                return [...arr.slice(0, at), row, ...arr.slice(at)];
+            };
+            return { ...m, cost_tiers: mk(cost), customer_tiers: mk(cust) };
+        });
+
+    const delMountingTier = (mode, idx) =>
+        updateMounting(mode, (m) => {
+            const cost = m.cost_tiers || [];
+            if (cost.length <= 1) return m;
+            const cut = (arr) => {
+                const next = arr.filter((_, i) => i !== idx);
+                // Luôn giữ 1 dòng ∞ để mọi số lượng đều tra được bậc.
+                if (next.length && !next.some((t) => t.max_qty === Infinity)) {
+                    next[next.length - 1] = { ...next[next.length - 1], max_qty: Infinity };
+                }
+                return next;
+            };
+            return { ...m, cost_tiers: cut(cost), customer_tiers: cut(m.customer_tiers || []) };
+        });
+
+    // field 'price' chỉ ghi 1 mảng; 'max_qty' và 'type' ghi CẢ HAI (ngưỡng/kiểu phải khớp).
+    const updateMountingTier = (mode, idx, arrName, field, value) =>
+        updateMounting(mode, (m) => {
+            const write = (arr) => arr.map((t, i) => (i === idx ? { ...t, [field]: value } : t));
+            if (field === 'price') return { ...m, [arrName]: write(m[arrName] || []) };
+            return {
+                ...m,
+                cost_tiers: write(m.cost_tiers || []),
+                customer_tiers: write(m.customer_tiers || []),
+            };
+        });
+
     const inputClsPr = inputCls + ' pr-12';
     const inputClsSm =
         'w-36 bg-gray-900 border border-gray-700 rounded px-2 py-1 pr-8 text-white focus:outline-none focus:border-blue-500 text-sm';
@@ -1075,17 +1189,55 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
 
                 {/* 3. Giá giấy */}
                 <section>
-                    <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
-                        Giá Giấy / Decal
-                    </h3>
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-600">
+                        <h3 className="text-lg font-semibold text-cyan-400">Giá Giấy / Decal</h3>
+                        <button
+                            onClick={addPaper}
+                            className="px-3 py-1 rounded text-sm font-medium bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            + Thêm giấy
+                        </button>
+                    </div>
+                    <p className="text-gray-500 text-xs mb-4">
+                        Giấy mới luôn nối vào CUỐI danh sách, và bỏ giấy là ẩn đi chứ không xoá —
+                        phần mềm nhận diện giấy bằng vị trí trong danh sách, xoá thật sẽ làm mọi
+                        giấy phía sau tụt một bậc và đổi giấy của đơn đang mở (kể cả ở Catalogue và
+                        Lò xo, hai module dùng chung bảng giấy này).
+                    </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {localConfig.PAPER_STOCK_DATA.map((paper, idx) => {
-                            if (paper.pricingModel === 'custom') return null;
+                        {(localConfig.PAPER_STOCK_DATA || []).map((paper, idx) => {
                             const isReam = paper.pricingModel === 'ream';
                             const isSqm = paper.pricingModel === 'sqm';
                             const isSheet = paper.pricingModel === 'per_sheet';
+                            const isHidden = !!paper.hidden;
                             return (
-                                <div key={idx} className="space-y-2">
+                                <div
+                                    key={idx}
+                                    data-testid={`paper-${idx}`}
+                                    className={
+                                        'space-y-2 p-3 rounded border ' +
+                                        (isHidden
+                                            ? 'border-gray-700 bg-gray-900/60 opacity-60'
+                                            : 'border-transparent')
+                                    }
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-500 text-xs">
+                                            #{idx + 1}
+                                            {isHidden && ' · đang ẩn'}
+                                        </span>
+                                        <button
+                                            onClick={() => togglePaperHidden(idx)}
+                                            className={
+                                                'text-xs ' +
+                                                (isHidden
+                                                    ? 'text-green-400 hover:text-green-300'
+                                                    : 'text-red-400 hover:text-red-300')
+                                            }
+                                        >
+                                            {isHidden ? 'Hiện lại' : 'Ẩn'}
+                                        </button>
+                                    </div>
                                     {/* Tên sửa được: config đã lưu (localStorage/Supabase) ghi đè
                                         PAPER_STOCK_DATA nguyên khối, nên đổi tên trong code sẽ
                                         KHÔNG tới được máy đang chạy. Cho admin tự sửa ở đây.
@@ -1107,6 +1259,21 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                                             )
                                         }
                                     />
+                                    <div>
+                                        <label className={labelCls}>Cách tính giá</label>
+                                        <select
+                                            aria-label={`Cách tính giá ${paper.name}`}
+                                            value={paper.pricingModel}
+                                            onChange={(e) => setPaperModel(idx, e.target.value)}
+                                            className={inputCls}
+                                        >
+                                            {PAPER_PRICING_MODELS.map((m) => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     {isReam && (
                                         <div className="relative">
                                             <label className={labelCls}>Giá / ram (500 tờ)</label>
@@ -1163,6 +1330,44 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                                                 VNĐ
                                             </span>
                                         </div>
+                                    )}
+                                    {isSheet && (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className={labelCls}>Khổ rộng (cm)</label>
+                                                <NumInput
+                                                    configValue={paper.sheetSize?.w ?? 0}
+                                                    step="0.1"
+                                                    onCommit={(val) =>
+                                                        updateNestedField(
+                                                            `PAPER_STOCK_DATA.${idx}.sheetSize.w`,
+                                                            val
+                                                        )
+                                                    }
+                                                    className={inputCls}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className={labelCls}>Khổ cao (cm)</label>
+                                                <NumInput
+                                                    configValue={paper.sheetSize?.h ?? 0}
+                                                    step="0.1"
+                                                    onCommit={(val) =>
+                                                        updateNestedField(
+                                                            `PAPER_STOCK_DATA.${idx}.sheetSize.h`,
+                                                            val
+                                                        )
+                                                    }
+                                                    className={inputCls}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {paper.pricingModel === 'custom' && (
+                                        <p className="text-xs text-gray-500">
+                                            Giá gõ tay ở màn tính giá cho từng đơn — không có ô giá
+                                            ở đây.
+                                        </p>
                                     )}
                                     <div className="relative">
                                         <label className={labelCls}>Phụ thu KH / trang A4</label>
@@ -1456,58 +1661,213 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                     <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
                         Giá Bồi Thành Phẩm
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {localConfig.MOUNTING_CONFIG.yes.cost_tiers.map((tier, idx) => {
-                            const rangeStr =
-                                tier.max_qty === Infinity
-                                    ? `> ${localConfig.MOUNTING_CONFIG.yes.cost_tiers[idx - 1]?.max_qty || 0} SP`
-                                    : `≤ ${tier.max_qty} SP`;
-                            return (
-                                <div key={idx} className="space-y-2 p-3 bg-gray-900/50 rounded">
-                                    <div className="text-gray-300 text-xs font-medium">
-                                        {rangeStr}
+                    <p className="text-gray-500 text-xs mb-3">
+                        Tính theo SỐ TỜ IN, không phải số sản phẩm (1 bộ bồi = 1 tờ in, bất kể mấy
+                        lớp). Số tờ giấy: tờ in = số mặt in, tờ trắng = số lớp − số mặt in.
+                    </p>
+                    {MOUNTING_MODES.map(({ key: mode, title }) => {
+                        const m = localConfig.MOUNTING_CONFIG?.[mode];
+                        if (!m || !Array.isArray(m.cost_tiers)) return null;
+                        let prevMax = 0;
+                        return (
+                            <div key={mode} className="mb-6" data-testid={`mounting-${mode}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-sm font-semibold text-yellow-400">
+                                        {title}
+                                    </h4>
+                                    <button
+                                        onClick={() => addMountingTier(mode)}
+                                        className="text-xs font-medium text-blue-400 hover:text-blue-300"
+                                    >
+                                        + Thêm mức giá
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-gray-700 text-gray-400 text-xs uppercase">
+                                                <th className="py-1.5 pr-3 text-left">
+                                                    Mức SL (tờ in)
+                                                </th>
+                                                <th className="py-1.5 pr-3 text-left">Kiểu</th>
+                                                <th className="py-1.5 pr-3 text-left">Giá vốn</th>
+                                                <th className="py-1.5 pr-3 text-left">Giá KH</th>
+                                                <th className="py-1.5"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {m.cost_tiers.map((tier, idx) => {
+                                                const cust = m.customer_tiers?.[idx];
+                                                const isUnlimited = tier.max_qty === Infinity;
+                                                const from = prevMax + 1;
+                                                const rangeLabel = isUnlimited
+                                                    ? `từ ${from}`
+                                                    : `${from}-${tier.max_qty}`;
+                                                if (!isUnlimited)
+                                                    prevMax = Number(tier.max_qty) || prevMax;
+                                                return (
+                                                    <tr
+                                                        key={idx}
+                                                        className="border-b border-gray-700/50"
+                                                    >
+                                                        <td className="py-1.5 pr-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs text-gray-500 w-16 whitespace-nowrap">
+                                                                    {rangeLabel}
+                                                                </span>
+                                                                {!isUnlimited && (
+                                                                    <NumInput
+                                                                        configValue={tier.max_qty}
+                                                                        step="1"
+                                                                        onCommit={(val) =>
+                                                                            updateMountingTier(
+                                                                                mode,
+                                                                                idx,
+                                                                                'cost_tiers',
+                                                                                'max_qty',
+                                                                                val
+                                                                            )
+                                                                        }
+                                                                        className={inputClsSm}
+                                                                    />
+                                                                )}
+                                                                <label className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isUnlimited}
+                                                                        onChange={(e) =>
+                                                                            updateMountingTier(
+                                                                                mode,
+                                                                                idx,
+                                                                                'cost_tiers',
+                                                                                'max_qty',
+                                                                                e.target.checked
+                                                                                    ? Infinity
+                                                                                    : 0
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    Không giới hạn
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1.5 pr-3">
+                                                            <select
+                                                                value={tier.type || 'package'}
+                                                                onChange={(e) =>
+                                                                    updateMountingTier(
+                                                                        mode,
+                                                                        idx,
+                                                                        'cost_tiers',
+                                                                        'type',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className={inputClsSm}
+                                                            >
+                                                                <option value="package">
+                                                                    Trọn gói
+                                                                </option>
+                                                                <option value="per_piece">
+                                                                    /tờ in
+                                                                </option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="py-1.5 pr-3">
+                                                            <NumInput
+                                                                configValue={tier.price ?? 0}
+                                                                step="100"
+                                                                onCommit={(val) =>
+                                                                    updateMountingTier(
+                                                                        mode,
+                                                                        idx,
+                                                                        'cost_tiers',
+                                                                        'price',
+                                                                        val
+                                                                    )
+                                                                }
+                                                                className={inputClsSm}
+                                                            />
+                                                        </td>
+                                                        <td className="py-1.5 pr-3">
+                                                            <NumInput
+                                                                configValue={cust?.price ?? 0}
+                                                                step="100"
+                                                                onCommit={(val) =>
+                                                                    updateMountingTier(
+                                                                        mode,
+                                                                        idx,
+                                                                        'customer_tiers',
+                                                                        'price',
+                                                                        val
+                                                                    )
+                                                                }
+                                                                className={inputClsSm}
+                                                            />
+                                                        </td>
+                                                        <td className="py-1.5">
+                                                            {m.cost_tiers.length > 1 && (
+                                                                <button
+                                                                    onClick={() =>
+                                                                        delMountingTier(mode, idx)
+                                                                    }
+                                                                    className="text-red-400 hover:text-red-300 text-xs"
+                                                                >
+                                                                    Xóa
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-end gap-4">
+                                    <div>
+                                        <label className={labelCls}>Giấy trắng mặc định</label>
+                                        <select
+                                            value={m.blankPaperType ?? '3'}
+                                            onChange={(e) =>
+                                                updateMounting(mode, (x) => ({
+                                                    ...x,
+                                                    blankPaperType: e.target.value,
+                                                }))
+                                            }
+                                            className={inputClsSm}
+                                        >
+                                            {visiblePapers(
+                                                localConfig.PAPER_STOCK_DATA,
+                                                m.blankPaperType
+                                            ).map(({ paper, index }) =>
+                                                paper.pricingModel === 'ream' ? (
+                                                    <option key={index} value={String(index)}>
+                                                        {paper.name}
+                                                    </option>
+                                                ) : null
+                                            )}
+                                        </select>
                                     </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá vốn</label>
+                                    <div>
+                                        <label className={labelCls}>
+                                            Hệ số giá KH của giấy trắng
+                                        </label>
                                         <NumInput
-                                            configValue={tier.price}
-                                            step="100"
+                                            configValue={m.blankPaperMarkup ?? 2}
+                                            step="0.1"
                                             onCommit={(val) =>
-                                                updateNestedField(
-                                                    `MOUNTING_CONFIG.yes.cost_tiers.${idx}.price`,
-                                                    val
-                                                )
+                                                updateMounting(mode, (x) => ({
+                                                    ...x,
+                                                    blankPaperMarkup: val,
+                                                }))
                                             }
-                                            className={inputClsPr}
+                                            className={inputClsSm}
                                         />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
-                                    </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá KH</label>
-                                        <NumInput
-                                            configValue={
-                                                localConfig.MOUNTING_CONFIG.yes.customer_tiers[idx]
-                                                    .price
-                                            }
-                                            step="100"
-                                            onCommit={(val) =>
-                                                updateNestedField(
-                                                    `MOUNTING_CONFIG.yes.customer_tiers.${idx}.price`,
-                                                    val
-                                                )
-                                            }
-                                            className={inputClsPr}
-                                        />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+                        );
+                    })}
                 </section>
 
                 {/* 9. Bế KTS */}

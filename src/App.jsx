@@ -281,6 +281,9 @@ function SmallPrintModule({ onBack, heading }) {
         customSheetW: 70,
         customSheetH: 100,
         mountingType: 'none',
+        // Giấy TRẮNG (lót / giữa) của thành phẩm bồi — index vào PAPER_STOCK_DATA,
+        // cùng quy ước chuỗi với paperType. Xem modules/small-print/engine/mounting.js.
+        blankPaperType: '3',
         laminationType: 'none',
         laminationFilm: '',
         // Ép plastic: độ dày ('none' = không ép) + khổ ('' = chưa chọn → chưa tính

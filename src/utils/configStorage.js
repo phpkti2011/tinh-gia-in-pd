@@ -19,6 +19,7 @@ import { validateDecalConfig, DECAL_CONFIG_SCHEMA_VERSION } from '../modules/dec
 import {
     validateSmallPrintConfig,
     SMALL_PRINT_CONFIG_SCHEMA_VERSION,
+    withMountingDefaults,
 } from '../modules/small-print/config/index.js';
 import { validateUvDtfConfig, UVDTF_CONFIG_SCHEMA_VERSION } from '../modules/uvdtf/config/index.js';
 import {
@@ -157,6 +158,9 @@ function deepValidateCheapDecal(data, source) {
 // bên dưới chỉ merge nông cấp 1 (`{ ...default, ...saved }`). Nếu payload đã lưu thiếu 1 id
 // (client cũ, hoặc module mới thêm sau) thì cả cụm default bị thay → undefined chui xuống UI.
 function withMergedModuleLabels(moduleName, cfg) {
+    // MOUNTING_CONFIG gặp đúng vấn đề đó ở tầng subkey: config lưu trước v1.5.0 chỉ có
+    // `yes` sẽ nuốt mất kiểu bồi 3 lớp. Xem modules/small-print/config/mountingDefaults.js.
+    if (moduleName === 'printConfig') return withMountingDefaults(cfg);
     if (moduleName !== 'moduleVisibilityConfig') return cfg;
     return { ...cfg, MODULE_LABELS: mergeModuleLabels(cfg.MODULE_LABELS) };
 }
@@ -710,10 +714,10 @@ export function loadConfig() {
                 // Merge với DEFAULT_CONFIG để backward-compat: config cũ thiếu key
                 // mới (vd PAPER_REFERENCE_CONFIG) sẽ lấy từ default.
                 if (deepValidatePrint(parsed, 'localStorage'))
-                    return {
+                    return withMountingDefaults({
                         ...restoreInfinity(JSON.parse(JSON.stringify(DEFAULT_CONFIG))),
                         ...parsed,
-                    };
+                    });
                 // else fallback
             } else {
                 console.warn(

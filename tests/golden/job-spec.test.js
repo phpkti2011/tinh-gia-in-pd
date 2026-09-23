@@ -113,7 +113,20 @@ describe('small-print — In KTS khổ nhỏ', () => {
             result,
             config,
         });
-        expect(out).toContain('cán màng mờ 2 mặt, bồi carton, có cấn, đục lỗ 2 vị trí, ép kim');
+        expect(out).toContain('cán màng mờ 2 mặt, bồi 2 lớp, có cấn, đục lỗ 2 vị trí, ép kim');
+    });
+
+    it('bồi 3 lớp — nhãn riêng, đúng chỗ cũ của bồi 2 lớp', () => {
+        // v1.5.0 đổi 'bồi carton' → 'bồi 2 lớp' / 'bồi 3 lớp': giờ có 2 kiểu bồi, và
+        // "carton" không còn đúng vì lớp kia là tờ giấy (chọn được loại).
+        const out = buildJobSpec('small-print', {
+            params: { ...params, mountingType: '3_lop', creasingType: 'co_can' },
+            result,
+            config,
+        });
+        expect(out).toContain('bồi 3 lớp, có cấn');
+        expect(out).not.toContain('bồi 2 lớp');
+        expect(out).not.toMatch(/undefined|NaN|null/);
     });
 
     it('ưu tiên quote.printSides (params bị ép về 1 với decal/bồi)', () => {

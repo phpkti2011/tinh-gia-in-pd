@@ -3,6 +3,8 @@ import LaminationFilmSelect from '../common/LaminationFilmSelect';
 import { useEffect } from 'react';
 import NumberField from '../common/NumberField';
 import { plasticSizesFor } from '../../utils/plasticLamination';
+import { blankSheetsPerSet } from '../../modules/small-print/engine/mounting';
+import { visiblePapers } from '../../modules/small-print/config/paperStock';
 
 export default function InputPanel({ config, params, onChange, isAutoCalculating }) {
     // Handler cho select + checkbox. Number field dùng NumberField shared để fix
@@ -56,7 +58,11 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
         sheetOptions[params.largeSheetSelector] &&
         sheetOptions[params.largeSheetSelector].w === 'custom';
 
-    const isSidesDisabled = isSqm || isPerSheet || params.mountingType === 'yes';
+    // v1.5.0: BỒI KHÔNG còn khoá ô "Số mặt in". Ô này = số mặt in của THÀNH PHẨM; khi
+    // bồi, mỗi tờ giấy in 1 mặt nên 2 mặt = 2 tờ in (engine tự nhân số tờ giấy, trang in
+    // giữ nguyên). Trước đây khoá về 1 mặt nên đơn bồi 2 mặt không báo đúng được.
+    const isSidesDisabled = isSqm || isPerSheet;
+    const blanksPerSet = blankSheetsPerSet(params.mountingType, params.printSides);
 
     // Ép plastic: danh sách độ dày admin khai; chọn độ dày rồi mới hiện ô khổ
     // (chỉ các khổ admin tick cho độ dày đó). Config cũ thiếu key → không render.
@@ -75,6 +81,14 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
         }
     }, [isSidesDisabled, params.printSides, onChange]);
 
+    // Decal (sqm) và giấy khổ cố định (per_sheet) đi nhánh tính riêng, chưa hỗ trợ nhân
+    // số tờ giấy khi bồi → reset về "không bồi" thay vì báo giá sai trong im lặng.
+    useEffect(() => {
+        if ((isSqm || isPerSheet) && params.mountingType !== 'none') {
+            onChange('mountingType', 'none');
+        }
+    }, [isSqm, isPerSheet, params.mountingType, onChange]);
+
     return (
         <div className="lg:col-span-1" id="controls">
             <div className="input-group">
@@ -89,7 +103,7 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         value={params.paperType}
                         onChange={handleChange}
                     >
-                        {paperData.map((paper, index) => (
+                        {visiblePapers(paperData, params.paperType).map(({ paper, index }) => (
                             <option key={index} value={index}>
                                 {paper.name}
                             </option>
@@ -307,9 +321,41 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         onChange={handleChange}
                     >
                         <option value="none">Không bồi</option>
-                        <option value="yes">Có bồi</option>
+                        <option value="yes">Bồi 2 lớp</option>
+                        <option value="3_lop">Bồi 3 lớp (có tờ giấy ở giữa)</option>
                     </select>
+                    {params.mountingType !== 'none' && (
+                        <p className="mt-1 text-xs text-yellow-400">
+                            Bồi thì mỗi tờ giấy chỉ in được 1 mặt: thành phẩm{' '}
+                            {String(params.printSides) === '2' ? '2 mặt' : '1 mặt'} →{' '}
+                            <b>
+                                {String(params.printSides) === '2' ? 2 : 1} tờ in
+                                {blanksPerSet > 0 ? ` + ${blanksPerSet} tờ giấy trắng` : ''}
+                            </b>{' '}
+                            mỗi bộ. Trang in không đổi, chỉ số tờ giấy tăng.
+                        </p>
+                    )}
                 </div>
+                {blanksPerSet > 0 && (
+                    <div className="mb-4">
+                        <label htmlFor="blankPaperType">Giấy trắng (lót / ở giữa)</label>
+                        <select
+                            id="blankPaperType"
+                            name="blankPaperType"
+                            value={params.blankPaperType}
+                            onChange={handleChange}
+                        >
+                            {visiblePapers(config.PAPER_STOCK_DATA, params.blankPaperType).map(
+                                ({ paper, index }) =>
+                                    paper.pricingModel === 'ream' ? (
+                                        <option key={index} value={String(index)}>
+                                            {paper.name}
+                                        </option>
+                                    ) : null
+                            )}
+                        </select>
+                    </div>
+                )}
                 <div className="mb-4">
                     <label htmlFor="laminationType">Cán màng</label>
                     <select

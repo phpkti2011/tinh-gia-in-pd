@@ -182,6 +182,13 @@ export const DEFAULT_CONFIG = {
             ],
         },
     },
+    // Công bồi, tính theo SỐ TỜ IN (1 bộ bồi = 1 tờ in, bất kể mấy lớp) — KHÔNG phải
+    // theo số sản phẩm. Luật số tờ giấy: xem src/modules/small-print/engine/mounting.js.
+    //   key 'yes'   = bồi 2 lớp (tên cũ, giữ nguyên vì config + báo giá đã lưu dùng chuỗi này)
+    //   key '3_lop' = bồi 3 lớp (có thêm tờ giấy ở giữa)
+    // blankPaperType   = index vào PAPER_STOCK_DATA cho tờ giấy TRẮNG (lót / giữa).
+    // blankPaperMarkup = giá khách của tờ trắng = giá vốn × hệ số này. Mặc định 2, đúng
+    //   tỉ lệ vốn→khách của mọi bảng cost_tiers/customer_tiers trong file này.
     MOUNTING_CONFIG: {
         yes: {
             cost_tiers: [
@@ -196,6 +203,26 @@ export const DEFAULT_CONFIG = {
                 { max_qty: 500, price: 300000, type: 'package' },
                 { max_qty: Infinity, price: 450000, type: 'package' },
             ],
+            blankPaperType: '3',
+            blankPaperMarkup: 2,
+        },
+        // Khởi tạo y hệt bồi 2 lớp — bồi 3 lớp ép 2 lần nên công thực tế cao hơn,
+        // admin tự chỉnh trong Cài Đặt. Bảng RIÊNG để chỉnh được độc lập.
+        '3_lop': {
+            cost_tiers: [
+                { max_qty: 50, price: 50000, type: 'package' },
+                { max_qty: 200, price: 100000, type: 'package' },
+                { max_qty: 500, price: 150000, type: 'package' },
+                { max_qty: Infinity, price: 225000, type: 'package' },
+            ],
+            customer_tiers: [
+                { max_qty: 50, price: 100000, type: 'package' },
+                { max_qty: 200, price: 200000, type: 'package' },
+                { max_qty: 500, price: 300000, type: 'package' },
+                { max_qty: Infinity, price: 450000, type: 'package' },
+            ],
+            blankPaperType: '3',
+            blankPaperMarkup: 2,
         },
     },
     // Danh mục "gia công" tùy chỉnh (admin tự thêm ngoài Đục lỗ/Cấn/Bồi có sẵn).
