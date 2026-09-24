@@ -47,6 +47,8 @@ export default [
             },
             globals: {
                 ...globals.browser,
+                // Hằng số do vite.config.js `define` bơm vào lúc build.
+                __APP_BUILD_ID__: 'readonly',
             },
         },
         plugins: {
@@ -95,6 +97,7 @@ export default [
             globals: {
                 ...globals.node,
                 ...globals.browser,
+                __APP_BUILD_ID__: 'readonly',
                 // Vitest globals — vi tự import được, nhưng describe/it/expect cần khai báo
                 describe: 'readonly',
                 it: 'readonly',

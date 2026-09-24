@@ -165,6 +165,8 @@ const MODULES = [
 ];
 
 import HomeTitle from './components/home/HomeTitle';
+import { useConfigRefreshOnFocus } from './components/common/useConfigRefreshOnFocus';
+import { UpdateBanner, WhatsNewNotice } from './components/common/UpdateBanner';
 
 function HomePage({ onSelect, isAdmin, uiConfig, onSaveUiConfig }) {
     // null | 'saving' | 'cloud' | 'local' | 'error'
@@ -314,6 +316,12 @@ function SmallPrintModule({ onBack, heading }) {
             if (c) setConfig(c);
         });
     }, []);
+
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'printConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
 
     const handleChange = useCallback((name, value) => {
         setParams((prev) =>
@@ -613,19 +621,11 @@ function LargePrintModule({ onBack, heading }) {
         });
     }, []);
 
-    // Admin sửa cài đặt ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
-    // Bỏ qua khi đang ở tab Cài Đặt để không đè bản nháp admin đang sửa dở.
-    useEffect(() => {
-        if (activeTab === 'settings') return;
-        const onVisible = () => {
-            if (document.visibilityState !== 'visible') return;
-            loadConfigFromCloud('largePrintConfig').then((c) => {
-                if (c) setConfig(c);
-            });
-        };
-        document.addEventListener('visibilitychange', onVisible);
-        return () => document.removeEventListener('visibilitychange', onVisible);
-    }, [activeTab]);
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'largePrintConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
 
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
@@ -763,6 +763,12 @@ function DecalModule({ onBack, heading }) {
             if (c) setConfig(c);
         });
     }, []);
+
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'decalConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
 
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
@@ -1019,6 +1025,12 @@ function UvdtfModule({ onBack, heading }) {
         });
     }, []);
 
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'uvdtfConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
+
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -1140,6 +1152,15 @@ function CatalogueModule({ onBack, heading }) {
             if (c) setCatalogueConfig(c);
         });
     }, []);
+
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [
+            { module: 'printConfig', apply: setPrintConfig },
+            { module: 'catalogueConfig', apply: setCatalogueConfig },
+        ],
+        activeTab === 'settings'
+    );
 
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
@@ -1288,6 +1309,15 @@ function SpiralModule({ onBack, heading }) {
         });
     }, []);
 
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [
+            { module: 'printConfig', apply: setPrintConfig },
+            { module: 'spiralConfig', apply: setSpiralConfig },
+        ],
+        activeTab === 'settings'
+    );
+
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -1420,6 +1450,12 @@ function StickerModule({ onBack, heading }) {
         });
     }, []);
 
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'stickerConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
+
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -1534,6 +1570,9 @@ function CardModule({ onBack, heading }) {
             if (c) setConfig(c);
         });
     }, []);
+
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus([{ module: 'cardConfig', apply: setConfig }], activeTab === 'settings');
 
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
@@ -1650,6 +1689,12 @@ function FlyerModule({ onBack, heading }) {
         });
     }, []);
 
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'flyerConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
+
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -1763,6 +1808,12 @@ function CheapDecalModule({ onBack, heading }) {
             if (c) setConfig(c);
         });
     }, []);
+
+    // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
+    useConfigRefreshOnFocus(
+        [{ module: 'cheapDecalConfig', apply: setConfig }],
+        activeTab === 'settings'
+    );
 
     const handleChange = useCallback((name, value) => {
         setParams((prev) => ({ ...prev, [name]: value }));
@@ -2006,7 +2057,16 @@ function App() {
         );
     })();
 
-    return <ErrorBoundary key={currentModule}>{content}</ErrorBoundary>;
+    // Băng báo đặt NGOÀI ErrorBoundary: `key={currentModule}` remount cả cây con mỗi lần
+    // đổi module, đặt bên trong là mất trạng thái liên tục — và biến mất luôn khi module lỗi,
+    // đúng lúc cần báo nhất.
+    return (
+        <>
+            <WhatsNewNotice />
+            <ErrorBoundary key={currentModule}>{content}</ErrorBoundary>
+            <UpdateBanner />
+        </>
+    );
 }
 
 export default App;

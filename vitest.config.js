@@ -5,6 +5,11 @@ import react from '@vitejs/plugin-react';
 // Vite build config (vite.config.js) giữ riêng — không touch.
 export default defineConfig({
     plugins: [react()],
+    // vite.config.js có `define` riêng, file này KHÔNG dùng chung ⇒ phải khai lại, nếu
+    // không mọi test chạm tới hằng số này sẽ nổ ReferenceError.
+    define: {
+        __APP_BUILD_ID__: JSON.stringify('test-build'),
+    },
     test: {
         // Default Node env. Per-file override qua `// @vitest-environment jsdom`
         // (xem tests/auth/adminGate.test.jsx + tests/lib/configStorage.supabase-*.test.js).

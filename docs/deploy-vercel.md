@@ -309,3 +309,53 @@ Direct push main (sau khi merge):
 - **Env vars rotation**: khi rotate Supabase keys, phải update Vercel Env Vars + redeploy.
 - **Vercel build environment**: Node version Vercel default = 20.x. Khớp với `Node 20.11.1` matrix CI.
 - **Build size**: 330.40 kB JS — well under Vercel limits (50 MB serverless / 100 MB total).
+
+---
+
+## 10. Báo bản mới cho tab đang mở
+
+Nhân viên để tab mở cả ngày. Trước đây deploy xong, tab đó vẫn chạy code cũ **vô thời hạn**
+cho tới khi có người F5. Nay có hai cơ chế.
+
+### Cơ chế
+
+- `vite.config.js` nhúng `__APP_BUILD_ID__` vào bundle **và** phát ra `/version.json` mang
+  đúng chuỗi đó. Trên Vercel lấy `VERCEL_GIT_COMMIT_SHA`, chạy máy nhà thì lấy mốc thời gian.
+- `useAppUpdate` dò `/version.json` lúc mở app, khi quay lại tab, và mỗi 5 phút. Khác
+  `buildId` ⇒ hiện băng ở **đáy** màn hình kèm nội dung bản mới + nút **Tải lại**.
+- Tải lại xong, `WhatsNewNotice` hiện một lần bảng "Đã cập nhật" liệt kê những bản mới hơn
+  bản máy đó đã xem (nhớ bằng `localStorage['lastSeenReleaseId']`).
+- `useConfigRefreshOnFocus` kéo lại **bảng giá** từ Supabase mỗi khi quay về tab, cho cả 10
+  module (trước chỉ In Khổ Lớn có). Bỏ qua khi đang ở tab Cài Đặt để không đè bản nháp admin.
+
+### ⚠ Ba chỗ dễ hỏng
+
+1. **KHÔNG để `version.json` dưới `/assets/`** — `vercel.json` đặt thư mục đó là
+   `max-age=31536000, immutable`, client sẽ không bao giờ thấy giá trị mới.
+2. **SPA rewrite `/(.*)` → `/`**: file thiếu thì server trả **HTML kèm mã 200**, không phải
+   404. `fetchNewRelease` kiểm `content-type` phải là JSON — bỏ chốt này là cả tiệm bị giục
+   tải lại vô cớ.
+3. `vitest.config.js` có `define` **riêng**, không dùng chung với `vite.config.js`. Thêm
+   hằng số build mới thì phải khai ở cả hai, cộng `globals` của `eslint.config.js`.
+
+### Việc phải làm mỗi lần deploy
+
+Thêm một mục vào **đầu** mảng trong [`src/releaseNotes.js`](../src/releaseNotes.js):
+
+```js
+{ id: '2026-09-25-viec-gi-do', date: '2026-09-25', title: '…', items: ['…'] }
+```
+
+- Viết **cho nhân viên đọc**: nói cái gì đổi với người dùng, không nói tên hàm.
+- `id` **không được sửa sau khi đã deploy** — máy nhân viên nhớ id này để biết đã xem bản
+  nào. Sửa id là mọi máy tưởng có bản mới.
+- Không thêm mục thì băng vẫn hiện (vì `buildId` đổi), nhưng chỉ ghi trống trơn "Đã có bản
+  mới" — mất luôn phần giá trị nhất.
+
+`tests/golden/releaseNotes.test.js` khoá hình dạng: id duy nhất, ngày giảm dần, `items`
+không rỗng.
+
+### ⚠ Lần deploy ĐẦU TIÊN có tính năng này không báo được cho ai
+
+Các tab đang mở lúc đó chạy code cũ, mà code cũ chưa có phần dò. Phải báo nhân viên F5 một
+lần cuối. Từ lần deploy sau mới tự động.
