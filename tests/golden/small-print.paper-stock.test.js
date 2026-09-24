@@ -146,6 +146,48 @@ describe('Schema — field hidden', () => {
     });
 });
 
+describe('Schema — field sheetSizes (v1.7.0)', () => {
+    const perSheetIdx = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex(
+        (p) => p.pricingModel === 'per_sheet'
+    );
+    const withSizes = (val) => {
+        const cfg = structuredClone(DEFAULT_CONFIG);
+        cfg.PAPER_STOCK_DATA[perSheetIdx].sheetSizes = val;
+        return cfg;
+    };
+
+    it('thiếu field → hợp lệ (config cũ)', () => {
+        expect(validateSmallPrintConfig(DEFAULT_CONFIG).isValid).toBe(true);
+    });
+
+    it('mảng hợp lệ → hợp lệ', () => {
+        expect(
+            validateSmallPrintConfig(
+                withSizes([
+                    { w: 33, h: 48, price: 5500 },
+                    { w: 33, h: 64, price: 7000 },
+                ])
+            ).isValid
+        ).toBe(true);
+    });
+
+    it('không phải mảng → báo lỗi nêu sheetSizes', () => {
+        const r = validateSmallPrintConfig(withSizes({ w: 33 }));
+        expect(r.isValid).toBe(false);
+        expect(r.errors.some((e) => e.includes('sheetSizes'))).toBe(true);
+    });
+
+    it('ô sai kiểu → báo lỗi nêu đúng dòng và đúng ô', () => {
+        const r = validateSmallPrintConfig(withSizes([{ w: '33', h: 48, price: 5500 }]));
+        expect(r.isValid).toBe(false);
+        expect(r.errors.some((e) => e.includes('sheetSizes[0].w'))).toBe(true);
+    });
+
+    it('khổ 0 → VẪN hợp lệ: dễ dãi là giao kèo, chặn ở đây là admin mất cả bảng giá', () => {
+        expect(validateSmallPrintConfig(withSizes([{ w: 0, h: 0, price: 0 }])).isValid).toBe(true);
+    });
+});
+
 describe('Ẩn giấy KHÔNG đụng tới tiền', () => {
     // Ẩn chỉ là chuyện giao diện: engine vẫn tra theo vị trí, nên đơn đang mở dùng đúng
     // giấy đó vẫn ra y hệt một đồng.

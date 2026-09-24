@@ -30,6 +30,14 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   1.3.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
 //           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
 //           => gia khong doi.
+// 1.7.0 — PAPER_STOCK_DATA[*].sheetSizes (optional array): giấy bán THEO TỜ khổ cố định
+//   khai được NHIỀU khổ, mỗi khổ một giá ([{w,h,price}] — 33×48 = 5.500đ/tờ, 33×64 =
+//   7.000đ/tờ…). Engine thử hết rồi chọn rẻ nhất, y như giấy ram với COMMON_SHEET_SIZES.
+//   Vắng field ⇒ suy ra đúng 1 khổ từ cặp { sheetSize, sheetPrice } cũ ⇒ config đã lưu ra
+//   giá không đổi một đồng. sheetSizes là NGUỒN ĐÚNG; cặp cũ được Cài Đặt ghi mirror theo
+//   dòng 1 để máy chưa tải lại bundle (và đường rollback) vẫn báo giá đúng.
+//   ⚠ Catalogue và Lò xo dùng CHUNG bảng giấy này và cũng gọi calculatePerSheetOptions →
+//   thêm khổ là thêm phương án ở cả 3 module.
 // 1.6.0 — PAPER_STOCK_DATA[*].hidden (optional boolean): ẩn một loại giấy khỏi mọi ô
 //   chọn ở màn tính giá mà KHÔNG xoá khỏi mảng. Giấy nhận diện bằng VỊ TRÍ trong mảng
 //   (params.paperType = '3') nên xoá thật sẽ làm mọi giấy phía sau tụt 1 bậc — đơn đang
@@ -47,6 +55,6 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   cộng thẳng vào Giá Tối Thiểu). Thiếu field → engine trả 0, ô chọn ẩn ở màn
 //   tính giá → giá không đổi. Xem src/utils/plasticLamination.js.
 
-export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.6.0';
+export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.7.0';
 
 export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-23';

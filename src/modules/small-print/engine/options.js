@@ -17,6 +17,7 @@ import {
 import { calculateLamination } from './finishing.js';
 import { largeSheetPrice as calcLargeSheetPrice, blankSheetCostPerCutSheet } from './paper.js';
 import { printedSheetsPerSet, blankSheetsPerSet } from './mounting.js';
+import { perSheetVariants } from '../config/paperStock.js';
 
 // Atom: tính 1 result cho 1 (cut sheet × printer) combination, push vào allResults
 export function processSheet(
@@ -265,90 +266,95 @@ export function calculatePerSheetOptions(
     isDigitalCutting,
     config
 ) {
-    if (
-        !selectedPaper.sheetSize ||
-        typeof selectedPaper.sheetSize.w !== 'number' ||
-        typeof selectedPaper.sheetSize.h !== 'number'
-    )
-        return;
-    const pressW = selectedPaper.sheetSize.w;
-    const pressH = selectedPaper.sheetSize.h;
-    const paperCostPerSheet = selectedPaper.sheetPrice;
+    // Một giấy khổ cố định có thể có NHIỀU khổ, mỗi khổ một giá (33×48 = 5.500đ/tờ,
+    // 33×64 = 7.000đ/tờ…). Thử HẾT rồi để bảng xếp hạng ở App.jsx chọn rẻ nhất — đúng
+    // cách giấy ram đã làm với COMMON_SHEET_SIZES. Giấy cũ chỉ có cặp
+    // { sheetSize, sheetPrice } ⇒ perSheetVariants trả đúng 1 khổ ⇒ giá không đổi.
+    //
+    // KHÔNG thử khổ XOAY (48×33) như processSheet làm cho giấy ram: tờ khổ cố định là tờ
+    // xưởng MUA SẴN, nạp máy một chiều; và mọi khổ thật đều có rộng ≈ 33 = maxW của cả 2
+    // máy nên bản xoay bị loại ngay ở dòng maxW bên dưới.
+    for (const variant of perSheetVariants(selectedPaper)) {
+        const pressW = variant.w;
+        const pressH = variant.h;
+        const paperCostPerSheet = variant.price;
 
-    for (const printerKey in config.PRINTER_CONFIG) {
-        const printer = config.PRINTER_CONFIG[printerKey];
-        if (pressW > printer.maxW || pressH > printer.maxH) continue;
-        const clickPrice = printer.prices[params.printColorMode] || printer.prices['4color'];
-        if (!clickPrice) continue;
-        const printableArea = getPrintableArea(
-            pressW,
-            pressH,
-            printer,
-            isDigitalCutting,
-            config,
-            false
-        );
-        const imposition = calculateImposition(
-            printableArea.w,
-            printableArea.h,
-            productWithBleedW,
-            productWithBleedH,
-            spacing
-        );
-        const productsPerSheet = imposition.total;
-        if (productsPerSheet === 0) continue;
-        const clicks = getClicks(pressH, printer);
-        if (clicks === Infinity) continue;
-        const printCostPerSheet = clicks * clickPrice * params.printSides;
-        const lamination = calculateLamination(
-            pressH,
-            imposition.actualPrintW,
-            productsPerSheet,
-            params.laminationType,
-            config,
-            params.laminationFilm
-        );
-        const totalCostPerSheet = paperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
-        const costPerProduct =
-            productsPerSheet > 0 ? totalCostPerSheet / productsPerSheet : Infinity;
-        const paperCostPerProduct =
-            productsPerSheet > 0 ? paperCostPerSheet / productsPerSheet : Infinity;
-        const printCostPerProduct =
-            productsPerSheet > 0 ? printCostPerSheet / productsPerSheet : Infinity;
-        allResults.push({
-            printer,
-            largeSheetName: `Tờ ${pressW}x${pressH}`,
-            layoutDesc: imposition.layout,
-            actualPrintW: imposition.actualPrintW,
-            actualPrintH: imposition.actualPrintH,
-            numCuttableSheets: 1,
-            // Khổ cố định, không cắt ra từ tờ lớn nên không có sơ đồ cắt.
-            // Dùng [] chứ KHÔNG dùng null: LargeSheetVisualizer nhận null sẽ vỡ
-            // (default param chỉ kích hoạt với undefined). Giống nhánh decal cuộn.
-            cuttableSheetLayout: [],
-            cutSheetW: pressW,
-            cutSheetH: pressH,
-            cutSheetSize: `${pressW.toFixed(1)} x ${pressH.toFixed(1)}`,
-            printableArea: `${printableArea.w.toFixed(2)} x ${printableArea.h.toFixed(2)}`,
-            clicks,
-            productsPerSheet,
-            paperCostPerProduct,
-            printCostPerProduct,
-            laminationCostPerProduct: lamination.costPerProduct,
-            laminationWarning: lamination.warning,
-            costPerProduct,
-            debug: {
-                paperCostPerSheet,
-                printCostPerSheet,
-                laminationCostPerSheet: lamination.costPerSheet,
-                totalCostPerSheet,
+        for (const printerKey in config.PRINTER_CONFIG) {
+            const printer = config.PRINTER_CONFIG[printerKey];
+            if (pressW > printer.maxW || pressH > printer.maxH) continue;
+            const clickPrice = printer.prices[params.printColorMode] || printer.prices['4color'];
+            if (!clickPrice) continue;
+            const printableArea = getPrintableArea(
+                pressW,
+                pressH,
+                printer,
+                isDigitalCutting,
+                config,
+                false
+            );
+            const imposition = calculateImposition(
+                printableArea.w,
+                printableArea.h,
+                productWithBleedW,
+                productWithBleedH,
+                spacing
+            );
+            const productsPerSheet = imposition.total;
+            if (productsPerSheet === 0) continue;
+            const clicks = getClicks(pressH, printer);
+            if (clicks === Infinity) continue;
+            const printCostPerSheet = clicks * clickPrice * params.printSides;
+            const lamination = calculateLamination(
+                pressH,
+                imposition.actualPrintW,
+                productsPerSheet,
+                params.laminationType,
+                config,
+                params.laminationFilm
+            );
+            const totalCostPerSheet =
+                paperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
+            const costPerProduct =
+                productsPerSheet > 0 ? totalCostPerSheet / productsPerSheet : Infinity;
+            const paperCostPerProduct =
+                productsPerSheet > 0 ? paperCostPerSheet / productsPerSheet : Infinity;
+            const printCostPerProduct =
+                productsPerSheet > 0 ? printCostPerSheet / productsPerSheet : Infinity;
+            allResults.push({
+                printer,
+                largeSheetName: `Tờ ${pressW}x${pressH}`,
+                layoutDesc: imposition.layout,
+                actualPrintW: imposition.actualPrintW,
+                actualPrintH: imposition.actualPrintH,
+                numCuttableSheets: 1,
+                // Khổ cố định, không cắt ra từ tờ lớn nên không có sơ đồ cắt.
+                // Dùng [] chứ KHÔNG dùng null: LargeSheetVisualizer nhận null sẽ vỡ
+                // (default param chỉ kích hoạt với undefined). Giống nhánh decal cuộn.
+                cuttableSheetLayout: [],
+                cutSheetW: pressW,
+                cutSheetH: pressH,
+                cutSheetSize: `${pressW.toFixed(1)} x ${pressH.toFixed(1)}`,
+                printableArea: `${printableArea.w.toFixed(2)} x ${printableArea.h.toFixed(2)}`,
+                clicks,
+                productsPerSheet,
+                paperCostPerProduct,
+                printCostPerProduct,
+                laminationCostPerProduct: lamination.costPerProduct,
+                laminationWarning: lamination.warning,
                 costPerProduct,
-            },
-            largeSheetW: pressW,
-            largeSheetH: pressH,
-            isDecal: true,
-            isCustom: false,
-        });
+                debug: {
+                    paperCostPerSheet,
+                    printCostPerSheet,
+                    laminationCostPerSheet: lamination.costPerSheet,
+                    totalCostPerSheet,
+                    costPerProduct,
+                },
+                largeSheetW: pressW,
+                largeSheetH: pressH,
+                isDecal: true,
+                isCustom: false,
+            });
+        }
     }
 }
 

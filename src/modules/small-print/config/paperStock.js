@@ -1,4 +1,4 @@
-// Small-print — danh mục GIẤY (PAPER_STOCK_DATA): cách tính giá + ẩn/hiện.
+// Small-print — danh mục GIẤY (PAPER_STOCK_DATA): cách tính giá + ẩn/hiện + khổ tờ.
 //
 // Nguồn duy nhất, dùng chung SettingsPanel + 3 màn nhập liệu (In KTS, Catalogue, Lò xo)
 // — cả 3 module dùng CHUNG bảng giấy này.
@@ -54,10 +54,41 @@ export function withPricingModel(paper, model) {
     if (model === 'sqm' && typeof next.pricePerSqm !== 'number') next.pricePerSqm = 0;
     if (model === 'per_sheet') {
         if (typeof next.sheetPrice !== 'number') next.sheetPrice = 0;
-        if (!next.sheetSize || typeof next.sheetSize.w !== 'number') {
+        // Kiểm CẢ w LẪN h: thiếu h thì engine bỏ qua giấy này và màn hình chỉ báo
+        // "không tìm thấy phương án", không nói được vì sao.
+        if (
+            !next.sheetSize ||
+            typeof next.sheetSize.w !== 'number' ||
+            typeof next.sheetSize.h !== 'number'
+        ) {
             next.sheetSize = { w: 33, h: 48 };
         }
     }
     if (model === 'custom') next.pricePerReam = 'custom';
     return next;
+}
+
+// Danh sách KHỔ × GIÁ của một giấy bán theo tờ (pricingModel='per_sheet').
+//
+// Nguồn: `sheetSizes` (v1.7.0 — nhiều khổ, mỗi khổ một giá). Vắng hoặc rỗng thì suy ra
+// ĐÚNG MỘT khổ từ cặp field cũ { sheetSize, sheetPrice } ⇒ mọi config đã lưu ra giá y hệt
+// từng đồng.
+//
+// ⚠ CỐ Ý CHỈ CHUẨN HOÁ KIỂU, KHÔNG lọc bỏ dòng w/h = 0. Bảng khổ trong Cài Đặt render từ
+// chính hàm này, mà ô nhập số commit theo TỪNG PHÍM: xoá số để gõ lại là giá trị rơi về 0
+// một nhịp. Lọc ở đây thì dòng đang gõ dở biến mất ngay dưới con trỏ. Engine tự bỏ qua
+// khổ vô nghĩa (vùng in ≤ 0 ⇒ 0 SP/tờ ⇒ không sinh phương án) nên không cần chặn thêm.
+export function perSheetVariants(paper) {
+    if (!paper) return [];
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+    const rows = (Array.isArray(paper.sheetSizes) ? paper.sheetSizes : [])
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => ({ w: num(r.w), h: num(r.h), price: num(r.price) }));
+    if (rows.length > 0) return rows;
+
+    // Nhánh cũ — giữ NGUYÊN VĂN guard mà calculatePerSheetOptions vẫn dùng.
+    const sz = paper.sheetSize;
+    if (!sz || typeof sz.w !== 'number' || typeof sz.h !== 'number') return [];
+    return [{ w: sz.w, h: sz.h, price: num(paper.sheetPrice) }];
 }

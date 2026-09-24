@@ -25,4 +25,5 @@ export {
     visiblePapers,
     makeNewPaper,
     withPricingModel,
+    perSheetVariants,
 } from './paperStock.js';

@@ -197,3 +197,102 @@ describe('Ẩn giấy', () => {
         expect((await save()).PAPER_STOCK_DATA[0].hidden).toBeFalsy();
     });
 });
+
+describe('Bảng khổ của giấy khổ cố định (v1.7.0)', () => {
+    const PS = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex((p) => p.pricingModel === 'per_sheet');
+
+    function renderSheet(config = DEFAULT_CONFIG) {
+        const r = renderPanel(config);
+        const card = () => screen.getByTestId(`paper-${PS}`);
+        const nums = () => within(card()).getAllByRole('spinbutton');
+        // Mỗi dòng khổ = 3 ô (rộng, cao, giá). Ô phụ thu KH nằm SAU cùng trong thẻ.
+        const rowCount = () => Math.floor((nums().length - 1) / 3);
+        const cell = (row, col) => nums()[row * 3 + col];
+        const addSize = () => fireEvent.click(within(card()).getByText('+ Thêm khổ'));
+        const delButtons = () => within(card()).queryAllByTitle('Xóa khổ');
+        return { ...r, card, rowCount, cell, addSize, delButtons };
+    }
+
+    it('giấy chỉ có cặp field cũ → hiện đúng 1 dòng', () => {
+        const { rowCount } = renderSheet();
+        expect(rowCount()).toBe(1);
+    });
+
+    it('nhãn cột chỉ render MỘT LẦN, không lặp theo dòng', () => {
+        const { card, addSize } = renderSheet();
+        addSize();
+        // getByText sẽ ném nếu có nhiều phần tử trùng chữ — đây chính là chốt chặn.
+        expect(within(card()).getByText('Khổ rộng (cm)')).toBeTruthy();
+        expect(within(card()).getByText('Khổ cao (cm)')).toBeTruthy();
+    });
+
+    it('thêm khổ → sheetSizes là MẢNG dài 2, không phải object', async () => {
+        const { save, addSize } = renderSheet();
+        addSize();
+        const paper = (await save()).PAPER_STOCK_DATA[PS];
+
+        // Chốt chặn lỗi {"0": {...}} do updateNestedField gây ra.
+        expect(Array.isArray(paper.sheetSizes)).toBe(true);
+        expect(paper.sheetSizes).toHaveLength(2);
+    });
+
+    it('khổ mới copy dòng cuối, không đẻ ra dòng 0×0', async () => {
+        const { save, addSize } = renderSheet();
+        addSize();
+        const rows = (await save()).PAPER_STOCK_DATA[PS].sheetSizes;
+        expect(rows[1]).toEqual(rows[0]);
+        expect(rows[1].w).toBeGreaterThan(0);
+    });
+
+    it('sửa ô của dòng 2 KHÔNG đụng dòng 1', async () => {
+        const { save, addSize, cell } = renderSheet();
+        addSize();
+        fireEvent.change(cell(1, 1), { target: { value: '64' } });
+        fireEvent.change(cell(1, 2), { target: { value: '7000' } });
+        const rows = (await save()).PAPER_STOCK_DATA[PS].sheetSizes;
+
+        expect(rows[0]).toEqual({
+            w: 33,
+            h: 48,
+            price: DEFAULT_CONFIG.PAPER_STOCK_DATA[PS].sheetPrice,
+        });
+        expect(rows[1]).toEqual({ w: 33, h: 64, price: 7000 });
+    });
+
+    it('cặp field cũ được SOI GƯƠNG theo dòng 1', async () => {
+        const { save, addSize, cell } = renderSheet();
+        addSize();
+        fireEvent.change(cell(0, 2), { target: { value: '6100' } });
+        const paper = (await save()).PAPER_STOCK_DATA[PS];
+
+        expect(paper.sheetPrice).toBe(6100);
+        expect(paper.sheetSize).toEqual({ w: paper.sheetSizes[0].w, h: paper.sheetSizes[0].h });
+    });
+
+    it('1 khổ thì không có nút xoá; 2 khổ thì có và xoá được', async () => {
+        const { save, addSize, delButtons, rowCount } = renderSheet();
+        expect(delButtons()).toHaveLength(0);
+
+        addSize();
+        expect(delButtons()).toHaveLength(2);
+        fireEvent.click(delButtons()[1]);
+        expect(rowCount()).toBe(1);
+
+        expect((await save()).PAPER_STOCK_DATA[PS].sheetSizes).toHaveLength(1);
+    });
+
+    it('gõ dở (xoá trắng ô rộng) → dòng KHÔNG biến mất', () => {
+        const { cell, rowCount } = renderSheet();
+        fireEvent.change(cell(0, 0), { target: { value: '' } });
+        expect(rowCount()).toBe(1);
+        fireEvent.change(cell(0, 0), { target: { value: '3' } });
+        expect(rowCount()).toBe(1);
+    });
+
+    it('lưu xong vẫn qua được schema', async () => {
+        const { save, addSize, cell } = renderSheet();
+        addSize();
+        fireEvent.change(cell(1, 1), { target: { value: '64' } });
+        expect(validateSmallPrintConfig(await save()).isValid).toBe(true);
+    });
+});

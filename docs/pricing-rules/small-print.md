@@ -138,3 +138,58 @@ không ra giá sai.
 Khoá bởi `tests/golden/small-print.paper-stock.test.js`,
 `tests/components/SettingsPanel.paper-stock.test.jsx`,
 `tests/components/PaperSelects.hidden.test.jsx`.
+
+## Giấy khổ cố định — nhiều khổ, mỗi khổ một giá (config v1.7.0)
+
+Giấy `per_sheet` (ví dụ "Decal xi bạc/vàng") khai được **nhiều khổ**, mỗi khổ một giá:
+
+```js
+sheetSizes: [
+    { w: 33, h: 48, price: 5500 },
+    { w: 33, h: 64, price: 7000 },
+]
+```
+
+Engine thử **hết** các khổ rồi để bảng xếp hạng ở `App.jsx` chọn rẻ nhất — đúng cách giấy
+ram đã làm với `COMMON_SHEET_SIZES`. Các khổ khác nhau sống sót qua bước khử trùng lặp vì
+khoá gồm `largeSheetName` (`Tờ 33x48`) và `cutSheetSize`.
+
+**Tương thích ngược**: thiếu `sheetSizes` (hoặc mảng rỗng) ⇒ `perSheetVariants` suy ra
+**đúng 1 khổ** từ cặp cũ `{ sheetSize, sheetPrice }` ⇒ config đã lưu ra giá không đổi một
+đồng. `sheetSizes` là **nguồn đúng**; cặp cũ được màn Cài Đặt ghi **soi gương** theo dòng 1
+để máy chưa tải lại bundle (và đường rollback) vẫn báo giá đúng.
+
+**Không thử khổ xoay** (48×33) như giấy ram: tờ khổ cố định là tờ xưởng mua sẵn, nạp máy
+một chiều; và mọi khổ thật đều có rộng ≈ 33 = `maxW` của cả 2 máy nên bản xoay bị loại ngay.
+
+### Ba cái bẫy đã xử lý
+
+1. **`perSheetVariants` CỐ Ý không lọc bỏ dòng `w/h = 0`.** Bảng khổ trong Cài Đặt render
+   từ chính hàm này, mà ô nhập số commit theo **từng phím** — xoá số để gõ lại là giá trị
+   rơi về 0 một nhịp. Lọc ở đây thì dòng đang gõ dở **biến mất ngay dưới con trỏ**. Engine
+   tự bỏ qua khổ vô nghĩa (vùng in ≤ 0 ⇒ 0 SP/tờ ⇒ không sinh phương án).
+2. **Không ghi `sheetSizes` qua `updateNestedField`.** Hàm đó dựng cấp trung gian bằng
+   `{...undefined}` nên khi field chưa tồn tại nó đẻ ra **object `{"0": {...}}` chứ không
+   phải mảng** → schema chặn → admin mất nguyên lần sửa. Dùng `editPerSheetSizes` ghi cả mảng.
+3. **Quy đổi A4 sai trong im lặng — CHƯA SỬA, chỉ hiển thị.** Mỗi dòng khổ có hiện hệ số
+   A4 mà engine sẽ dùng, nhưng **chỉ tô đỏ khi hệ số là null**, tức chỉ bắt được ca khổ cao
+   ≤ 21.2cm. Ca thật sự nguy — **cao từ 21.2 đến 48cm mà không có trong bảng quy đổi** —
+   trả về một số trông hợp lý (`h / 21`) nên hiện bằng chữ xám bình thường: khổ 33×45 lấy
+   `45/21 = 2.143` thay vì bậc 2.4 của xưởng → **hụt ~11% tiền khách, không cảnh báo gì**.
+   Đây là lỗi CÓ SẴN (công thức `h/21` áp cho cả giấy thường), việc thêm khổ chỉ làm dễ
+   đụng hơn. Khổ an toàn: các mốc có trong bảng (21.2 · 28.3 · 33 · 35 · 42.8 · 47 · 48 ·
+   65 · 109) và **mọi khổ cao hơn 48cm** (nhánh > 48 khớp đúng bậc của máy).
+
+### Luật ưu tiên khổ ≤48cm vẫn còn
+
+`App.jsx` chọn `bestPreferredOption = phương án rẻ nhất có cutSheetH ≤ 48`. Khổ cao hơn
+48cm **chỉ được tự chọn khi không khổ nào ≤48 in được** — vẫn hiện trong Bảng So Sánh để
+bấm chọn tay. Lý do ghi ở `docs/engine/small-print-pricing.md`: "máy in KTS chạy ổn định
+nhất ≤48cm". Đây là **lựa chọn vận hành**, không phải giới hạn máy (máy khai `maxH` 120cm
+và 76cm), và chủ xưởng đã quyết định giữ.
+
+⚠ **Catalogue và Lò xo cũng gọi `calculatePerSheetOptions`** trên cùng bảng giấy — thêm khổ
+là thêm phương án ở cả 3 module.
+
+Khoá bởi `tests/golden/small-print.per-sheet-sizes.test.js` và phần "Bảng khổ" trong
+`tests/components/SettingsPanel.paper-stock.test.jsx`.

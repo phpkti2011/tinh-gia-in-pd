@@ -217,6 +217,27 @@ function validatePaperStock(paper, i, errors) {
             if (!isPlainObject(sz) || typeof sz.w !== 'number' || typeof sz.h !== 'number')
                 errors.push(`PAPER_STOCK_DATA[${i}].sheetSize: phải là { w: number, h: number }`);
         }
+        // sheetSizes (1.7.0): nhiều khổ, mỗi khổ một giá. Vắng ⇒ engine dùng cặp
+        // sheetSize/sheetPrice cũ. Giữ đúng chính sách dễ dãi phía trên: CHỈ kiểm kiểu khi
+        // CÓ mặt, và KHÔNG ép w/h > 0 — loại nguyên config vì một dòng admin đang gõ dở là
+        // admin mất cả bảng giá. Khổ 0 thì engine bỏ qua, Cài Đặt tô đỏ dòng đó.
+        if (paper.sheetSizes !== undefined) {
+            if (!Array.isArray(paper.sheetSizes)) {
+                errors.push(`PAPER_STOCK_DATA[${i}].sheetSizes: phải là array`);
+            } else {
+                paper.sheetSizes.forEach((row, j) => {
+                    const prefix = `PAPER_STOCK_DATA[${i}].sheetSizes[${j}]`;
+                    if (!isPlainObject(row)) {
+                        errors.push(`${prefix}: phải là object`);
+                        return;
+                    }
+                    for (const f of ['w', 'h', 'price']) {
+                        if (row[f] !== undefined && typeof row[f] !== 'number')
+                            errors.push(`${prefix}.${f}: phải là number`);
+                    }
+                });
+            }
+        }
     }
     // 'ream' cố ý không ép kiểu pricePerReam: bản 'custom' để chuỗi 'custom' ở field này.
 }

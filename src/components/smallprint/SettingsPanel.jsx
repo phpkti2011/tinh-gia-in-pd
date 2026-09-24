@@ -11,6 +11,7 @@ import {
     makeNewPaper,
     withPricingModel,
     visiblePapers,
+    perSheetVariants,
 } from '../../modules/small-print/config/paperStock';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
@@ -757,6 +758,56 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
             ),
         }));
 
+    // PAPER_STOCK_DATA[idx].sheetSizes — bảng KHỔ × GIÁ của giấy bán theo tờ.
+    //
+    // Mọi thao tác (sửa ô / thêm / xoá) BẮT BUỘC đi qua đây, KHÔNG dùng updateNestedField:
+    //   1. updateNestedField dựng cấp trung gian bằng {...undefined} ⇒ khi sheetSizes chưa
+    //      tồn tại nó đẻ ra OBJECT {"0": {...}} chứ không phải ARRAY → schema chặn →
+    //      admin mất nguyên lần sửa.
+    //   2. Luôn ghi CẢ MẢNG, dựng từ perSheetVariants(paper) nên giấy cũ (chỉ có cặp
+    //      sheetSize/sheetPrice) tự được nâng lên 1 dòng, không mất số nào.
+    //   3. Đọc state BÊN TRONG updater: ô nhập số commit theo từng phím, đọc localConfig
+    //      từ closure sẽ ghi đè bằng bản cũ.
+    //
+    // Dòng 1 được MIRROR xuống sheetSize/sheetPrice: máy chưa tải lại bundle mới (và
+    // đường rollback) chỉ đọc cặp field cũ — thà thấy khổ/giá dòng 1 còn hơn thấy số đã bỏ.
+    // sheetSizes luôn là nguồn đúng; cặp cũ chỉ là bản sao.
+    const editPerSheetSizes = (idx, fn) =>
+        setLocalConfig((prev) => {
+            const arr = prev.PAPER_STOCK_DATA || [];
+            if (!arr[idx]) return prev;
+            const rows = fn(perSheetVariants(arr[idx]));
+            if (!rows || rows.length === 0) return prev;
+            return {
+                ...prev,
+                PAPER_STOCK_DATA: arr.map((p, i) =>
+                    i === idx
+                        ? {
+                              ...p,
+                              sheetSizes: rows,
+                              sheetSize: { w: rows[0].w, h: rows[0].h },
+                              sheetPrice: rows[0].price,
+                          }
+                        : p
+                ),
+            };
+        });
+
+    const setPerSheetCell = (idx, row, field, val) =>
+        editPerSheetSizes(idx, (rows) =>
+            rows.map((r, i) => (i === row ? { ...r, [field]: val } : r))
+        );
+
+    // Khổ mới copy dòng cuối: admin chỉ sửa 1-2 số, và không đẻ ra dòng 0×0 (schema dễ dãi
+    // nên dòng rỗng vẫn lưu được rồi im lặng không ra phương án).
+    const addPerSheetSize = (idx) =>
+        editPerSheetSizes(idx, (rows) => [...rows, { ...rows[rows.length - 1] }]);
+
+    const delPerSheetSize = (idx, row) =>
+        editPerSheetSizes(idx, (rows) =>
+            rows.length > 1 ? rows.filter((_, i) => i !== row) : rows
+        );
+
     const togglePaperHidden = (idx) =>
         setLocalConfig((prev) => {
             const arr = prev.PAPER_STOCK_DATA || [];
@@ -1313,54 +1364,123 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                                         </div>
                                     )}
                                     {isSheet && (
-                                        <div className="relative">
-                                            <label className={labelCls}>Giá / tờ</label>
-                                            <NumInput
-                                                configValue={paper.sheetPrice}
-                                                step="100"
-                                                onCommit={(val) =>
-                                                    updateNestedField(
-                                                        `PAPER_STOCK_DATA.${idx}.sheetPrice`,
-                                                        val
-                                                    )
-                                                }
-                                                className={inputClsPr}
-                                            />
-                                            <span className="absolute right-3 top-[32px] text-gray-500">
-                                                VNĐ
-                                            </span>
-                                        </div>
-                                    )}
-                                    {isSheet && (
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className={labelCls}>Khổ rộng (cm)</label>
-                                                <NumInput
-                                                    configValue={paper.sheetSize?.w ?? 0}
-                                                    step="0.1"
-                                                    onCommit={(val) =>
-                                                        updateNestedField(
-                                                            `PAPER_STOCK_DATA.${idx}.sheetSize.w`,
-                                                            val
-                                                        )
-                                                    }
-                                                    className={inputCls}
-                                                />
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className={labelCls}>Khổ tờ &amp; giá</label>
+                                                <button
+                                                    onClick={() => addPerSheetSize(idx)}
+                                                    className="px-2 py-0.5 rounded text-xs font-medium bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    + Thêm khổ
+                                                </button>
                                             </div>
-                                            <div>
-                                                <label className={labelCls}>Khổ cao (cm)</label>
-                                                <NumInput
-                                                    configValue={paper.sheetSize?.h ?? 0}
-                                                    step="0.1"
-                                                    onCommit={(val) =>
-                                                        updateNestedField(
-                                                            `PAPER_STOCK_DATA.${idx}.sheetSize.h`,
-                                                            val
-                                                        )
-                                                    }
-                                                    className={inputCls}
-                                                />
+                                            {/* Nhãn cột render MỘT LẦN, không lặp theo dòng:
+                                                test tra getByText('Khổ rộng (cm)') sẽ nổ nếu có
+                                                nhiều phần tử trùng chữ. */}
+                                            <div className="grid grid-cols-12 gap-1 mb-1">
+                                                <span className="col-span-3 text-gray-400 text-xs">
+                                                    Khổ rộng (cm)
+                                                </span>
+                                                <span className="col-span-3 text-gray-400 text-xs">
+                                                    Khổ cao (cm)
+                                                </span>
+                                                <span className="col-span-5 text-gray-400 text-xs">
+                                                    Giá / tờ
+                                                </span>
+                                                <span className="col-span-1" />
                                             </div>
+                                            {perSheetVariants(paper).map((row, ri) => {
+                                                const f = computeA4Factor(row.h, localConfig);
+                                                const badSize = !(row.w > 0) || !(row.h > 0);
+                                                return (
+                                                    <div key={ri} className="mb-2">
+                                                        <div className="grid grid-cols-12 gap-1 items-center">
+                                                            <div className="col-span-3">
+                                                                <NumInput
+                                                                    configValue={row.w}
+                                                                    step="0.1"
+                                                                    onCommit={(v) =>
+                                                                        setPerSheetCell(
+                                                                            idx,
+                                                                            ri,
+                                                                            'w',
+                                                                            v
+                                                                        )
+                                                                    }
+                                                                    className={inputCls}
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-3">
+                                                                <NumInput
+                                                                    configValue={row.h}
+                                                                    step="0.1"
+                                                                    onCommit={(v) =>
+                                                                        setPerSheetCell(
+                                                                            idx,
+                                                                            ri,
+                                                                            'h',
+                                                                            v
+                                                                        )
+                                                                    }
+                                                                    className={inputCls}
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-5">
+                                                                <NumInput
+                                                                    configValue={row.price}
+                                                                    step="100"
+                                                                    onCommit={(v) =>
+                                                                        setPerSheetCell(
+                                                                            idx,
+                                                                            ri,
+                                                                            'price',
+                                                                            v
+                                                                        )
+                                                                    }
+                                                                    className={inputCls}
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-1">
+                                                                {perSheetVariants(paper).length >
+                                                                    1 && (
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            delPerSheetSize(idx, ri)
+                                                                        }
+                                                                        className="text-red-400 hover:text-red-300 text-xs"
+                                                                        title="Xóa khổ"
+                                                                    >
+                                                                        ✕
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {badSize ? (
+                                                            <p className="text-xs text-red-400 mt-0.5">
+                                                                Khổ phải lớn hơn 0 — dòng này sẽ bị
+                                                                bỏ qua khi tính giá.
+                                                            </p>
+                                                        ) : f == null ? (
+                                                            <p className="text-xs text-red-400 mt-0.5">
+                                                                Chưa có hệ số quy đổi A4 cho khổ cao{' '}
+                                                                {row.h}cm — báo giá sẽ lỗi. Thêm ở
+                                                                mục &quot;Bảng Quy Đổi A4&quot;.
+                                                            </p>
+                                                        ) : (
+                                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                                ≈ {round2(f)} trang A4 / tờ
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Mỗi khổ một giá. Phần mềm tự chọn khổ rẻ nhất cho
+                                                từng đơn; các khổ còn lại vẫn hiện trong &quot;Bảng
+                                                So Sánh Các Phương Án&quot; để bấm chọn tay. Khổ cao
+                                                hơn 48cm chỉ được chọn tự động khi không khổ nào
+                                                ≤48cm in được.
+                                            </p>
                                         </div>
                                     )}
                                     {paper.pricingModel === 'custom' && (

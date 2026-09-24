@@ -7,6 +7,8 @@
 // largeSheetPrice() là bản trích NGUYÊN VĂN công thức đang chạy ở calculateStandardOptions
 // (nhánh ream/custom). Không đổi một con số nào — mọi golden test phải xanh y nguyên.
 
+import { perSheetVariants } from '../config/paperStock.js';
+
 // Giá 1 TỜ LỚN, quy đổi theo diện tích khổ lớn đang xét.
 // Trả null khi giá không hợp lệ ⇒ caller bỏ qua phương án đó (giữ đúng các `return` sớm cũ).
 export function largeSheetPrice(paper, largeSheet, config, artPaperPrice) {
@@ -42,7 +44,9 @@ export function blankSheetCostPerCutSheet(paper, geom, config) {
     if (paper.pricingModel === 'sqm') {
         return ((Number(cutW) * Number(cutH)) / 10000) * (Number(paper.pricePerSqm) || 0);
     }
-    if (paper.pricingModel === 'per_sheet') return Number(paper.sheetPrice) || 0;
+    // Khổ cố định: lấy giá của khổ ĐẦU TIÊN. Nhánh chốt chặn — màn nhập liệu chỉ cho
+    // chọn giấy 'ream' làm lớp trắng, và giấy in per_sheet bị ép mountingType='none'.
+    if (paper.pricingModel === 'per_sheet') return perSheetVariants(paper)[0]?.price ?? 0;
 
     const perLargeSheet = largeSheetPrice(paper, largeSheet, config, 0);
     if (perLargeSheet == null) return 0;
