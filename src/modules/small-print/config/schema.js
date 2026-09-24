@@ -443,11 +443,12 @@ export function validateSmallPrintConfig(config) {
             if (typeof refCfg.adjustmentRatio !== 'number' || refCfg.adjustmentRatio < 0) {
                 errors.push('PAPER_REFERENCE_CONFIG.adjustmentRatio: phải là number ≥ 0');
             }
-            if (
-                refCfg.minPrintPricePerPage != null &&
-                typeof refCfg.minPrintPricePerPage !== 'number'
-            ) {
-                errors.push('PAPER_REFERENCE_CONFIG.minPrintPricePerPage: phải là number');
+            // Hai mức giá sàn — optional, CHỈ kiểm kiểu. Không ép > 0: đặt 0 là cách
+            // tắt sàn có chủ đích, chặn ở đây là admin mất đường lùi.
+            for (const f of ['minPrintPricePerPage', 'minPrintOnlyPricePerPage']) {
+                if (refCfg[f] != null && typeof refCfg[f] !== 'number') {
+                    errors.push(`PAPER_REFERENCE_CONFIG.${f}: phải là number`);
+                }
             }
         }
     }

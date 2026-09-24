@@ -20,6 +20,7 @@ import {
     validateSmallPrintConfig,
     SMALL_PRINT_CONFIG_SCHEMA_VERSION,
     withMountingDefaults,
+    withPaperReferenceDefaults,
 } from '../modules/small-print/config/index.js';
 import { validateUvDtfConfig, UVDTF_CONFIG_SCHEMA_VERSION } from '../modules/uvdtf/config/index.js';
 import {
@@ -160,7 +161,9 @@ function deepValidateCheapDecal(data, source) {
 function withMergedModuleLabels(moduleName, cfg) {
     // MOUNTING_CONFIG gặp đúng vấn đề đó ở tầng subkey: config lưu trước v1.5.0 chỉ có
     // `yes` sẽ nuốt mất kiểu bồi 3 lớp. Xem modules/small-print/config/mountingDefaults.js.
-    if (moduleName === 'printConfig') return withMountingDefaults(cfg);
+    // PAPER_REFERENCE_CONFIG dính đúng bẫy đó ở v1.8.0 (giá sàn): thiếu field là sàn
+    // tắt trong im lặng. Xem modules/small-print/config/paperReferenceDefaults.js.
+    if (moduleName === 'printConfig') return withPaperReferenceDefaults(withMountingDefaults(cfg));
     if (moduleName !== 'moduleVisibilityConfig') return cfg;
     return { ...cfg, MODULE_LABELS: mergeModuleLabels(cfg.MODULE_LABELS) };
 }
@@ -714,10 +717,12 @@ export function loadConfig() {
                 // Merge với DEFAULT_CONFIG để backward-compat: config cũ thiếu key
                 // mới (vd PAPER_REFERENCE_CONFIG) sẽ lấy từ default.
                 if (deepValidatePrint(parsed, 'localStorage'))
-                    return withMountingDefaults({
-                        ...restoreInfinity(JSON.parse(JSON.stringify(DEFAULT_CONFIG))),
-                        ...parsed,
-                    });
+                    return withPaperReferenceDefaults(
+                        withMountingDefaults({
+                            ...restoreInfinity(JSON.parse(JSON.stringify(DEFAULT_CONFIG))),
+                            ...parsed,
+                        })
+                    );
                 // else fallback
             } else {
                 console.warn(

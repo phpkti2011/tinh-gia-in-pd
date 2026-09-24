@@ -3656,17 +3656,48 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                             </p>
                         </div>
                         <div className="relative">
-                            <label className={labelCls}>Sàn đơn giá in / trang</label>
+                            <label className={labelCls}>
+                                Giá sàn — giấy theo ram (đã gồm giấy)
+                            </label>
                             {fi(
                                 'PAPER_REFERENCE_CONFIG.minPrintPricePerPage',
                                 localConfig.PAPER_REFERENCE_CONFIG?.minPrintPricePerPage ?? 0,
                                 false,
                                 '100'
                             )}
-                            <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
+                            <span className="absolute right-3 top-[32px] text-gray-500">
+                                đ/trang
+                            </span>
                             <p className="mt-1 text-xs text-gray-500">
-                                Chỉ là mức sàn cho ô hiển thị "Đơn giá IN / trang" trong panel Giá
-                                Tối Thiểu. Đặt 0 để tắt.
+                                Mức này đã bao gồm tiền giấy, vì bảng giá khách vốn thiết kế theo
+                                giấy ram chuẩn. Đặt 0 để tắt sàn cho nhóm giấy này.
+                            </p>
+                        </div>
+                        <div className="relative">
+                            <label className={labelCls}>
+                                Giá sàn — giấy m² / theo tờ / gõ tay (chỉ in)
+                            </label>
+                            {fi(
+                                'PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage',
+                                localConfig.PAPER_REFERENCE_CONFIG?.minPrintOnlyPricePerPage ?? 0,
+                                false,
+                                '100'
+                            )}
+                            <span className="absolute right-3 top-[32px] text-gray-500">
+                                đ/trang
+                            </span>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Decal cuộn, decal xi, giấy mỹ thuật: mức này CHỈ bao tiền in, tiền
+                                giấy được cộng thêm theo giá thật. Đặt 0 để tắt.
+                            </p>
+                        </div>
+                        <div className="sm:col-span-2 rounded border border-orange-700/50 bg-orange-950/20 p-3">
+                            <p className="text-xs text-orange-300">
+                                ⚠ Hai mức trên vừa là <strong>Giá Tối Thiểu</strong>, vừa{' '}
+                                <strong>kẹp giá báo khách</strong>: đơn nào bảng giá ra thấp hơn sàn
+                                sẽ được nâng lên bằng sàn. Nhân viên chỉ thấy dòng &quot;Phụ thu tối
+                                thiểu&quot;; lý do đầy đủ chỉ admin thấy. Đặt cả hai về 0 là mọi giá
+                                quay lại y như trước khi bật sàn.
                             </p>
                         </div>
                         <div className="relative">

@@ -28,6 +28,7 @@ vi.mock('../../src/lib/priceConfigStore.js', () => ({
 // Import sau khi mock setup
 import { loadConfigFromCloud } from '../../src/utils/configStorage.js';
 import { DECAL_DEFAULT_CONFIG } from '../../src/config/decalConfig.js';
+import { DEFAULT_CONFIG as PRINT_DEFAULT_CONFIG } from '../../src/modules/small-print/config/index.js';
 import { restoreInfinity } from '../../src/utils/restoreInfinity.js';
 
 // VALID_DECAL_FROM_DB: dạng đã JSON-roundtripped — Infinity → null (mô phỏng
@@ -145,6 +146,48 @@ describe('P2-05.3 + P2-05.6: configStorage.loadConfigFromCloud — Supabase only
             expect(result).toHaveProperty('progressiveTiers');
             expect(result).toHaveProperty('decalCosts');
             expect(result).toHaveProperty('basePrintWidth');
+        });
+    });
+
+    describe('Giá sàn — config cũ từ Supabase thiếu mức sàn mới (v1.8.0)', () => {
+        // ĐÂY LÀ ĐƯỜNG TIỆM DÙNG THẬT. Config đã lưu trên Supabase không có
+        // minPrintOnlyPricePerPage; merge nông tầng 1 để nguyên cụm cũ ⇒ sàn = undefined
+        // ⇒ TẮT TRONG IM LẮNG. Không có test này thì máy dev vẫn xanh mà tiệm thì mất sàn.
+        const legacyFromDb = () => {
+            const cfg = JSON.parse(JSON.stringify(PRINT_DEFAULT_CONFIG));
+            delete cfg.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage;
+            return cfg;
+        };
+
+        it('nạp từ Supabase → mức sàn "chỉ in" được bơm lại đúng mặc định', async () => {
+            mockLoadSupabase.mockResolvedValue({
+                data: legacyFromDb(),
+                current_version: 9,
+                schema_version: '1.7.0',
+                updated_at: '2026-09-23T00:00:00Z',
+            });
+
+            const result = await loadConfigFromCloud('printConfig');
+
+            expect(result.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage).toBe(
+                PRINT_DEFAULT_CONFIG.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage
+            );
+        });
+
+        it('giữ nguyên mức sàn giấy ram tiệm đã chỉnh', async () => {
+            const cfg = legacyFromDb();
+            cfg.PAPER_REFERENCE_CONFIG.minPrintPricePerPage = 1700;
+            mockLoadSupabase.mockResolvedValue({
+                data: cfg,
+                current_version: 9,
+                schema_version: '1.7.0',
+                updated_at: '2026-09-23T00:00:00Z',
+            });
+
+            const result = await loadConfigFromCloud('printConfig');
+
+            expect(result.PAPER_REFERENCE_CONFIG.minPrintPricePerPage).toBe(1700);
+            expect(result.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage).toBeGreaterThan(0);
         });
     });
 

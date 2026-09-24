@@ -209,6 +209,65 @@ describe('TASK-0010: validateSmallPrintConfig wired vào configStorage', () => {
         });
     });
 
+    // ──────────────────────────────────────────────────────────────────
+    describe('withPaperReferenceDefaults — bơm lại mức giá sàn còn thiếu (v1.8.0)', () => {
+        // Cùng bẫy mẫu trên: PAPER_REFERENCE_CONFIG là key cấp 1, nên config admin đã lưu
+        // trước v1.8.0 NUỐT TRỌN object mặc định ⇒ minPrintOnlyPricePerPage undefined ⇒ giá
+        // sàn TẮT TRONG IM LẮNG đúng trên máy dùng lâu nhất, máy dev vẫn thấy sàn chạy ngon.
+        it('config đã lưu thiếu sàn "chỉ in" → loadConfig trả về CÓ, đúng mặc định', () => {
+            const legacy = structuredClone(DEFAULT_CONFIG);
+            delete legacy.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage;
+            expect(saveConfig(legacy)).toBe(true);
+
+            expect(loadConfig().PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage).toBe(
+                DEFAULT_CONFIG.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage
+            );
+        });
+
+        it('thiếu hẳn PAPER_REFERENCE_CONFIG → bơm nguyên cụm', () => {
+            const legacy = structuredClone(DEFAULT_CONFIG);
+            delete legacy.PAPER_REFERENCE_CONFIG;
+            saveConfig(legacy);
+
+            const ref = loadConfig().PAPER_REFERENCE_CONFIG;
+            expect(ref.minPrintPricePerPage).toBeGreaterThan(0);
+            expect(ref.minPrintOnlyPricePerPage).toBeGreaterThan(0);
+        });
+
+        it('admin đặt sàn = 0 (TẮT có chủ đích) → GIỮ NGUYÊN 0, không bị bật lại', () => {
+            // Chốt chặn `=== undefined` thay vì falsy. Dùng falsy thì mỗi lần nạp lại là sàn
+            // tự bật sau lưng admin, giá khách bị nâng mà không ai hiểu vì sao.
+            const off = structuredClone(DEFAULT_CONFIG);
+            off.PAPER_REFERENCE_CONFIG.minPrintPricePerPage = 0;
+            off.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage = 0;
+            saveConfig(off);
+
+            const ref = loadConfig().PAPER_REFERENCE_CONFIG;
+            expect(ref.minPrintPricePerPage).toBe(0);
+            expect(ref.minPrintOnlyPricePerPage).toBe(0);
+        });
+
+        it('KHÔNG đè mức sàn admin đã chỉnh', () => {
+            const edited = structuredClone(DEFAULT_CONFIG);
+            edited.PAPER_REFERENCE_CONFIG.minPrintPricePerPage = 1800;
+            delete edited.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage;
+            saveConfig(edited);
+
+            const ref = loadConfig().PAPER_REFERENCE_CONFIG;
+            expect(ref.minPrintPricePerPage).toBe(1800);
+            expect(ref.minPrintOnlyPricePerPage).toBeGreaterThan(0);
+        });
+
+        it('giữ nguyên giấy chuẩn và tỉ lệ chia sẻ admin đang dùng', () => {
+            const edited = structuredClone(DEFAULT_CONFIG);
+            edited.PAPER_REFERENCE_CONFIG.adjustmentRatio = 0.7;
+            delete edited.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage;
+            saveConfig(edited);
+
+            expect(loadConfig().PAPER_REFERENCE_CONFIG.adjustmentRatio).toBe(0.7);
+        });
+    });
+
     // Backward-compat describe block removed in TASK-0017:
     // largePrintConfig đã được gate ở TASK-0017 → không còn module nào "ungated"
     // để test backward compat. All 4 module config đều đã wire validation.

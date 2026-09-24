@@ -19,6 +19,8 @@ export {
 
 export { withMountingDefaults } from './mountingDefaults.js';
 
+export { withPaperReferenceDefaults } from './paperReferenceDefaults.js';
+
 export {
     PAPER_PRICING_MODELS,
     pricingModelLabel,

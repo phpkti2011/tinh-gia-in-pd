@@ -250,3 +250,88 @@ lúc sửa giá, không phải báo cáo sau khi sửa.
 
 Khoá bởi `tests/golden/small-print.price-tier-audit.test.js` và
 `tests/components/SettingsPanel.price-tier-warning.test.jsx`.
+
+## Giá sàn (config v1.8.0)
+
+Mức tiệm không bao giờ bán dưới, admin đặt ra để không lỗ khi bảng giá tính sai. **Vừa là
+"Giá Tối Thiểu", vừa kẹp giá báo khách.**
+
+```txt
+Giấy ram            sàn = 1.500đ × số trang A4  +  giá vốn thành phẩm
+m² / tờ / mỹ thuật  sàn = 1.100đ × số trang A4  +  tiền giấy thật  +  giá vốn thành phẩm
+
+Giá Tối Thiểu  = sàn
+Giá báo khách  = max(giá theo bảng giá, sàn)
+```
+
+Vì thế **Giá Tối Thiểu không bao giờ lớn hơn Giá Báo Khách** — đúng yêu cầu của chủ tiệm.
+
+### Vì sao chia hai mức
+
+Bảng giá khách được tiệm thiết kế dựa trên **giấy ram chuẩn (C300)**, nên mức 1.500 đã gồm
+sẵn tiền giấy. Giấy tính theo m² / theo tờ / gõ tay có giá chênh nhau quá xa để gộp vào một
+con số, nên sàn của nhóm đó **chỉ bao tiền in** (1.100), tiền giấy cộng theo **giá thật**.
+
+Khớp với cách phía giá khách vốn đã làm: decal cuộn và decal xi chỉ cộng `customerSurcharge`
+(`pricePerSqm` / `sheetPrice` **không** vào giá khách), giấy mỹ thuật có công thức riêng
+(`số tờ × giá gõ tay + ART_PAPER_SURCHARGE`). Giá theo m² / theo tờ là **của phía giá sàn**.
+
+### Thành phần
+
+| Khoản | Vào sàn? |
+|---|---|
+| Tiền in | Thay bằng `mức sàn × số trang A4` |
+| Tiền giấy in + giấy trắng bồi | Chỉ khi **không** phải giấy ram |
+| Cán màng (giá vốn) | Có — nằm trong "giá vốn thành phẩm" |
+| Dữ liệu biến đổi, bấm lỗ, cấn, công bồi, gia công thêm, khuôn bế, công bế, ép kim | Có |
+| Sàn ép plastic | Có |
+| Phụ thu nhiều nội dung | Có, áp % lên cả sàn |
+
+Giá vốn âm bị kẹp về 0 — đó là config hỏng, không phải khuyến mãi.
+
+### Ba nhánh cố ý im lặng
+
+- Mức sàn = 0 hoặc thiếu field ⇒ `active: false`, sàn = 0 ⇒ **không kẹp đơn nào**. Đây là
+  **đường lùi**: đặt cả hai về 0 là mọi giá quay lại y như trước khi bật sàn.
+- Số trang ≤ 0 ⇒ sàn = 0.
+- Config thiếu / rác ⇒ 0, không ném — hàm chạy trong lúc admin đang gõ số.
+
+### Nơi kẹp: ResultPanel, KHÔNG phải quote.js
+
+⚠ **Catalogue và Lò xo gọi chung `calculateCustomerQuote`**. Kẹp trong engine là đổi giá cả
+hai module đó. Nên `quote.js` giữ nguyên; việc kẹp làm ở
+[`ResultPanel.jsx`](../../src/components/smallprint/ResultPanel.jsx), nơi có đủ cả giá vốn
+lẫn giá khách. Kẹp áp cho: panel Giá, thanh dính, và chuỗi "Copy quy cách".
+
+### Nhân viên thấy gì
+
+Bảng kê chi tiết không khoá theo quyền, nên nâng tổng mà không thêm dòng thì **các dòng cộng
+lại không ra tổng**. Vì vậy dòng **"Phụ thu tối thiểu"** hiện cho mọi người (nhãn trung tính,
+không có chữ "giá sàn"); dòng giải thích đầy đủ — số bảng giá gốc, mức sàn, mức đã nâng —
+**chỉ admin thấy**.
+
+Panel "🏆 Giá Tối Thiểu" nay **gỡ hẳn khỏi DOM** khi không phải admin. Trước đây nó chỉ bị
+ẩn bằng class `hidden`, tức là toàn bộ giá vốn vẫn nằm trong trang của nhân viên và mở
+devtools là đọc được.
+
+### Đổi giá có chủ đích
+
+Trước v1.8.0 `minPrintPricePerPage` **chỉ tô màu một dòng chữ** trong panel admin, không chặn
+gì cả — chú thích trong config nói ngược lại là sai. Nay nó chặn thật, nên **đơn nào đang
+dưới sàn sẽ báo cao hơn trước**. Với bảng giá mặc định, nhóm giấy ram gần như không chạm sàn
+(đơn giá thấp nhất 1.670đ/trang > 1.500); chỗ chạm là **decal xi số lượng lớn in 1 mặt** —
+ví dụ 10.000 cái: bảng giá ra 4.032.000đ, sàn 4.256.000đ, **nâng 224.000đ**.
+
+### Hai thứ sửa kèm
+
+- `baseCost` ở panel đầu trang **quên `customFinishingCost`**, trong khi bảng so sánh cùng
+  trang lại có cộng — đơn có gia công thêm bị hụt tiền. Đã sửa, và mọi khoản trong bảng so
+  sánh nay đều `|| 0` (thiếu một prop là cả tổng thành NaN rồi hiện 0 trong im lặng).
+- Khối tính giá vốn trước đây bám `absoluteBestOption` trong khi báo giá bám `displayResult`
+  — bấm chọn dòng khác thì giá khách đổi mà giá sàn đứng yên, không so được. Nay cả hai cùng
+  bám `displayResult`.
+
+Khoá bởi `tests/golden/small-print.floor-price.test.js`,
+`tests/components/ResultPanel.floor-price.test.jsx`, và phần `withPaperReferenceDefaults`
+trong `tests/golden/small-print.config.storage.test.js` +
+`tests/lib/configStorage.supabase-read.test.js`.

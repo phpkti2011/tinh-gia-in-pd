@@ -32,11 +32,16 @@ export const DEFAULT_CONFIG = {
         // Tỉ lệ chia sẻ chênh lệch với khách: 1.0 = khách hưởng 100% khi rẻ hơn +
         // chịu 100% khi đắt hơn. 0.7 = tiệm giữ lại 30% profit.
         adjustmentRatio: 1.0,
-        // Sàn "Đơn giá IN / trang" (đ/trang) — panel Giá Tối Thiểu (admin only).
-        // Nếu computed printOnlyPerPage < value → clamp lên value.
-        // Đảm bảo tiệm không quote in dưới mức này bất kể volume/giá giấy.
-        // Đặt 0 để tắt floor.
+        // GIÁ SÀN (đ/trang A4) — hai mức, chia theo cách tính giá giấy. Vừa là
+        // "Giá Tối Thiểu", vừa là mức kẹp giá báo khách: khách = max(bảng giá, sàn).
+        // Xem engine/floorPrice.js.
+        //
+        // Giấy ram: mức này ĐÃ GỒM TIỀN GIẤY (bảng giá khách vốn thiết kế theo C300).
         minPrintPricePerPage: 1500,
+        // Giấy m² / theo tờ / gõ tay: mức CHỈ IN, tiền giấy cộng thêm theo giá thật.
+        // Giá giấy mấy loại này chênh nhau quá xa để gộp vào một con số.
+        minPrintOnlyPricePerPage: 1100,
+        // Đặt 0 để TẮT sàn tương ứng ⇒ không đơn nào bị kẹp. Đây là đường lùi.
     },
     PRINTER_CONFIG: {
         C2060: {

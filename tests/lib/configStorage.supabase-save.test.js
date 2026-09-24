@@ -70,10 +70,12 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             // và đếm đúng số tờ giấy khi bồi.
             // 1.6.0: thêm PAPER_STOCK_DATA[*].hidden (ẩn giấy thay vì xoá).
             // 1.7.0: thêm PAPER_STOCK_DATA[*].sheetSizes (giấy khổ cố định nhiều khổ).
+            // 1.8.0: thêm PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage (mức giá sàn
+            // thứ hai, cho giấy không tính theo ram).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'small-print',
                 VALID_PRINT,
-                '1.7.0',
+                '1.8.0',
                 null
             );
         });

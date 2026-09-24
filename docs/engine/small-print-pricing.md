@@ -626,12 +626,20 @@ export function getProfitMargin(cost, config) {
 }
 ```
 
-Chỉ dùng cho tính "giá tối thiểu để có lời" ở admin panel:
+⚠ **Từ v1.8.0, hàm này KHÔNG còn quyết định "Giá Tối Thiểu".** Giá Tối Thiểu giờ là
+**giá sàn** (xem `engine/floorPrice.js`). `getProfitMargin` chỉ còn sinh ra con số tham khảo
+"Giá vốn × biên" hiển thị cạnh đó, và cột cùng tên trong Bảng So Sánh.
+
+Công thức thật đang chạy — **nhân**, không phải chia
+([ResultPanel.jsx](../../src/components/smallprint/ResultPanel.jsx)):
 ```
-minPrice = costPerProduct / (1 - margin)
+costPlusMargin = finalTotalCost × (1 + margin) + sàn ép plastic
 ```
 
-Không dùng để tính giá bán khách (khách dùng `CUSTOMER_PRICE_TIERS`).
+> Tài liệu này trước đây ghi `costPerProduct / (1 - margin)`. **Sai.** Với biên 0.75 thì
+> công thức chia ra `×4` còn code thật ra `×1.75` — lệch hơn hai lần. Code là thứ đang chạy.
+
+Không dùng để tính giá bán khách (khách dùng `CUSTOMER_PRICE_TIERS`, rồi bị kẹp sàn).
 
 #### `calculateVariableDataCost(quantity, config)`
 

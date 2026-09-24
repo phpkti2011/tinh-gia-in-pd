@@ -36,4 +36,6 @@ export {
 
 export { calculateCustomerQuote } from './quote.js';
 
+export { calculateFloorPrice, floorIncludesPaper } from './floorPrice.js';
+
 export { computeA4Factor, getA4Rates } from './a4.js';

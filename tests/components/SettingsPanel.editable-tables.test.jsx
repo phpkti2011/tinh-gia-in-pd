@@ -226,20 +226,48 @@ describe('Cài Đặt — các bảng mới mở cho admin', () => {
             expect(opts).not.toContain('Giấy mỹ thuật');
         });
 
+        // BÁM NHÃN, không bám thứ tự: mục này còn được thêm ô (v1.8.0 thêm mức giá sàn
+        // thứ hai), bám inputs[i] là mỗi lần thêm ô lại gãy test không liên quan.
+        const fieldByLabel = (re) => {
+            const sec = section(/Giấy Chuẩn & Điều Chỉnh Giá/i);
+            const label = within(sec).getByText(re);
+            return within(label.closest('div')).getByRole('spinbutton');
+        };
+
         it('đổi tỉ lệ chia sẻ — nhập 70 lưu thành 0.7', async () => {
             const { save } = renderPanel();
-            const sec = section(/Giấy Chuẩn & Điều Chỉnh Giá/i);
-            const inputs = within(sec).getAllByRole('spinbutton');
-            fireEvent.change(inputs[0], { target: { value: '70' } });
+            fireEvent.change(fieldByLabel(/Tỉ lệ chia sẻ chênh lệch/i), {
+                target: { value: '70' },
+            });
             expect((await save()).PAPER_REFERENCE_CONFIG.adjustmentRatio).toBeCloseTo(0.7, 10);
         });
 
         it('đổi phụ thu giấy mỹ thuật', async () => {
             const { save } = renderPanel();
-            const sec = section(/Giấy Chuẩn & Điều Chỉnh Giá/i);
-            const inputs = within(sec).getAllByRole('spinbutton');
-            fireEvent.change(inputs[2], { target: { value: '95000' } });
+            fireEvent.change(fieldByLabel(/Phụ thu giấy mỹ thuật/i), {
+                target: { value: '95000' },
+            });
             expect((await save()).ART_PAPER_SURCHARGE).toBe(95000);
+        });
+
+        it('đổi hai mức giá sàn — ram và chỉ in, độc lập nhau', async () => {
+            const { save } = renderPanel();
+            fireEvent.change(fieldByLabel(/Giá sàn — giấy theo ram/i), {
+                target: { value: '1700' },
+            });
+            fireEvent.change(fieldByLabel(/Giá sàn — giấy m²/i), {
+                target: { value: '1250' },
+            });
+
+            const saved = await save();
+            expect(saved.PAPER_REFERENCE_CONFIG.minPrintPricePerPage).toBe(1700);
+            expect(saved.PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage).toBe(1250);
+        });
+
+        it('đặt sàn về 0 để TẮT — phải lưu được, không bị schema chặn', async () => {
+            const { save } = renderPanel();
+            fireEvent.change(fieldByLabel(/Giá sàn — giấy m²/i), { target: { value: '0' } });
+            expect((await save()).PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage).toBe(0);
         });
     });
 

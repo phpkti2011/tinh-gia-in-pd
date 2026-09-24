@@ -30,6 +30,16 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   1.3.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
 //           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
 //           => gia khong doi.
+// 1.8.0 — PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage (optional number): mức GIÁ SÀN
+//   thứ hai, đ/trang A4, dành cho giấy KHÔNG tính theo ram (m² / theo tờ / gõ tay) — sàn
+//   chỉ bao tiền IN, tiền giấy cộng theo giá thật. Giấy ram vẫn dùng minPrintPricePerPage
+//   đã có (mức đó ĐÃ GỒM giấy). Xem engine/floorPrice.js.
+//   ĐỔI GIÁ CÓ CHỦ ĐÍCH: trước đây minPrintPricePerPage chỉ tô màu MỘT DÒNG CHỮ trong panel
+//   admin, không chặn gì cả. Nay hai mức này vừa là "Giá Tối Thiểu", vừa kẹp giá báo khách
+//   (khách = max(bảng giá, sàn)) ⇒ đơn nào đang dưới sàn sẽ báo cao hơn trước.
+//   Đặt sàn = 0 ⇒ tắt, mọi giá về y như trước.
+//   ⚠ Subkey mới BÊN TRONG key cũ ⇒ merge nông tầng 1 KHÔNG bù được ⇒ phải đi qua
+//   withPaperReferenceDefaults(), nếu không sàn tắt trong im lặng trên máy đã từng Lưu.
 // 1.7.0 — PAPER_STOCK_DATA[*].sheetSizes (optional array): giấy bán THEO TỜ khổ cố định
 //   khai được NHIỀU khổ, mỗi khổ một giá ([{w,h,price}] — 33×48 = 5.500đ/tờ, 33×64 =
 //   7.000đ/tờ…). Engine thử hết rồi chọn rẻ nhất, y như giấy ram với COMMON_SHEET_SIZES.
@@ -55,6 +65,6 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   cộng thẳng vào Giá Tối Thiểu). Thiếu field → engine trả 0, ô chọn ẩn ở màn
 //   tính giá → giá không đổi. Xem src/utils/plasticLamination.js.
 
-export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.7.0';
+export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.8.0';
 
-export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-23';
+export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-24';

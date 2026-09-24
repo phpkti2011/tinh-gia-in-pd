@@ -5,6 +5,7 @@ import {
     calculatePrintContentSurcharge,
 } from '../../utils/calculator';
 import { calculateCustomerQuote } from '../../utils/customerQuote';
+import { calculateFloorPrice } from '../../modules/small-print/engine/floorPrice';
 import NumberField from '../common/NumberField';
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
@@ -138,17 +139,77 @@ export default function ResultPanel({
     const productsPerSheet = displayResult.productsPerSheet;
     const totalPrintSheetsNeeded = Math.ceil(productQuantity / productsPerSheet);
 
-    // Cost calcs — dùng absoluteBestOption (rẻ nhất tuyệt đối) cho giá tối thiểu
+    // Cost calcs — bám displayResult (phương án đang hiển thị), KHÔNG phải absoluteBestOption.
+    // Giá Tối Thiểu và Tổng Cộng Báo Khách phải nói về CÙNG một cách làm, nếu không thì
+    // "giá tối thiểu không bao giờ lớn hơn giá báo khách" không còn kiểm chứng được trên
+    // màn hình. Bấm chọn dòng khác trong bảng so sánh thì cả hai cùng đổi.
     const foilCost = foilResult ? foilResult.totalCost : 0;
-    const totalManufacturingCost = productQuantity * absoluteBestOption.costPerProduct;
+    // Sàn bán ép plastic (engine tính sẵn) — là giá BÁN sàn chứ không phải giá vốn.
+    const plasticFloor = plasticResult?.minPrice || 0;
+
+    // Giá vốn THÀNH PHẨM: mọi thứ không phải tiền in và tiền giấy.
+    const finishingTotalCost =
+        productQuantity * (displayResult.laminationCostPerProduct || 0) +
+        (variableDataCost || 0) +
+        (holePunchingCost || 0) +
+        (creasingCost || 0) +
+        (mountingCost || 0) +
+        (customFinishingCost || 0) +
+        (moldCost || 0) +
+        (laborCost || 0) +
+        foilCost +
+        plasticFloor;
+
+    // Tiền giấy THẬT (giấy in + giấy trắng bồi). Chỉ đi vào sàn khi giấy KHÔNG tính theo
+    // ram — mức sàn của giấy ram đã gồm sẵn tiền giấy.
+    const paperTotalCost =
+        productQuantity *
+        ((displayResult.paperCostPerProduct || 0) + (displayResult.blankPaperCostPerProduct || 0));
+
+    const selectedPaperInfo = (config.PAPER_STOCK_DATA || [])[params.paperType];
+    const quoteOk = displayQuote && !displayQuote.error;
+
+    // GIÁ SÀN — chính là Giá Tối Thiểu. Xem engine/floorPrice.js.
+    const floor = calculateFloorPrice({
+        pricingModel: selectedPaperInfo?.pricingModel,
+        totalA4Pages: quoteOk ? displayQuote.totalA4PagesRaw : 0,
+        paperCost: paperTotalCost,
+        otherCost: finishingTotalCost,
+        quantity: productQuantity,
+        printContents,
+        config,
+    });
+    const minPrice = floor.total;
+    const isShowingMinPrice = minPrice >= 300000;
+
+    // KẸP SÀN. Đây là chỗ DUY NHẤT đổi số tiền khách trả. Cố ý không đặt trong
+    // engine/quote.js: Catalogue và Lò xo gọi chung hàm đó, kẹp ở đấy là đổi giá cả hai
+    // module không ai yêu cầu.
+    const rawCustomerCost = quoteOk ? displayQuote.totalCustomerCost : 0;
+    const floorTopUp =
+        floor.active && rawCustomerCost > 0 && rawCustomerCost < floor.total
+            ? floor.total - rawCustomerCost
+            : 0;
+    const finalCustomerCost = rawCustomerCost + floorTopUp;
+    const displayQuoteFinal = quoteOk
+        ? { ...displayQuote, totalCustomerCost: finalCustomerCost }
+        : displayQuote;
+
+    // SỐ THAM KHẢO — không còn là Giá Tối Thiểu. Đây là cách tính CŨ (giá vốn thật × biên
+    // lợi nhuận); PROFIT_MARGIN_TIERS giờ chỉ còn điều khiển con số này. Giữ lại để admin
+    // đối chiếu khi chỉnh mức sàn, và để khớp cột "Giá vốn × biên" của bảng so sánh.
+    const totalManufacturingCost = productQuantity * displayResult.costPerProduct;
     const baseCost =
         totalManufacturingCost +
-        variableDataCost +
-        holePunchingCost +
-        creasingCost +
-        mountingCost +
-        moldCost +
-        laborCost +
+        (variableDataCost || 0) +
+        (holePunchingCost || 0) +
+        (creasingCost || 0) +
+        (mountingCost || 0) +
+        // Dòng này TRƯỚC ĐÂY BỊ THIẾU, trong khi bảng so sánh ngay dưới lại có cộng — nên
+        // đơn có gia công thêm bị hụt tiền ở panel đầu trang.
+        (customFinishingCost || 0) +
+        (moldCost || 0) +
+        (laborCost || 0) +
         foilCost;
     const { surcharge } = calculatePrintContentSurcharge(
         baseCost,
@@ -157,30 +218,8 @@ export default function ResultPanel({
         config
     );
     const finalTotalCost = baseCost + surcharge;
-
-    // Sàn bán ép plastic (engine tính sẵn) — CHỈ ADMIN, cộng SAU profit margin
-    // vì đây là giá bán sàn chứ không phải giá vốn. Không chọn ép plastic → 0.
-    const plasticFloor = plasticResult?.minPrice || 0;
-    const minPrice = finalTotalCost * (1 + getProfitMargin(finalTotalCost, config)) + plasticFloor;
-    const isShowingMinPrice = minPrice >= 300000;
-
-    // Đơn giá IN / trang — chỉ tính tiền giấy + tiền in (KHÔNG cán màng, KHÔNG
-    // gia công). Dùng khi admin cần báo giá "chỉ in" tách khỏi thành phẩm.
-    const printOnlyCostPerProduct =
-        (absoluteBestOption.paperCostPerProduct || 0) +
-        (absoluteBestOption.printCostPerProduct || 0);
-    const printOnlyTotalCost = productQuantity * printOnlyCostPerProduct;
-    const { surcharge: printOnlySurcharge } = calculatePrintContentSurcharge(
-        printOnlyTotalCost,
-        productQuantity,
-        printContents,
-        config
-    );
-    const printOnlyFinalCost = printOnlyTotalCost + printOnlySurcharge;
-    const printOnlyMinPrice =
-        printOnlyFinalCost * (1 + getProfitMargin(printOnlyFinalCost, config));
-
-    const selectedPaperInfo = (config.PAPER_STOCK_DATA || [])[params.paperType];
+    const costPlusMargin =
+        finalTotalCost * (1 + getProfitMargin(finalTotalCost, config)) + plasticFloor;
 
     return (
         <div
@@ -195,155 +234,188 @@ export default function ResultPanel({
                 </div>
             )}
 
-            {/* Phương án tối ưu nhất — chỉ admin */}
-            <div
-                className={`bg-gray-800 p-6 rounded-lg border border-green-500 mb-8 ${!isShowingMinPrice || !isAdmin ? 'hidden' : ''}`}
-            >
-                <h2 className="text-2xl font-bold text-green-400 mb-4 text-center border-b border-gray-700 pb-2">
-                    🏆 Giá Tối Thiểu
-                </h2>
+            {/* Phương án tối ưu nhất — CHỈ ADMIN.
+                KHÔNG ẩn bằng class `hidden`: ẩn kiểu đó chỉ là CSS, toàn bộ giá vốn và mức
+                sàn vẫn nằm trong DOM của nhân viên, mở devtools là đọc được. Gỡ hẳn khỏi cây. */}
+            {isAdmin && (
+                <div
+                    className={`bg-gray-800 p-6 rounded-lg border border-green-500 mb-8 ${!isShowingMinPrice ? 'hidden' : ''}`}
+                >
+                    <h2 className="text-2xl font-bold text-green-400 mb-4 text-center border-b border-gray-700 pb-2">
+                        🏆 Giá Tối Thiểu
+                    </h2>
 
-                <div className="text-center mb-6">
-                    <p className="text-base text-gray-400">
-                        Giá bán tối thiểu cho {productQuantity.toLocaleString('vi-VN')} sản phẩm
-                    </p>
-                    <p className="text-4xl font-bold text-cyan-300 mt-2">
-                        {minPrice.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VNĐ
-                    </p>
-                </div>
+                    <div className="text-center mb-6">
+                        <p className="text-base text-gray-400">
+                            Giá bán tối thiểu cho {productQuantity.toLocaleString('vi-VN')} sản phẩm
+                        </p>
+                        <p
+                            className="text-4xl font-bold text-cyan-300 mt-2"
+                            data-testid="min-price"
+                        >
+                            {minPrice.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VNĐ
+                        </p>
+                    </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                    <div>
-                        <p className="text-sm text-gray-400">Máy in</p>
-                        <p className="text-2xl font-bold text-cyan-400">
-                            {absoluteBestOption.printer.name}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Khổ giấy lớn</p>
-                        <p className="text-xl font-semibold">{absoluteBestOption.largeSheetName}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Khổ giấy cắt</p>
-                        <p className="text-xl font-semibold text-yellow-400">
-                            {absoluteBestOption.cutSheetSize}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Giá vốn / SP</p>
-                        <p className="text-2xl font-bold text-green-400">
-                            {absoluteBestOption.costPerProduct.toFixed(0)}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Vùng in máy</p>
-                        <p className="text-base font-mono mt-1">
-                            {absoluteBestOption.printableArea}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Vùng in SP</p>
-                        <p className="text-base font-mono mt-1">
-                            {absoluteBestOption.actualPrintW.toFixed(2)} x{' '}
-                            {absoluteBestOption.actualPrintH.toFixed(2)}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Tổng trang A4</p>
-                        <p className="text-2xl font-semibold">
-                            {quote && !quote.error ? quote.totalA4Pages : '—'}
-                        </p>
-                        {quote &&
-                            !quote.error &&
-                            quote.totalPrintSheets != null &&
-                            quote.conversionFactor != null && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                    = {quote.totalPrintSheets} tờ × {quote.conversionFactor} A4 ×{' '}
-                                    {quote.printSides} mặt
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div>
+                            <p className="text-sm text-gray-400">Máy in</p>
+                            <p className="text-2xl font-bold text-cyan-400">
+                                {displayResult.printer.name}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Khổ giấy lớn</p>
+                            <p className="text-xl font-semibold">{displayResult.largeSheetName}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Khổ giấy cắt</p>
+                            <p className="text-xl font-semibold text-yellow-400">
+                                {displayResult.cutSheetSize}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Giá vốn / SP</p>
+                            <p className="text-2xl font-bold text-green-400">
+                                {displayResult.costPerProduct.toFixed(0)}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Vùng in máy</p>
+                            <p className="text-base font-mono mt-1">
+                                {displayResult.printableArea}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Vùng in SP</p>
+                            <p className="text-base font-mono mt-1">
+                                {displayResult.actualPrintW.toFixed(2)} x{' '}
+                                {displayResult.actualPrintH.toFixed(2)}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Tổng trang A4</p>
+                            <p className="text-2xl font-semibold">
+                                {quote && !quote.error ? quote.totalA4Pages : '—'}
+                            </p>
+                            {quote &&
+                                !quote.error &&
+                                quote.totalPrintSheets != null &&
+                                quote.conversionFactor != null && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        = {quote.totalPrintSheets} tờ × {quote.conversionFactor} A4
+                                        × {quote.printSides} mặt
+                                    </p>
+                                )}
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Đơn giá TT / trang</p>
+                            <p className="text-2xl font-bold text-cyan-400">
+                                {quoteOk && displayQuote.totalA4PagesRaw > 0
+                                    ? Math.round(
+                                          minPrice / displayQuote.totalA4PagesRaw
+                                      ).toLocaleString('vi-VN') + ' đ/trang'
+                                    : '—'}
+                            </p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <p className="text-sm text-gray-400">SP / Tờ in</p>
+                            <p className="text-2xl font-semibold">
+                                {displayResult.productsPerSheet} sp
+                            </p>
+                        </div>
+                        {/* Mức sàn ĐANG ÁP cho đúng loại giấy này, kèm bóc tách để admin thấy
+                        Giá Tối Thiểu ở trên ráp từ đâu ra. */}
+                        <div className="md:col-span-2">
+                            <p className="text-sm text-gray-400">
+                                Mức sàn đang áp{' '}
+                                {floor.includesPaper
+                                    ? '(đã gồm giấy)'
+                                    : '(chỉ in, giấy tính riêng)'}
+                            </p>
+                            {floor.active ? (
+                                <>
+                                    <p className="text-2xl font-bold text-orange-400">
+                                        {floor.rate.toLocaleString('vi-VN')} đ/trang
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        = {Math.round(floor.printFloor).toLocaleString('vi-VN')}đ in
+                                        {!floor.includesPaper &&
+                                            ` + ${Math.round(floor.paperCost).toLocaleString('vi-VN')}đ giấy`}
+                                        {floor.otherCost > 0 &&
+                                            ` + ${Math.round(floor.otherCost).toLocaleString('vi-VN')}đ thành phẩm`}
+                                        {floor.surcharge > 0 &&
+                                            ` + ${Math.round(floor.surcharge).toLocaleString('vi-VN')}đ phụ thu nội dung`}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-2xl font-bold text-gray-500">
+                                    Tắt
+                                    <span className="ml-2 text-xs font-normal">
+                                        — không đơn nào bị kẹp sàn
+                                    </span>
                                 </p>
                             )}
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Đơn giá TT / trang</p>
-                        <p className="text-2xl font-bold text-cyan-400">
-                            {quote && !quote.error && quote.totalA4PagesRaw > 0
-                                ? Math.round(minPrice / quote.totalA4PagesRaw).toLocaleString(
-                                      'vi-VN'
-                                  ) + ' đ/trang'
-                                : '—'}
-                        </p>
-                    </div>
-                    <div className="md:col-span-2">
-                        <p className="text-sm text-gray-400">SP / Tờ in</p>
-                        <p className="text-2xl font-semibold">
-                            {absoluteBestOption.productsPerSheet} sp
-                        </p>
-                    </div>
-                    <div className="md:col-span-2">
-                        <p className="text-sm text-gray-400">Đơn giá IN / trang (chưa gia công)</p>
-                        {(() => {
-                            if (!quote || quote.error || !(quote.totalA4PagesRaw > 0)) {
-                                return <p className="text-2xl font-bold text-purple-400">—</p>;
-                            }
-                            const computed = Math.round(printOnlyMinPrice / quote.totalA4PagesRaw);
-                            const floor = config.PAPER_REFERENCE_CONFIG?.minPrintPricePerPage || 0;
-                            const isFloored = floor > 0 && computed < floor;
-                            const displayed = isFloored ? floor : computed;
-                            return (
-                                <p
-                                    className={`text-2xl font-bold ${isFloored ? 'text-orange-400' : 'text-purple-400'}`}
-                                >
-                                    {displayed.toLocaleString('vi-VN')} đ/trang
-                                    {isFloored && (
-                                        <span className="ml-2 text-xs text-orange-300 font-normal">
-                                            🔒 (sàn — thực tính {computed.toLocaleString('vi-VN')}đ)
-                                        </span>
-                                    )}
-                                </p>
-                            );
-                        })()}
-                    </div>
-                </div>
-
-                {isAdmin && plasticFloor > 0 && plasticResult && (
-                    <div className="mt-4 text-center">
-                        <p className="text-sm text-gray-400">
-                            Sàn ép plastic (đã gồm trong Giá Tối Thiểu, không nhân lợi nhuận)
-                        </p>
-                        <p className="text-lg font-semibold text-cyan-300">
-                            {plasticResult.label}:{' '}
-                            {plasticResult.unitMinPrice.toLocaleString('vi-VN', {
-                                maximumFractionDigits: 0,
-                            })}{' '}
-                            đ/tấm × {productQuantity.toLocaleString('vi-VN')} ={' '}
-                            {plasticFloor.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} đ
-                        </p>
-                    </div>
-                )}
-
-                {absoluteBestOption.laminationWarning && (
-                    <div className="mt-4 text-center">
-                        <p
-                            className={`font-semibold ${absoluteBestOption.laminationWarning.startsWith('KHÔNG') ? 'text-red-500' : 'text-yellow-400'}`}
-                        >
-                            {absoluteBestOption.laminationWarning}
-                        </p>
-                    </div>
-                )}
-
-                {selectedPaperInfo && (
-                    <div className="mt-6 pt-4 border-t border-gray-600 text-center">
-                        <p className="text-lg font-semibold text-gray-200">
-                            {selectedPaperInfo.name}
-                        </p>
-                        {selectedPaperInfo.description && (
-                            <p className="text-sm text-gray-400 mt-1">
-                                {selectedPaperInfo.description}
+                        </div>
+                        {/* Cách tính CŨ, giữ lại để đối chiếu. PROFIT_MARGIN_TIERS giờ chỉ còn
+                        điều khiển con số này, không còn quyết định Giá Tối Thiểu nữa. */}
+                        <div className="md:col-span-4">
+                            <p className="text-sm text-gray-400">
+                                Giá vốn × biên lợi nhuận (tham khảo, không còn là Giá Tối Thiểu)
                             </p>
-                        )}
+                            <p
+                                className="text-xl font-semibold text-purple-400"
+                                data-testid="cost-plus-margin"
+                            >
+                                {costPlusMargin.toLocaleString('vi-VN', {
+                                    maximumFractionDigits: 0,
+                                })}{' '}
+                                đ
+                            </p>
+                        </div>
                     </div>
-                )}
-            </div>
+
+                    {isAdmin && plasticFloor > 0 && plasticResult && (
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-400">
+                                Sàn ép plastic (đã gồm trong Giá Tối Thiểu, không nhân lợi nhuận)
+                            </p>
+                            <p className="text-lg font-semibold text-cyan-300">
+                                {plasticResult.label}:{' '}
+                                {plasticResult.unitMinPrice.toLocaleString('vi-VN', {
+                                    maximumFractionDigits: 0,
+                                })}{' '}
+                                đ/tấm × {productQuantity.toLocaleString('vi-VN')} ={' '}
+                                {plasticFloor.toLocaleString('vi-VN', { maximumFractionDigits: 0 })}{' '}
+                                đ
+                            </p>
+                        </div>
+                    )}
+
+                    {displayResult.laminationWarning && (
+                        <div className="mt-4 text-center">
+                            <p
+                                className={`font-semibold ${displayResult.laminationWarning.startsWith('KHÔNG') ? 'text-red-500' : 'text-yellow-400'}`}
+                            >
+                                {displayResult.laminationWarning}
+                            </p>
+                        </div>
+                    )}
+
+                    {selectedPaperInfo && (
+                        <div className="mt-6 pt-4 border-t border-gray-600 text-center">
+                            <p className="text-lg font-semibold text-gray-200">
+                                {selectedPaperInfo.name}
+                            </p>
+                            {selectedPaperInfo.description && (
+                                <p className="text-sm text-gray-400 mt-1">
+                                    {selectedPaperInfo.description}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Sticky bar — hiện khi scroll qua phần giá, có input chỉnh thông số */}
             {showStickyBar && displayQuote && !displayQuote.error && (
@@ -413,10 +485,7 @@ export default function ResultPanel({
                             <div className="text-center">
                                 <span className="text-xs text-gray-500 block">Giá</span>
                                 <span className="text-xl font-bold text-yellow-300">
-                                    {roundToThousand(
-                                        displayQuote.totalCustomerCost
-                                    )?.toLocaleString('vi-VN')}{' '}
-                                    đ
+                                    {roundToThousand(finalCustomerCost)?.toLocaleString('vi-VN')} đ
                                 </span>
                             </div>
                         </div>
@@ -603,22 +672,43 @@ export default function ResultPanel({
                                         prefix="+"
                                     />
                                 )}
+                                {/* Kẹp sàn. Dòng này hiện cho MỌI người — không có nó thì
+                                    các dòng trên cộng lại không ra tổng và nhân viên sẽ
+                                    thắc mắc. Nhãn cố ý trung tính, không có chữ "giá sàn";
+                                    lý do đầy đủ chỉ admin thấy, ngay dưới phần Tổng. */}
+                                {floorTopUp > 0 && (
+                                    <QuoteRow
+                                        label="Phụ thu tối thiểu"
+                                        value={floorTopUp}
+                                        color="text-yellow-400"
+                                        prefix="+"
+                                    />
+                                )}
                             </div>
 
                             {/* Tổng */}
                             <div className="text-center border-t border-gray-600 pt-4 mt-2">
                                 <p className="text-lg text-gray-300">Tổng Cộng Báo Khách</p>
-                                <p className="text-4xl font-bold text-yellow-300 mt-2">
-                                    {roundToThousand(
-                                        displayQuote.totalCustomerCost
-                                    )?.toLocaleString('vi-VN')}{' '}
+                                <p
+                                    className="text-4xl font-bold text-yellow-300 mt-2"
+                                    data-testid="customer-total"
+                                >
+                                    {roundToThousand(finalCustomerCost)?.toLocaleString('vi-VN')}{' '}
                                     VNĐ
                                 </p>
+                                {isAdmin && floorTopUp > 0 && (
+                                    <p className="mt-2 text-xs text-orange-300">
+                                        ⚠ Bảng giá ra{' '}
+                                        {Math.round(rawCustomerCost).toLocaleString('vi-VN')}đ, dưới
+                                        giá sàn {Math.round(floor.total).toLocaleString('vi-VN')}đ →
+                                        đã nâng +{Math.round(floorTopUp).toLocaleString('vi-VN')}đ.
+                                    </p>
+                                )}
                                 <div className="mt-3 flex justify-center">
                                     <CopyButton
                                         text={buildJobSpec('small-print', {
                                             params,
-                                            result: displayQuote,
+                                            result: displayQuoteFinal,
                                             config,
                                         })}
                                     />
@@ -662,7 +752,7 @@ export default function ResultPanel({
                             )}
                             {isAdmin && (
                                 <th className="p-3 border-b border-gray-700 bg-gray-700 text-gray-300 text-center font-semibold">
-                                    Giá tối thiểu
+                                    Giá vốn × biên
                                 </th>
                             )}
                         </tr>
@@ -681,15 +771,17 @@ export default function ResultPanel({
 
                             const totalForRowManufacturingCost =
                                 res.costPerProduct * productQuantity;
+                            // Mọi khoản đều `|| 0`: thiếu một prop là cả tổng thành NaN, rồi
+                            // isFinite phía dưới biến nó thành 0 — cột giá hiện 0 trong im lặng.
                             const rowBaseCost =
                                 totalForRowManufacturingCost +
-                                variableDataCost +
-                                holePunchingCost +
-                                creasingCost +
-                                mountingCost +
-                                customFinishingCost +
-                                moldCost +
-                                laborCost +
+                                (variableDataCost || 0) +
+                                (holePunchingCost || 0) +
+                                (creasingCost || 0) +
+                                (mountingCost || 0) +
+                                (customFinishingCost || 0) +
+                                (moldCost || 0) +
+                                (laborCost || 0) +
                                 foilCost;
                             const { surcharge: rowSurcharge } = calculatePrintContentSurcharge(
                                 rowBaseCost,
