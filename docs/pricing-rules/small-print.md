@@ -193,3 +193,60 @@ là thêm phương án ở cả 3 module.
 
 Khoá bởi `tests/golden/small-print.per-sheet-sizes.test.js` và phần "Bảng khổ" trong
 `tests/components/SettingsPanel.paper-stock.test.jsx`.
+## Cảnh báo "nghịch bậc" trong Bảng Giá Khách Hàng
+
+**Nghịch bậc** = khách đặt **thêm** một trang lại **trả ít hơn**, vì đơn giá tụt xuống bậc
+sau nhanh hơn số trang tăng lên. Bảng giá mặc định đang có **7 chỗ như vậy**:
+
+| Vách bậc | Cuối bậc trước | Đầu bậc sau | Rẻ đi |
+|---|---|---|---|
+| 5 → 6 | 50.000đ | 48.000đ | 2.000đ |
+| 79 → 80 | 250.000đ (trọn gói) | 240.000đ | 10.000đ |
+| 559 → 560 | 1.250.000đ (trọn gói) | 1.232.000đ | 18.000đ |
+| **1.000 → 1.001** | **2.200.000đ** | **1.801.800đ** | **398.200đ** |
+| 2.000 → 2.001 | 3.600.000đ | 3.501.750đ | 98.250đ |
+| 3.000 → 3.001 | 5.250.000đ | 5.101.700đ | 148.300đ |
+| 4.500 → 4.501 | 7.650.000đ | 7.516.670đ | 133.330đ |
+
+Đây là **nguyên nhân thật** của than phiền "khổ 33×35 báo giá thấp hơn khổ 33×48": phần
+mềm chọn khổ đúng, nhưng hai khổ rơi vào hai bậc khác nhau của bảng giá này.
+
+### Luật soát
+
+`auditCustomerPriceTiers()` trong
+[`config/priceTierAudit.js`](../../src/modules/small-print/config/priceTierAudit.js) so
+**hai điểm sát vách** của mỗi cặp bậc kề nhau, bám đúng công thức `engine/quote.js`:
+
+```txt
+per_page → tổng = số trang × tier.print
+package  → tổng = tier.print (phẳng)
+
+tổng tại tier.max của bậc trước  >  tổng tại tier.min của bậc sau  ⇒ NGHỊCH
+```
+
+Ba nhánh cố ý **im lặng**:
+
+- Bậc cuối (`max` = Infinity, hoặc `null` sau khi config đi qua JSON).
+- **Một trong hai đơn giá ≤ 0** — ô nhập số commit theo *từng phím*, không chặn thì bảng
+  nháy đỏ ngay dưới con trỏ admin mỗi lần sửa giá.
+- Bằng nhau đúng vách — đó là bảng giá liền mạch, không phải lỗi.
+
+Mảng xếp lộn xộn vẫn soát đúng (sắp một bản sao theo `min`), nhưng cảnh báo trả về **vị
+trí gốc** để gắn đúng dòng đang hiện.
+
+### Phạm vi — chỉ cột "Giá in"
+
+Cột **Giá cán màng** cố ý không soát: tiền cán tính trên **số tờ vật lý** (không nhân số
+mặt in) rồi nhân tiếp số mặt cán và hệ số loại màng. Cùng một bảng giá, đơn in 1 mặt và
+đơn in 2 mặt cho kết luận nghịch/không nghịch **khác nhau** — một cảnh báo chỉ đúng nửa số
+đơn thì tệ hơn là không có. Giới hạn này ghi thẳng dưới bảng trong Cài Đặt.
+
+### Thuần hiển thị
+
+Không chặn Lưu, không sửa giá, không đụng `quote.js`. Bậc nghịch là **lựa chọn kinh doanh
+hợp lệ** (cố ý phá giá ở mốc 1.000 trang chẳng hạn) — phần mềm chỉ có bổn phận chỉ ra.
+Cảnh báo tính từ `localConfig` nên cập nhật **theo từng phím gõ**: đó là thước đo trong
+lúc sửa giá, không phải báo cáo sau khi sửa.
+
+Khoá bởi `tests/golden/small-print.price-tier-audit.test.js` và
+`tests/components/SettingsPanel.price-tier-warning.test.jsx`.

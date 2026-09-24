@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import LaminationFilmSettings from '../common/LaminationFilmSettings';
 import { useCloudSave } from '../common/useCloudSave';
 import SaveStatusBanner from '../common/SaveStatusBanner';
@@ -13,10 +13,14 @@ import {
     visiblePapers,
     perSheetVariants,
 } from '../../modules/small-print/config/paperStock';
+import { auditCustomerPriceTiers } from '../../modules/small-print/config/priceTierAudit';
 import PriceConfigHistoryPanel from '../admin/PriceConfigHistoryPanel';
 
 // Làm tròn 2 số lẻ cho hệ số quy đổi A4 tự tính (thân thiện, admin sửa được).
 const round2 = (f) => Math.round(f * 100) / 100;
+
+// Tiền hiển thị trong cảnh báo nghịch bậc: 1801800 → "1.801.800".
+const money = (v) => Math.round(v).toLocaleString('vi-VN');
 
 function NumInput({ configValue, onCommit, isPercentage = false, className, step }) {
     const displayNum = isPercentage ? parseFloat((configValue * 100).toFixed(2)) : configValue;
@@ -86,6 +90,13 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
         invalidMessage: 'Cấu hình in KTS không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.',
     });
     const handleSave = () => save(localConfig);
+
+    // Soát bảng giá khách tìm vách bậc bị NGHỊCH (khách đặt thêm trang lại trả ít hơn).
+    // Tính từ localConfig nên chạy theo từng phím gõ: sửa đơn giá là thấy cảnh báo mất
+    // ngay tại chỗ. THUẦN CẢNH BÁO — không chặn Lưu, không sửa giá: bậc nghịch có thể
+    // là lựa chọn kinh doanh cố ý của tiệm.
+    const tierWarnings = auditCustomerPriceTiers(localConfig.CUSTOMER_PRICE_TIERS);
+    const tierWarningByIndex = new Map(tierWarnings.map((w) => [w.index, w]));
 
     const updateNestedField = (path, numValue) => {
         setLocalConfig((prev) => {
@@ -1516,6 +1527,11 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                 <section>
                     <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
                         Bảng Giá Khách Hàng (theo trang A4)
+                        {tierWarnings.length > 0 && (
+                            <span className="ml-3 text-sm font-medium text-red-400 whitespace-nowrap">
+                                ⚠ {tierWarnings.length} chỗ nghịch bậc
+                            </span>
+                        )}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div className="relative">
@@ -1558,54 +1574,89 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                                             ? `≥ ${tier.min}`
                                             : `${tier.min} – ${tier.max}`;
                                     const unit = tier.type === 'package' ? 'Trọn gói' : '/trang';
+                                    // Bậc này bị nghịch với bậc NGAY SAU nó → dòng cảnh báo
+                                    // chèn ngay bên dưới, để admin thấy đúng vách đang hỏng.
+                                    const warn = tierWarningByIndex.get(idx);
                                     return (
-                                        <tr key={idx} className="border-b border-gray-700/50">
-                                            <td className="py-2 pr-4 text-yellow-400 font-medium whitespace-nowrap">
-                                                {rangeStr}
-                                            </td>
-                                            <td className="py-2 pr-4 text-gray-400">{unit}</td>
-                                            <td className="py-2 pr-4">
-                                                <div className="relative">
-                                                    <NumInput
-                                                        configValue={tier.print}
-                                                        step="100"
-                                                        onCommit={(val) =>
-                                                            updateNestedField(
-                                                                `CUSTOMER_PRICE_TIERS.${idx}.print`,
-                                                                val
-                                                            )
-                                                        }
-                                                        className={inputClsSm}
-                                                    />
-                                                    <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
-                                                        đ
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="py-2">
-                                                <div className="relative">
-                                                    <NumInput
-                                                        configValue={tier.laminate}
-                                                        step="100"
-                                                        onCommit={(val) =>
-                                                            updateNestedField(
-                                                                `CUSTOMER_PRICE_TIERS.${idx}.laminate`,
-                                                                val
-                                                            )
-                                                        }
-                                                        className={inputClsSm}
-                                                    />
-                                                    <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
-                                                        đ
-                                                    </span>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <Fragment key={idx}>
+                                            <tr
+                                                className={
+                                                    warn ? '' : 'border-b border-gray-700/50'
+                                                }
+                                            >
+                                                <td
+                                                    className={`py-2 pr-4 font-medium whitespace-nowrap ${
+                                                        warn ? 'text-red-400' : 'text-yellow-400'
+                                                    }`}
+                                                >
+                                                    {warn ? '⚠ ' : ''}
+                                                    {rangeStr}
+                                                </td>
+                                                <td className="py-2 pr-4 text-gray-400">{unit}</td>
+                                                <td className="py-2 pr-4">
+                                                    <div className="relative">
+                                                        <NumInput
+                                                            configValue={tier.print}
+                                                            step="100"
+                                                            onCommit={(val) =>
+                                                                updateNestedField(
+                                                                    `CUSTOMER_PRICE_TIERS.${idx}.print`,
+                                                                    val
+                                                                )
+                                                            }
+                                                            className={inputClsSm}
+                                                        />
+                                                        <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                                            đ
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-2">
+                                                    <div className="relative">
+                                                        <NumInput
+                                                            configValue={tier.laminate}
+                                                            step="100"
+                                                            onCommit={(val) =>
+                                                                updateNestedField(
+                                                                    `CUSTOMER_PRICE_TIERS.${idx}.laminate`,
+                                                                    val
+                                                                )
+                                                            }
+                                                            className={inputClsSm}
+                                                        />
+                                                        <span className="absolute right-2 top-[6px] text-gray-500 text-xs">
+                                                            đ
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {warn && (
+                                                <tr className="border-b border-gray-700/50">
+                                                    <td
+                                                        colSpan={4}
+                                                        data-testid="tier-warning"
+                                                        className="pb-2 text-xs text-red-400"
+                                                    >
+                                                        ⚠ {money(warn.atPages)} trang ={' '}
+                                                        {money(warn.total)}đ, nhưng{' '}
+                                                        {money(warn.nextPages)} trang chỉ{' '}
+                                                        {money(warn.nextTotal)}đ — khách đặt{' '}
+                                                        <strong>thêm</strong> lại trả{' '}
+                                                        <strong>ít đi {money(warn.drop)}đ</strong>.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
                                     );
                                 })}
                             </tbody>
                         </table>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                        Cảnh báo chỉ soát cột &quot;Giá in&quot;, so tổng tiền ở hai đầu sát vách
+                        của mỗi bậc. Cột cán màng không soát được vì tiền cán còn tuỳ số mặt in và
+                        loại màng. Sửa đơn giá ở trên, cảnh báo cập nhật ngay.
+                    </p>
                 </section>
 
                 {/* 5. Lợi nhuận */}

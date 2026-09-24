@@ -27,3 +27,5 @@ export {
     withPricingModel,
     perSheetVariants,
 } from './paperStock.js';
+
+export { tierPrintTotal, auditCustomerPriceTiers } from './priceTierAudit.js';
