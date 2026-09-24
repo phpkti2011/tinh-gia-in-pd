@@ -146,6 +146,31 @@ function validateStandeeOption(s, i, errors) {
     if (typeof s.price !== 'number') errors.push(`${prefix}.price: phải là number`);
 }
 
+// FORMEX_DIE_CUT_SHAPES (optional, thêm ở v1.4.0) — bế Formex theo HÌNH DẠNG.
+// Chỉ kiểm TYPE đúng giao kèo của file này; giá trị vô lý (mốc bậc 2 < bậc 1,
+// giá 0) được progressiveSqmCost xử lý dễ dãi, KHÔNG chặn lần lưu của admin.
+const FORMEX_DIE_CUT_NUMBERS = [
+    'tier1LimitSqm',
+    'tier2LimitSqm',
+    'tier1PricePerSqm',
+    'tier2PricePerSqm',
+    'tier3PricePerSqm',
+];
+
+function validateFormexDieCutShape(s, i, errors) {
+    const prefix = `FORMEX_DIE_CUT_SHAPES[${i}]`;
+    if (!isPlainObject(s)) {
+        errors.push(`${prefix}: phải là object`);
+        return;
+    }
+    if (typeof s.key !== 'string' || s.key.trim() === '')
+        errors.push(`${prefix}.key: phải là string không rỗng`);
+    if (typeof s.name !== 'string') errors.push(`${prefix}.name: phải là string`);
+    for (const k of FORMEX_DIE_CUT_NUMBERS) {
+        if (typeof s[k] !== 'number') errors.push(`${prefix}.${k}: phải là number`);
+    }
+}
+
 function validateFinishingPrices(fp, errors) {
     if (!isPlainObject(fp)) return; // already reported as missing object
     if (typeof fp.edgeTapingPricePerSqm !== 'number')
@@ -249,6 +274,31 @@ export function validateLargePrintConfig(config) {
     if (config.MACHINE_MAX_PRINT_WIDTH_M != null) {
         if (typeof config.MACHINE_MAX_PRINT_WIDTH_M !== 'number') {
             errors.push('MACHINE_MAX_PRINT_WIDTH_M: phải là number (mét)');
+        }
+    }
+
+    // Optional (thêm ở v1.4.0) — bế Formex theo hình dạng + giá sàn chung.
+    // Thiếu key = xưởng chưa khai giá bế ⇒ engine trả 0đ; config lưu trước
+    // v1.4.0 vẫn hợp lệ, giá không đổi.
+    if (config.FORMEX_DIE_CUT_SHAPES != null) {
+        if (!Array.isArray(config.FORMEX_DIE_CUT_SHAPES)) {
+            errors.push('FORMEX_DIE_CUT_SHAPES: phải là array');
+        } else {
+            // CỐ Ý cho phép array RỖNG: admin xoá hết hình dạng là trạng thái
+            // hợp lệ ("tạm không nhận bế"), chặn lưu chỉ làm admin kẹt giữa chừng.
+            config.FORMEX_DIE_CUT_SHAPES.forEach((s, i) => validateFormexDieCutShape(s, i, errors));
+            // Key TRÙNG ⇒ params trỏ vào dòng nào là ngẫu nhiên, một dòng vĩnh
+            // viễn không bao giờ được dùng. Đây là lỗi dữ liệu thật, đáng chặn.
+            const keys = config.FORMEX_DIE_CUT_SHAPES.map((s) => s?.key).filter(
+                (k) => typeof k === 'string'
+            );
+            if (new Set(keys).size !== keys.length)
+                errors.push('FORMEX_DIE_CUT_SHAPES: có key bị trùng');
+        }
+    }
+    if (config.MIN_FORMEX_DIE_CUT_PRICE != null) {
+        if (typeof config.MIN_FORMEX_DIE_CUT_PRICE !== 'number') {
+            errors.push('MIN_FORMEX_DIE_CUT_PRICE: phải là number');
         }
     }
 

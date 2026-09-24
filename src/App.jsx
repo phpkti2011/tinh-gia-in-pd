@@ -597,6 +597,10 @@ function LargePrintModule({ onBack, heading }) {
         grommetsCheck: false,
         grommetsCount: 0,
         dieCutting: false,
+        // Bế Formex: mặc định TẮT. Hình dạng mặc định là FORMEX_DIE_CUT_SHAPES[0];
+        // admin xoá key này trong Cài đặt thì engine + UI cùng rơi về shapes[0].
+        formexDieCut: false,
+        formexDieCutShapeKey: 'tron',
         standeeKey: 'none',
     });
     const [result, setResult] = useState(null);

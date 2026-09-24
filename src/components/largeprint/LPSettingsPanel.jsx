@@ -193,6 +193,36 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
             c.FORMEX_DISCOUNT_TIERS.splice(idx, 1);
         });
 
+    // --- FORMEX_DIE_CUT_SHAPES helpers (bế Formex theo hình dạng) ---
+    // ensureFxCut: config dựng tay / test / lần admin xoá sạch hình dạng có thể
+    // không có key này (merge default chỉ bù lúc LOAD).
+    const ensureFxCut = (c) => {
+        if (!Array.isArray(c.FORMEX_DIE_CUT_SHAPES)) c.FORMEX_DIE_CUT_SHAPES = [];
+        return c.FORMEX_DIE_CUT_SHAPES;
+    };
+    const updateFxCutShape = (idx, field, val) =>
+        updateConfig((c) => {
+            ensureFxCut(c)[idx][field] = val;
+        });
+    const addFxCutShape = () =>
+        updateConfig((c) => {
+            // key sinh tự động và KHÔNG cho sửa: params của báo giá đang mở trỏ
+            // vào key, đổi key là lệch giá. Admin chỉ sửa tên hiển thị.
+            ensureFxCut(c).push({
+                key: 'shape_' + Date.now(),
+                name: 'Hình mới',
+                tier1LimitSqm: 5,
+                tier2LimitSqm: 20,
+                tier1PricePerSqm: 0,
+                tier2PricePerSqm: 0,
+                tier3PricePerSqm: 0,
+            });
+        });
+    const delFxCutShape = (idx) =>
+        updateConfig((c) => {
+            ensureFxCut(c).splice(idx, 1);
+        });
+
     // --- PRINT_DISCOUNT_TIERS helpers (giảm giá in theo diện tích) ---
     const updatePrintTier = (idx, field, val) =>
         updateConfig((c) => {
@@ -243,6 +273,9 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
     const printTiers = localConfig.PRINT_DISCOUNT_TIERS || [];
     const stdSizes = localConfig.STANDARD_SIZES || [];
     const fin = localConfig.FINISHING_PRICES;
+    const fxCutShapes = Array.isArray(localConfig.FORMEX_DIE_CUT_SHAPES)
+        ? localConfig.FORMEX_DIE_CUT_SHAPES
+        : [];
 
     const saveBanner = (
         <SaveStatusBanner status={saveStatus} error={saveError} className="block mt-2" />
@@ -721,6 +754,135 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
                             ))}
                         </tbody>
                     </table>
+                </section>
+
+                {/* ===== BẾ FORMEX ===== */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={sectionTitle + ' mb-0 border-0 pb-0'}>
+                            Bế Formex (giá theo hình dạng)
+                        </h3>
+                        <button onClick={addFxCutShape} className={btnAdd}>
+                            + Thêm hình dạng
+                        </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">
+                        Tính theo TỔNG m² của đơn, bậc LŨY TIẾN: phần tới “Bậc 1 đến” tính giá bậc
+                        1, phần từ đó tới “Bậc 2 đến” tính giá bậc 2, phần dư tính giá bậc 3. Chỉ áp
+                        dụng cho tấm CÓ bồi Formex — không bồi thì ô này bị khoá ở màn tính giá.
+                    </p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-gray-700">
+                                    <th className={thCls}>Hình dạng</th>
+                                    <th className={thCls}>Bậc 1 đến (m²)</th>
+                                    <th className={thCls}>Giá bậc 1 (đ/m²)</th>
+                                    <th className={thCls}>Bậc 2 đến (m²)</th>
+                                    <th className={thCls}>Giá bậc 2 (đ/m²)</th>
+                                    <th className={thCls}>Giá bậc 3 (đ/m²)</th>
+                                    <th className={thCls}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {/* key={s.key}: nếu key theo index thì xoá 1 dòng sẽ làm ô
+                                    Tên (defaultValue, uncontrolled) ở các dòng dưới đứng yên
+                                    → hiện sai tên. */}
+                                {fxCutShapes.map((s, i) => (
+                                    <tr key={s.key || i} className="border-b border-gray-700/50">
+                                        <td className={tdCls}>
+                                            <input
+                                                type="text"
+                                                defaultValue={s.name}
+                                                className={inputCls + ' min-w-[150px]'}
+                                                onBlur={(e) =>
+                                                    updateFxCutShape(i, 'name', e.target.value)
+                                                }
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={s.tier1LimitSqm}
+                                                step={1}
+                                                className={numCls}
+                                                onCommit={(v) =>
+                                                    updateFxCutShape(i, 'tier1LimitSqm', v)
+                                                }
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={s.tier1PricePerSqm}
+                                                step={1000}
+                                                className={numCls}
+                                                onCommit={(v) =>
+                                                    updateFxCutShape(i, 'tier1PricePerSqm', v)
+                                                }
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={s.tier2LimitSqm}
+                                                step={1}
+                                                className={numCls}
+                                                onCommit={(v) =>
+                                                    updateFxCutShape(i, 'tier2LimitSqm', v)
+                                                }
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={s.tier2PricePerSqm}
+                                                step={1000}
+                                                className={numCls}
+                                                onCommit={(v) =>
+                                                    updateFxCutShape(i, 'tier2PricePerSqm', v)
+                                                }
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={s.tier3PricePerSqm}
+                                                step={1000}
+                                                className={numCls}
+                                                onCommit={(v) =>
+                                                    updateFxCutShape(i, 'tier3PricePerSqm', v)
+                                                }
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <button
+                                                onClick={() => delFxCutShape(i)}
+                                                className={btnDel}
+                                            >
+                                                Xóa
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {fxCutShapes.length === 0 && (
+                        <p className="text-xs text-orange-400 mt-2">
+                            Chưa có hình dạng nào → ô “Bế Formex” không hiện ở màn tính giá.
+                        </p>
+                    )}
+                    <div className="mt-4 max-w-xs">
+                        <label className={labelCls}>
+                            Giá bế Formex tối thiểu (đ/đơn, chung mọi hình dạng)
+                        </label>
+                        <NumInput
+                            configValue={localConfig.MIN_FORMEX_DIE_CUT_PRICE ?? 0}
+                            step={1000}
+                            className={numCls}
+                            onCommit={(v) =>
+                                updateConfig((c) => {
+                                    c.MIN_FORMEX_DIE_CUT_PRICE = v;
+                                })
+                            }
+                        />
+                    </div>
                 </section>
 
                 {/* ===== GIẢM GIÁ IN THEO DIỆN TÍCH ===== */}

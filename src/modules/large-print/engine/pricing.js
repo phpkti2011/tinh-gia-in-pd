@@ -10,6 +10,7 @@
 //      → effLaminationKey / effFormexKey / effParams
 //   4. formexCost = calculateFormexCost(grandTotalArea, effFormexKey)
 //   5. finishing = calculateFinishingCost(grandTotalArea, effParams)
+//      (dán biên + khoen + bế demi + bế Formex — gộp vào finishingCost/finishingDesc)
 //   6. standeeCost = lookup từ STANDEE_OPTIONS bằng standeeKey
 //   7. Loop MATERIAL_TYPES[materialTypeKey].options (các khổ cuộn):
 //      - Tối ưu từng item (thử 2 hướng xoay, chọn rẻ hơn)
@@ -95,6 +96,12 @@ export function calculateLargePrint(params, config) {
         edgeTaping: params.edgeTaping && !blocked.has('edgeTaping'),
         grommetsCheck: params.grommetsCheck && !blocked.has('grommets'),
         dieCutting: params.dieCutting && !blocked.has('dieCutting'),
+        // Bế Formex là công đoạn TRÊN tấm formex ⇒ không bồi thì không có gì để
+        // bế. Ràng buộc liên-thành-phẩm đầu tiên của engine này.
+        // Ăn theo effFormexKey (đã qua deny-list) nên vật liệu bị chặn 'formex'
+        // thì bế tự tắt theo — khỏi khai luật 2 lần.
+        formexDieCut:
+            params.formexDieCut && !blocked.has('formexDieCut') && effFormexKey !== 'none',
     };
 
     const formexCost = calculateFormexCost(grandTotalArea, effFormexKey, config);

@@ -231,6 +231,63 @@ describe('large-print — In Khổ Lớn', () => {
         expect(lines[2]).toMatch(/^Giá: /);
     });
 
+    describe('bế Formex — lọc y hệt engine', () => {
+        const cutParams = {
+            ...params,
+            materialTypeKey: 'pp_co_keo',
+            formexTypeKey: 'formex_5mm',
+            formexDieCut: true,
+            formexDieCutShapeKey: 'phuc_tap',
+        };
+
+        it('có bồi Formex + tick bế → ghi kèm tên hình dạng', () => {
+            const out = buildJobSpec('large-print', { params: cutParams, result, config });
+            expect(out).toContain('bồi formex 5mm');
+            expect(out).toContain('bế formex hình phức tạp');
+        });
+
+        it('CHƯA bồi Formex → KHÔNG ghi bế formex (engine cũng không thu tiền)', () => {
+            const out = buildJobSpec('large-print', {
+                params: { ...cutParams, formexTypeKey: 'none' },
+                result,
+                config,
+            });
+            expect(out).not.toContain('bế formex');
+        });
+
+        it('vật liệu chặn formexDieCut → không ghi', () => {
+            const blocked = structuredClone(config);
+            blocked.MATERIAL_TYPES.pp_co_keo.disallowedFinishing = ['formexDieCut'];
+            const out = buildJobSpec('large-print', {
+                params: cutParams,
+                result,
+                config: blocked,
+            });
+            expect(out).toContain('bồi formex 5mm');
+            expect(out).not.toContain('bế formex');
+        });
+
+        it('shapeKey lạ → ghi hình ĐẦU danh sách, khớp thứ engine tính tiền', () => {
+            const out = buildJobSpec('large-print', {
+                params: { ...cutParams, formexDieCutShapeKey: 'khong_ton_tai' },
+                result,
+                config,
+            });
+            expect(out).toContain('bế formex tròn');
+        });
+
+        it('config cũ không có FORMEX_DIE_CUT_SHAPES → không ghi, không throw', () => {
+            const legacy = structuredClone(config);
+            delete legacy.FORMEX_DIE_CUT_SHAPES;
+            const out = buildJobSpec('large-print', {
+                params: cutParams,
+                result,
+                config: legacy,
+            });
+            expect(out).not.toContain('bế formex');
+        });
+    });
+
     // Engine bỏ tính tiền thành phẩm bị vật liệu chặn nhưng KHÔNG xoá params.
     // Không lọc thì chuỗi sẽ hứa với khách công đoạn mà xưởng không làm/không thu tiền.
     it('KHÔNG ghi thành phẩm bị vật liệu chặn', () => {

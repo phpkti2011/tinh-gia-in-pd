@@ -98,6 +98,60 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
         { minArea: 10, maxArea: 20, discount: 0.15 },
         { minArea: 20, maxArea: Infinity, discount: 0.2 },
     ],
+    // Bế Formex (v1.4.0) — bế chính tấm Formex ĐÃ BỒI, nên engine chỉ tính khi đơn
+    // có bồi Formex (xem engine/pricing.js). Khác 'dieCutting' (bế demi trên vật
+    // liệu mỏng): khác dao, khác giá, khác điều kiện.
+    //
+    // KEY TẦNG 1, CỐ Ý KHÔNG nhét vào FINISHING_PRICES: loadLargePrintConfig và
+    // loadConfigFromCloud merge default chỉ 1 CẤP ({...default, ...saved}), subkey
+    // mới trong object đã tồn tại sẽ bị config cũ trên Supabase nuốt mất ⇒ giá về
+    // 0đ âm thầm trên mọi máy từng bấm Lưu.
+    //
+    // Tính theo TỔNG m² của đơn (grandTotalArea) với bậc LŨY TIẾN — cùng mô hình
+    // và cùng tên field với FINISHING_PRICES.dieCutting để admin đọc 2 bảng như nhau.
+    // Giá theo HÌNH DẠNG: dao chạy càng phức tạp càng đắt.
+    //
+    // `key` là thứ params lưu ⇒ admin đổi `name` thoải mái, KHÔNG đổi `key` sau khi
+    // đã tạo (báo giá cũ đang trỏ vào đó).
+    // GIÁ DƯỚI ĐÂY LÀ GỢI Ý — admin phải duyệt lại trong tab Cài đặt.
+    FORMEX_DIE_CUT_SHAPES: [
+        {
+            key: 'tron',
+            name: 'Tròn',
+            tier1LimitSqm: 5,
+            tier2LimitSqm: 20,
+            tier1PricePerSqm: 60000,
+            tier2PricePerSqm: 40000,
+            tier3PricePerSqm: 25000,
+        },
+        {
+            key: 'vuong_cn',
+            name: 'Vuông / Chữ nhật',
+            tier1LimitSqm: 5,
+            tier2LimitSqm: 20,
+            tier1PricePerSqm: 40000,
+            tier2PricePerSqm: 25000,
+            tier3PricePerSqm: 15000,
+        },
+        {
+            key: 'bo_goc',
+            name: 'Bo góc',
+            tier1LimitSqm: 5,
+            tier2LimitSqm: 20,
+            tier1PricePerSqm: 50000,
+            tier2PricePerSqm: 30000,
+            tier3PricePerSqm: 20000,
+        },
+        {
+            key: 'phuc_tap',
+            name: 'Hình phức tạp',
+            tier1LimitSqm: 5,
+            tier2LimitSqm: 20,
+            tier1PricePerSqm: 90000,
+            tier2PricePerSqm: 60000,
+            tier3PricePerSqm: 40000,
+        },
+    ],
     // Giảm % ĐƠN GIÁ IN theo bậc tổng diện tích (single-band). Mặc định 0% = không đổi giá;
     // admin chỉnh % trong tab Cài đặt để bật giảm giá theo m².
     PRINT_DISCOUNT_TIERS: [
@@ -127,6 +181,8 @@ export const LARGE_PRINT_DEFAULT_CONFIG = {
     MIN_LAMINATION_PRICE: 15000,
     MIN_EDGE_TAPING_PRICE: 20000,
     MIN_GROMMET_PRICE: 15000,
+    // Giá sàn CHUNG cho bế Formex, mọi hình dạng (v1.4.0). Optional — thiếu = 0.
+    MIN_FORMEX_DIE_CUT_PRICE: 50000,
     STANDEE_OPTIONS: [
         { key: 'standee_x_60x160', name: 'Standee chân X 60x160cm', price: 100000 },
         { key: 'standee_x_80x180', name: 'Standee chân X 80x180cm', price: 120000 },

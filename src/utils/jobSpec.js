@@ -218,6 +218,23 @@ function largePrintSpec({ params, result, config }) {
         const fx = config?.FORMEX_OPTIONS?.[params.formexTypeKey]?.name;
         if (fx) fin.push(stripPriceNote(fx).toLowerCase());
     }
+    // Bế Formex: lọc y hệt engine, KỂ CẢ điều kiện "đã bồi Formex" — nếu không sẽ
+    // ghi cho khách một công đoạn không hề nằm trong giá.
+    if (
+        !blocked.has('formexDieCut') &&
+        params.formexDieCut &&
+        !blocked.has('formex') &&
+        params.formexTypeKey &&
+        params.formexTypeKey !== 'none'
+    ) {
+        const shapes = config?.FORMEX_DIE_CUT_SHAPES;
+        if (Array.isArray(shapes) && shapes.length > 0) {
+            // shapeKey lạ → shapes[0], khớp với thứ engine đã tính tiền.
+            const sh = shapes.find((s) => s?.key === params.formexDieCutShapeKey) || shapes[0];
+            const name = sh.name ? stripPriceNote(sh.name).toLowerCase() : '';
+            fin.push(name ? `bế formex ${name}` : 'bế formex');
+        }
+    }
     if (!blocked.has('edgeTaping') && params.edgeTaping) fin.push('dán biên');
     if (!blocked.has('grommets') && params.grommetsCheck && params.grommetsCount > 0)
         fin.push(`đóng ${params.grommetsCount} khoen`);

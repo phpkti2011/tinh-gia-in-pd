@@ -80,6 +80,81 @@ tính theo khổ cuộn đầy đủ vì vẫn phải mua trọn khổ bạt.
   `Khổ (m)` ngay phía trên) và echo cm bên cạnh — gõ nhầm `160` sẽ hiện `= 16000 cm`,
   sai đơn vị kiểu đó vô hiệu hoá luật trong im lặng nên phải thấy ngay.
 
+## Bế Formex (config v1.4.0)
+
+Bế **chính tấm Formex đã bồi** — khác `dieCutting` (bế demi trên vật liệu mỏng): khác
+dao, khác giá, khác điều kiện.
+
+**Công thức:** tính trên **tổng m² của cả đơn** (`grandTotalArea`, giống bế demi), bậc
+**LŨY TIẾN**, đơn giá theo **hình dạng**, rồi chặn sàn:
+
+```
+tiền bế = max( lũy_tiến(tổng m², hình dạng đang chọn), MIN_FORMEX_DIE_CUT_PRICE )
+```
+
+Lũy tiến = cắt từng đoạn, **không** phải đồng giá theo bậc như `FORMEX_DISCOUNT_TIERS`:
+phần tới `tier1LimitSqm` tính giá bậc 1, phần `tier1→tier2` giá bậc 2, phần dư giá bậc 3.
+
+Bảng mặc định (mốc 5 / 20 m² cho mọi hình — **giá gợi ý, admin phải duyệt lại**):
+
+| Hình dạng | ≤ 5 m² | 5–20 m² | > 20 m² |
+| --- | --- | --- | --- |
+| Tròn (`tron`) | 60.000 | 40.000 | 25.000 |
+| Vuông / Chữ nhật (`vuong_cn`) | 40.000 | 25.000 | 15.000 |
+| Bo góc (`bo_goc`) | 50.000 | 30.000 | 20.000 |
+| Hình phức tạp (`phuc_tap`) | 90.000 | 60.000 | 40.000 |
+
+Sàn chung `MIN_FORMEX_DIE_CUT_PRICE = 50.000đ`.
+
+Ví dụ — đơn 30 m², hình tròn:
+`5×60.000 + 15×40.000 + 10×25.000 = 1.150.000đ`.
+
+### Ràng buộc: chỉ bế khi ĐÃ bồi Formex
+
+Không bồi thì không có gì để bế. Gate đặt ở `engine/pricing.js` trong `effParams`, ăn
+theo **`effFormexKey`** (bản đã qua deny-list) chứ không phải `params.formexTypeKey` —
+nhờ vậy vật liệu bị chặn `formex` thì bế **tự tắt theo**, khỏi khai luật hai lần. Đây là
+ràng buộc **liên-thành-phẩm đầu tiên** của engine này.
+
+`LPInputPanel` khoá control với **hai ghi chú khác nhau** (vật liệu chặn / chưa bồi
+Formex) — gộp chung là báo sai lý do cho nhân viên. Khoá bởi
+`tests/components/LPInputPanel.formex-die-cut.test.jsx`.
+
+### Vì sao là KEY TẦNG 1
+
+`FORMEX_DIE_CUT_SHAPES` và `MIN_FORMEX_DIE_CUT_PRICE` **phải** nằm ở tầng 1 của config,
+**không** được nhét thành subkey của `FINISHING_PRICES`: cả `loadLargePrintConfig` lẫn
+`loadConfigFromCloud` merge default **chỉ 1 cấp** (`{...default, ...saved}`), nên object
+đã lưu sẽ **nuốt trọn** default của chính nó ⇒ subkey mới thành `undefined` và giá về 0đ
+âm thầm trên mọi máy từng bấm Lưu. Tiền lệ đã dính đúng lỗi này: `withMountingDefaults`
+trong `src/modules/small-print/config/mountingDefaults.js`.
+
+Hệ quả tốt kèm theo: array tầng 1 được **thay nguyên khối** khi merge, nên admin xoá một
+hình dạng là mất thật — **không cần** đụng `REPLACE_WHOLE_ARRAY_KEYS`.
+
+### Fallback dễ dãi
+
+| Tình huống | Hành vi |
+| --- | --- |
+| Config lưu trước v1.4.0 (thiếu key) | 0đ, không throw — giá y như trước |
+| `FORMEX_DIE_CUT_SHAPES` sai kiểu / rỗng | 0đ; UI **không render** ô "Bế Formex" |
+| `shapeKey` lạ (admin vừa xoá hình dạng) | rơi về `shapes[0]`, UI hiện đúng `shapes[0]` |
+| Thiếu `MIN_FORMEX_DIE_CUT_PRICE` | không có sàn (coi như 0) |
+| Admin gõ ngược hai mốc bậc | `progressiveSqmCost` tự `min/max` — không sinh tiền âm |
+
+`shapeKey` lạ lấy `shapes[0]` **thay vì trả 0đ**: thà báo giá hình khác còn hơn âm thầm
+miễn phí một công đoạn nhân viên đã tick. UI hiển thị đúng `shapes[0]` nên màn hình không
+mâu thuẫn với giá.
+
+### Hai chỗ cố ý KHÔNG đổi
+
+- Tiền bế **gộp vào `finishingCost` / `finishingDesc`**, không thêm field return — object
+  engine vẫn **14 key** (khoá bởi assert đếm key trong 2 file golden), và ô "Gia công"
+  trên khung kết quả vốn đã gom dán biên + khoen + bế demi.
+- `key` của hình dạng **sinh tự động, không cho sửa** trong Cài đặt: params của báo giá
+  đang mở trỏ vào `key`, đổi `key` là lệch giá. Admin chỉ sửa tên hiển thị. Key trùng bị
+  schema chặn lưu.
+
 ### Đường lan tới máy người khác
 
 Admin tick/bỏ tick → **Lưu** → `saveConfigToCloud('largePrintConfig')` → Supabase →

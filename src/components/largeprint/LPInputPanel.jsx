@@ -82,6 +82,21 @@ export default function LPInputPanel({ config, params, onChange }) {
         .filter((id) => blocked.has(id))
         .map(finishingOpLabel);
 
+    // Bế Formex có HAI lý do khoá khác nhau, phải tách để ghi chú nói đúng lý do:
+    //   - vật liệu không bế Formex được (deny-list admin khai), hoặc
+    //   - chưa bồi Formex thì không có gì để bế (luật nghề, không khai ở đâu cả).
+    // Cùng công thức với engine (pricing.js) để UI không bao giờ lệch với giá.
+    const fxShapes = config.FORMEX_DIE_CUT_SHAPES || [];
+    const effFormexKey = blocked.has('formex') ? 'none' : params.formexTypeKey;
+    const hasFormex = effFormexKey !== 'none';
+    const fxCutBlocked = blocked.has('formexDieCut');
+    const fxCutLocked = fxCutBlocked || !hasFormex;
+    // Hiện GIÁ TRỊ THỰC TẾ engine đang tính: key lạ (admin vừa xoá hình dạng) thì
+    // engine lấy shapes[0], select phải hiện đúng shapes[0] chứ không phải ô trống.
+    const fxShapeKey = fxShapes.some((s) => s.key === params.formexDieCutShapeKey)
+        ? params.formexDieCutShapeKey
+        : fxShapes[0]?.key || '';
+
     return (
         <div id="controls" className="h-full">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
@@ -317,6 +332,54 @@ export default function LPInputPanel({ config, params, onChange }) {
                                 />
                                 <span>Bế demi</span>
                             </label>
+                            {fxShapes.length > 0 && (
+                                <>
+                                    <label className={fxCutLocked ? lockedLabelCls : freeLabelCls}>
+                                        <input
+                                            type="checkbox"
+                                            name="formexDieCut"
+                                            checked={!!params.formexDieCut && !fxCutLocked}
+                                            onChange={handleChange}
+                                            disabled={fxCutLocked}
+                                            className="bg-gray-700 rounded mr-2"
+                                        />
+                                        <span>Bế Formex</span>
+                                    </label>
+                                    {params.formexDieCut && !fxCutLocked && (
+                                        <div className="ml-6">
+                                            <select
+                                                id="formexDieCutShapeKey"
+                                                name="formexDieCutShapeKey"
+                                                value={fxShapeKey}
+                                                onChange={handleChange}
+                                            >
+                                                {fxShapes.map((s) => (
+                                                    <option key={s.key} value={s.key}>
+                                                        {s.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Tính theo tổng m² của đơn — hình càng phức tạp càng
+                                                đắt.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {/* Ghi chú RIÊNG, cố ý không gộp vào
+                                        blockedFinishingLabels: khoá vì chưa bồi Formex
+                                        không phải là vật liệu chặn, gộp chung sẽ báo sai
+                                        lý do. */}
+                                    {fxCutBlocked ? (
+                                        <p className={lockNoteCls}>
+                                            🔒 {matName} không bế Formex được.
+                                        </p>
+                                    ) : !hasFormex ? (
+                                        <p className={lockNoteCls}>
+                                            🔒 Chọn &quot;Bồi Formex&quot; ở mục 4 trước khi bế.
+                                        </p>
+                                    ) : null}
+                                </>
+                            )}
                             {blockedFinishingLabels.length > 0 && (
                                 <p className={lockNoteCls}>
                                     🔒 {matName} không làm được: {blockedFinishingLabels.join(', ')}

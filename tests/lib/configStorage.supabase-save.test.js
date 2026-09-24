@@ -90,13 +90,14 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('largePrintConfig', VALID_LARGE);
             // Literal cố ý (không import hằng số) — chốt chặn để mỗi lần đổi shape
-            // config phải bump version có chủ đích. 1.3.0: thêm
-            // MACHINE_MAX_PRINT_WIDTH_M (khổ in tối đa của máy, mét).
+            // config phải bump version có chủ đích. 1.4.0: thêm
+            // FORMEX_DIE_CUT_SHAPES + MIN_FORMEX_DIE_CUT_PRICE (bế Formex theo hình dạng).
+            // 1.3.0: thêm MACHINE_MAX_PRINT_WIDTH_M (khổ in tối đa của máy, mét).
             // 1.2.0: thêm MATERIAL_TYPES[*].disallowedFinishing (thành phẩm theo vật liệu).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'large-print',
                 VALID_LARGE,
-                '1.3.0',
+                '1.4.0',
                 null
             );
         });

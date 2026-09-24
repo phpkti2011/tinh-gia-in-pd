@@ -17,6 +17,10 @@
 export const LARGE_PRINT_FINISHING_OPS = [
     { id: 'lamination', label: 'Cán màng' },
     { id: 'formex', label: 'Bồi Formex' },
+    // Bế chính tấm Formex đã bồi — KHÁC 'dieCutting' (bế demi trên vật liệu mỏng).
+    // Chặn 'formex' cho một vật liệu là chặn luôn cái này theo (không bồi thì
+    // không có gì để bế), xem engine/pricing.js — khỏi khai 2 lần.
+    { id: 'formexDieCut', label: 'Bế Formex' },
     { id: 'edgeTaping', label: 'Dán biên' },
     { id: 'grommets', label: 'Đóng khoen (đục lỗ)' },
     { id: 'dieCutting', label: 'Bế demi' },

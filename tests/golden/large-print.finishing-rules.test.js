@@ -66,11 +66,18 @@ const ppPlain = {
 };
 
 describe('finishingOps — registry', () => {
-    it('có đúng 5 op, id duy nhất', () => {
-        expect(LARGE_PRINT_FINISHING_OPS).toHaveLength(5);
+    it('có đúng 6 op, id duy nhất', () => {
+        expect(LARGE_PRINT_FINISHING_OPS).toHaveLength(6);
         const ids = LARGE_PRINT_FINISHING_OPS.map((o) => o.id);
-        expect(new Set(ids).size).toBe(5);
-        expect(ids).toEqual(['lamination', 'formex', 'edgeTaping', 'grommets', 'dieCutting']);
+        expect(new Set(ids).size).toBe(6);
+        expect(ids).toEqual([
+            'lamination',
+            'formex',
+            'formexDieCut',
+            'edgeTaping',
+            'grommets',
+            'dieCutting',
+        ]);
     });
 
     it('mọi op đều có label string không rỗng', () => {

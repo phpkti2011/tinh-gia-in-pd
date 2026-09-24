@@ -265,6 +265,69 @@ describe('TASK-0017: large-print config schema + version', () => {
         });
     });
 
+    describe('FORMEX_DIE_CUT_SHAPES + MIN_FORMEX_DIE_CUT_PRICE (optional, v1.4.0)', () => {
+        it('default có 4 hình dạng, key duy nhất, sàn 50.000đ', () => {
+            const shapes = LARGE_PRINT_DEFAULT_CONFIG.FORMEX_DIE_CUT_SHAPES;
+            expect(shapes).toHaveLength(4);
+            expect(shapes.map((s) => s.key)).toEqual(['tron', 'vuong_cn', 'bo_goc', 'phuc_tap']);
+            expect(new Set(shapes.map((s) => s.key)).size).toBe(4);
+            expect(LARGE_PRINT_DEFAULT_CONFIG.MIN_FORMEX_DIE_CUT_PRICE).toBe(50000);
+        });
+
+        it('config lưu trước v1.4.0 (xoá hẳn 2 key) → VẪN hợp lệ', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            delete cfg.FORMEX_DIE_CUT_SHAPES;
+            delete cfg.MIN_FORMEX_DIE_CUT_PRICE;
+            expect(validateLargePrintConfig(cfg).isValid).toBe(true);
+        });
+
+        it('array RỖNG vẫn hợp lệ (admin tạm không nhận bế)', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.FORMEX_DIE_CUT_SHAPES = [];
+            expect(validateLargePrintConfig(cfg).isValid).toBe(true);
+        });
+
+        it('sai kiểu (string thay vì array) → fail', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.FORMEX_DIE_CUT_SHAPES = 'abc';
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('FORMEX_DIE_CUT_SHAPES'))).toBe(true);
+        });
+
+        it('giá sai kiểu → fail, nêu đúng field', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.FORMEX_DIE_CUT_SHAPES[0].tier1PricePerSqm = '60k';
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(
+                r.errors.some((e) => e.includes('FORMEX_DIE_CUT_SHAPES[0].tier1PricePerSqm'))
+            ).toBe(true);
+        });
+
+        it('key rỗng → fail', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.FORMEX_DIE_CUT_SHAPES[0].key = '   ';
+            expect(validateLargePrintConfig(cfg).isValid).toBe(false);
+        });
+
+        it('key TRÙNG → fail (params sẽ trỏ vào dòng ngẫu nhiên)', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.FORMEX_DIE_CUT_SHAPES[1].key = cfg.FORMEX_DIE_CUT_SHAPES[0].key;
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('key bị trùng'))).toBe(true);
+        });
+
+        it('MIN_FORMEX_DIE_CUT_PRICE sai kiểu → fail', () => {
+            const cfg = structuredClone(LARGE_PRINT_DEFAULT_CONFIG);
+            cfg.MIN_FORMEX_DIE_CUT_PRICE = '50k';
+            const r = validateLargePrintConfig(cfg);
+            expect(r.isValid).toBe(false);
+            expect(r.errors.some((e) => e.includes('MIN_FORMEX_DIE_CUT_PRICE'))).toBe(true);
+        });
+    });
+
     describe('immutability — validateLargePrintConfig không mutate input', () => {
         it('config object không bị thay đổi sau khi validate', () => {
             const snapshot = JSON.stringify({
