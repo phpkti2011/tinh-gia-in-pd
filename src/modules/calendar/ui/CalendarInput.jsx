@@ -20,7 +20,7 @@ export default function CalendarInput({ input: s, config, printConfig, onChange 
         </SelectField>
     );
     return (
-        <div className="space-y-4">
+        <div id="calendar-controls">
             <Section title="1. Quy cách lịch bàn">
                 {number('n', 'Số cuốn', 1, 1)}
                 <div className="grid grid-cols-2 gap-3">

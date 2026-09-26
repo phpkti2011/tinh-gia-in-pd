@@ -73,16 +73,16 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
         }
     };
     return (
-        <div className="space-y-5">
-            <div className="flex flex-wrap justify-between gap-3 items-center">
-                <h2 className="text-xl font-bold">Cài đặt giá lịch bàn</h2>
-                <div className="flex gap-2">
+        <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 border-b border-gray-700 pb-4">
+                <h2 className="text-2xl font-bold text-white">⚙ Cài đặt giá lịch bàn</h2>
+                <div className="flex items-center gap-3">
                     <button disabled={saving} className={buttonClass} onClick={onCancel}>
                         Về tính giá
                     </button>
                     <button
                         disabled={saving}
-                        className="bg-cyan-700 rounded-lg px-4 py-2 disabled:opacity-40"
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium disabled:opacity-40"
                         onClick={save}
                     >
                         Lưu cài đặt lịch
@@ -90,7 +90,7 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
                 </div>
             </div>
             {status && (
-                <p role="status" className="border border-cyan-700 rounded-lg p-3">
+                <p role="status" className="border border-gray-600 rounded-lg p-3 mb-4 text-sm">
                     {status}
                 </p>
             )}
@@ -377,7 +377,11 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
                     </p>
                 </Section>
             </fieldset>
-            <button disabled={saving} className="bg-cyan-700 rounded-lg px-5 py-3" onClick={save}>
+            <button
+                disabled={saving}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium mt-6"
+                onClick={save}
+            >
                 Lưu cài đặt lịch
             </button>
         </div>

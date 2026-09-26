@@ -21,9 +21,9 @@ export default function CalendarDiagrams({ result: r, config }) {
         g = l.groups[index];
     const planeH = 2 * l.H + 2 * c.strip;
     return (
-        <section className="bg-gray-800 rounded-xl border border-gray-700 p-4 space-y-4">
-            <div className="flex flex-wrap justify-between gap-2">
-                <h2 className="font-semibold text-lg">Sơ đồ sản xuất</h2>
+        <section className="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-4">
+            <div className="flex flex-wrap justify-between gap-3 border-b border-gray-700 pb-3">
+                <h2 className="text-lg font-semibold text-gray-300">Sơ Đồ Sản Xuất</h2>
                 <div className="flex flex-wrap gap-2">
                     <button
                         className={buttonClass}

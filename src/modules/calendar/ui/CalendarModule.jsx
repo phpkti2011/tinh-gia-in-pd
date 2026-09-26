@@ -12,7 +12,6 @@ import { calculateCalendar } from '../engine/pricing';
 import CalendarInput from './CalendarInput';
 import CalendarResult from './CalendarResult';
 import CalendarSettings from './CalendarSettings';
-import { buttonClass } from './Fields';
 
 export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch Bàn' }) {
     const [config, setConfig] = useState(loadCalendarConfig),
@@ -72,26 +71,39 @@ export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch B�
         return result;
     };
     return (
-        <div className="container mx-auto max-w-screen-2xl p-4 md:p-6 text-white space-y-5">
-            <header className="flex flex-wrap justify-between items-center gap-3">
-                <div>
-                    <button className="text-gray-400 hover:text-white text-sm" onClick={onBack}>
-                        ← Trang chủ
-                    </button>
-                    <h1 className="text-2xl font-bold mt-2">{heading}</h1>
-                    <p className="text-sm text-gray-400">
-                        Tờ lịch · đế carton · áo và lót riêng · lò xo · ép kim
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <button className={buttonClass} onClick={() => setTab('main')}>
-                        Tính giá
-                    </button>
-                    <button className={buttonClass} onClick={() => setTab('settings')}>
-                        Cài đặt giá lịch
-                    </button>
-                </div>
+        <div className="container mx-auto p-4 md:p-8 max-w-screen-2xl text-white">
+            <header className="text-center mb-8 relative">
+                <button
+                    className="mb-4 md:mb-0 md:absolute md:left-0 md:top-1/2 md:-translate-y-1/2 text-gray-400 hover:text-white text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+                    onClick={onBack}
+                >
+                    ← Trang chủ
+                </button>
+                <h1 className="text-3xl md:text-4xl font-bold text-white md:px-36">{heading}</h1>
+                <p className="text-gray-400 mt-2 md:px-36">
+                    Tờ lịch · đế carton · áo và lót riêng · lò xo · ép kim
+                </p>
             </header>
+            <div className="mb-8 border-b border-gray-700">
+                <nav className="flex -mb-px space-x-8" aria-label="Chức năng lịch bàn">
+                    <button
+                        aria-label="Tính giá"
+                        aria-current={tab === 'main' ? 'page' : undefined}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${tab === 'main' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                        onClick={() => setTab('main')}
+                    >
+                        Tính Giá
+                    </button>
+                    <button
+                        aria-label="Cài đặt giá lịch"
+                        aria-current={tab === 'settings' ? 'page' : undefined}
+                        className={`py-4 px-1 border-b-2 font-medium text-lg ${tab === 'settings' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+                        onClick={() => setTab('settings')}
+                    >
+                        Cài Đặt
+                    </button>
+                </nav>
+            </div>
             {loading && (
                 <p role="status" className="text-sm text-gray-400">
                     Đang tải bảng giá mới nhất…
@@ -114,23 +126,31 @@ export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch B�
                     )}
                 </AdminGate>
             ) : (
-                <div className="grid lg:grid-cols-[minmax(300px,400px)_minmax(0,1fr)] gap-5 items-start">
-                    <CalendarInput
-                        input={input}
-                        config={config}
-                        printConfig={printConfig}
-                        onChange={setInput}
-                    />
-                    {calculation.error ? (
-                        <div
-                            role="alert"
-                            className="border border-amber-700 bg-amber-950 text-amber-200 p-5 rounded-xl"
-                        >
-                            {calculation.error}
-                        </div>
-                    ) : (
-                        <CalendarResult result={calculation.result} input={input} config={config} />
-                    )}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    <div className="lg:col-span-1 min-w-0">
+                        <CalendarInput
+                            input={input}
+                            config={config}
+                            printConfig={printConfig}
+                            onChange={setInput}
+                        />
+                    </div>
+                    <div className="lg:col-span-2 min-w-0">
+                        {calculation.error ? (
+                            <div
+                                role="alert"
+                                className="min-h-[400px] flex items-center justify-center bg-gray-800 rounded-lg border-2 border-dashed border-red-600/50 shadow-inner text-red-400 text-center p-8"
+                            >
+                                {calculation.error}
+                            </div>
+                        ) : (
+                            <CalendarResult
+                                result={calculation.result}
+                                input={input}
+                                config={config}
+                            />
+                        )}
+                    </div>
                 </div>
             )}
         </div>
