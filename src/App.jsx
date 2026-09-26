@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+const CalendarModule = React.lazy(() => import('./modules/calendar/ui/CalendarModule'));
 import InputPanel from './components/smallprint/InputPanel';
 import ResultPanel from './components/smallprint/ResultPanel';
 import SettingsPanel from './components/smallprint/SettingsPanel';
@@ -161,6 +162,13 @@ const MODULES = [
         border: 'hover:border-rose-500',
         titleHover: 'group-hover:text-rose-400',
         link: 'text-rose-400',
+    },
+    {
+        id: 'calendar',
+        icon: '📅',
+        border: 'hover:border-cyan-500',
+        titleHover: 'group-hover:text-cyan-400',
+        link: 'text-cyan-400',
     },
 ];
 
@@ -2047,6 +2055,14 @@ function App() {
             return <FlyerModule onBack={home} heading={heading('flyer')} />;
         if (currentModule === 'cheapdecal')
             return <CheapDecalModule onBack={home} heading={heading('cheapdecal')} />;
+        if (currentModule === 'calendar')
+            return (
+                <React.Suspense
+                    fallback={<p className="p-8 text-gray-300">Đang mở module lịch…</p>}
+                >
+                    <CalendarModule onBack={home} heading={heading('calendar')} />
+                </React.Suspense>
+            );
         return (
             <HomePage
                 onSelect={setCurrentModule}

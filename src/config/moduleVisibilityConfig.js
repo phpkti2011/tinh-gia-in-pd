@@ -61,6 +61,10 @@ export const MODULE_VISIBILITY_DEFAULT_LABELS = {
         title: 'Decal Nhãn Giá Rẻ',
         desc: 'Báo giá nhanh decal nhãn theo cỡ & số lượng (500/1000/2000). Hình tròn/vuông, decal giấy/nhựa, cán màng, lấy trong ngày.',
     },
+    calendar: {
+        title: 'Tính Giá Lịch Bàn',
+        desc: 'Tờ lịch in KTS, đế carton, giấy áo/lót riêng, lò xo và ép kim. Xem sơ đồ cắt và giá vốn/báo khách.',
+    },
 };
 
 // Các field nhãn được phép sửa + giới hạn độ dài (dùng cho maxLength của input và validator).
@@ -80,6 +84,7 @@ export const MODULE_VISIBILITY_DEFAULT_CONFIG = {
         card: true,
         flyer: true,
         cheapdecal: true,
+        calendar: true,
     },
     MODULE_LABELS: MODULE_VISIBILITY_DEFAULT_LABELS,
 };
