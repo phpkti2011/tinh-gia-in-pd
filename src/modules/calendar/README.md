@@ -8,6 +8,7 @@
 - `smallPrintAdapter.js` gọi trực tiếp engine small-print cho tờ lịch, vùng in áo, giá sàn và ép kim. Không sửa hoặc ghi lại bảng giá KTS.
 - `config/storage.js` chỉ ghi `calendarConfig`, `calendarConfigPending` và module cloud `calendar`. Không đăng ký lại hoặc thay đổi storage của module cũ.
 - Cài đặt dùng AdminGate hiện có; RPC cloud vẫn kiểm tra admin phía server. Local cache không phải ranh giới bảo mật.
+- Giao diện chỉ hiện tổng/cột giá vốn, vốn đế và ô nhập vốn giấy mỹ thuật khi đã xác nhận tài khoản admin; ẩn khi chưa đăng nhập, đang xác thực hoặc lỗi quyền. Đây là phân quyền hiển thị, không thay đổi việc tính giá trên client.
 
 ## Quy tắc chính
 
@@ -15,6 +16,7 @@
 - Carton: 2 mặt W×H, 2 chân W×3 cm; mỗi kích thước phôi cộng 4 mm (không phải 8 mm).
 - Áo: (W+5)×(2H+13,1) cm. Vùng in trừ 5 mm ở cả bốn mép.
 - Lót: (W−0,4)×(2H+2,1+6−0,4) cm. Giá bán lót = vốn×2, cộng vào đế đúng một lần, không tra bậc.
+- Mục **Cài Đặt → Giá giấy lót trong** cho sửa hệ số bán và số lót/đế, giải thích nguồn vốn giấy ram KTS và dẫn đến danh mục giấy mỹ thuật.
 - Giấy áo/lót độc lập: giấy ram KTS hoặc mỹ thuật theo khổ chuẩn/tùy chọn và giá 1 tờ nhập riêng.
 - Vốn carton tra bậc theo số tấm nguyên; báo khách carton tra theo số cuốn và diện tích thành phẩm. Các nhóm lò xo/công/cán tra theo số cuốn. Bậc cuối không có giới hạn trên.
 - Giá áo in cho phép toàn bộ báo giá KTS theo vùng in hoặc tiền in KTS cộng giấy theo hệ số vốn. Áo trắng cho phép vốn×hệ số hoặc gộp trong giá đế. Mặc định chưa thiết lập vì người dùng chưa chốt hai quy tắc này.

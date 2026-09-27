@@ -3,7 +3,7 @@ import CalendarDiagrams from './CalendarDiagrams';
 import { buttonClass } from './Fields';
 const money = (n) => (n == null ? 'Chưa đủ giá' : Math.round(n).toLocaleString('vi-VN') + ' đ');
 
-export default function CalendarResult({ result: r, input, config }) {
+export default function CalendarResult({ result: r, input, config, canViewCost = false }) {
     const [copied, setCopied] = useState('');
     const copy = async () => {
         try {
@@ -44,9 +44,11 @@ export default function CalendarResult({ result: r, input, config }) {
                 <p className="text-xs" role="status">
                     {copied}
                 </p>
-                <p className="mt-2 text-sm text-cyan-300">
-                    Giá vốn: <span className="font-semibold">{money(r.cost)}</span>
-                </p>
+                {canViewCost && (
+                    <p className="mt-2 text-sm text-cyan-300">
+                        Giá vốn: <span className="font-semibold">{money(r.cost)}</span>
+                    </p>
+                )}
             </section>
             <section className="bg-gray-800 p-6 rounded-lg border border-gray-700 overflow-x-auto">
                 <h2 className="text-lg font-semibold text-gray-300 mb-4 border-b border-gray-700 pb-2">
@@ -56,7 +58,7 @@ export default function CalendarResult({ result: r, input, config }) {
                     <thead>
                         <tr className="bg-gray-700 text-gray-300 border-b border-gray-600">
                             <th className="text-left p-3">Hạng mục</th>
-                            <th className="text-right p-3">Giá vốn</th>
+                            {canViewCost && <th className="text-right p-3">Giá vốn</th>}
                             <th className="text-right p-3">Báo khách</th>
                         </tr>
                     </thead>
@@ -66,12 +68,20 @@ export default function CalendarResult({ result: r, input, config }) {
                                 <td className="p-3">
                                     <div>{row.name}</div>
                                     <div className="text-xs text-gray-400 mt-1 min-w-40">
-                                        {row.detail}
+                                        {canViewCost
+                                            ? row.detail
+                                            : row.id === 'liner'
+                                              ? `${r.liner.paperName} · ${r.linerW} × ${r.linerH} cm · ${r.liner.sheets} tờ ${r.liner.stock}`
+                                              : row.id === 'carton'
+                                                ? `${config.materials.carton[input.selected.carton].name} · ${r.lay.count} tấm ${config.geometry.stockW} × ${config.geometry.stockH} cm`
+                                                : row.detail}
                                     </div>
                                 </td>
-                                <td className="text-right p-3 whitespace-nowrap">
-                                    {money(row.cost)}
-                                </td>
+                                {canViewCost && (
+                                    <td className="text-right p-3 whitespace-nowrap">
+                                        {money(row.cost)}
+                                    </td>
+                                )}
                                 <td className="text-right p-3 whitespace-nowrap font-semibold">
                                     {money(row.sale)}
                                 </td>
@@ -80,10 +90,10 @@ export default function CalendarResult({ result: r, input, config }) {
                     </tbody>
                 </table>
                 <p className="mt-4 text-sm text-gray-300">
-                    Riêng phần đế: vốn {money(r.baseCost)} · khách {money(r.baseSale)}. Đây là tổng
-                    phụ đã nằm trong tổng lịch.
+                    Riêng phần đế: {canViewCost && <>vốn {money(r.baseCost)} · </>}khách{' '}
+                    {money(r.baseSale)}. Đây là tổng phụ đã nằm trong tổng lịch.
                 </p>
-                {input.foil && (
+                {canViewCost && input.foil && (
                     <p className="text-xs text-gray-400 mt-2">
                         Ép kim dùng tổng phí KTS cho cả cột vốn và khách; chưa có bảng giá vốn ép
                         kim riêng.

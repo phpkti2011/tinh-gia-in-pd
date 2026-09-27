@@ -1,7 +1,14 @@
 import { artInput } from '../engine/pricing';
 import { NumberField, SelectField, buttonClass } from './Fields';
 
-export default function PaperPicker({ role, input, config, printConfig, onChange }) {
+export default function PaperPicker({
+    role,
+    input,
+    config,
+    printConfig,
+    onChange,
+    canViewCost = false,
+}) {
     const label = role === 'wrap' ? 'áo' : 'lót';
     const set = (key, value) => onChange({ ...input, [role + key]: value });
     const art = artInput(input, config, printConfig, role);
@@ -90,11 +97,13 @@ export default function PaperPicker({ role, input, config, printConfig, onChange
                             />
                         </div>
                     )}
-                    <NumberField
-                        label={`Giá vốn 1 tờ mỹ thuật ${label} (đ)`}
-                        value={art.cost}
-                        onChange={(v) => updateArt('cost', v)}
-                    />
+                    {canViewCost && (
+                        <NumberField
+                            label={`Giá vốn 1 tờ mỹ thuật ${label} (đ)`}
+                            value={art.cost}
+                            onChange={(v) => updateArt('cost', v)}
+                        />
+                    )}
                 </>
             )}
             {role === 'liner' && input.wrapSource === 'art' && (
@@ -116,9 +125,11 @@ export default function PaperPicker({ role, input, config, printConfig, onChange
             <p className="text-xs text-gray-400">
                 {role === 'wrap'
                     ? 'Giấy áo và giấy lót được chọn độc lập.'
-                    : 'Giấy lót không in; giá bán bằng vốn × ' +
-                      config.geometry.linerSaleFactor +
-                      ', cộng một lần vào giá đế.'}
+                    : canViewCost
+                      ? 'Giấy lót không in; giá bán bằng vốn × ' +
+                        config.geometry.linerSaleFactor +
+                        ', cộng một lần vào giá đế.'
+                      : 'Giấy lót không in; giá đã được cộng vào giá đế.'}
             </p>
         </div>
     );

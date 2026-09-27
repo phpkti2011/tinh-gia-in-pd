@@ -2,7 +2,13 @@ import { MATERIAL_LABELS } from '../config/defaultConfig';
 import { NumberField, SelectField, Section, buttonClass } from './Fields';
 import PaperPicker from './PaperPicker';
 
-export default function CalendarInput({ input: s, config, printConfig, onChange }) {
+export default function CalendarInput({
+    input: s,
+    config,
+    printConfig,
+    onChange,
+    canViewCost = false,
+}) {
     const set = (key, value) => onChange({ ...s, [key]: value });
     const number = (key, label, min = 0, step = 'any') => (
         <NumberField
@@ -99,6 +105,7 @@ export default function CalendarInput({ input: s, config, printConfig, onChange 
             </Section>
             <Section title="3. Giấy áo ngoài">
                 <PaperPicker
+                    canViewCost={canViewCost}
                     role="wrap"
                     input={s}
                     config={config}
@@ -121,6 +128,7 @@ export default function CalendarInput({ input: s, config, printConfig, onChange 
             </Section>
             <Section title="4. Giấy lót trong">
                 <PaperPicker
+                    canViewCost={canViewCost}
                     role="liner"
                     input={s}
                     config={config}

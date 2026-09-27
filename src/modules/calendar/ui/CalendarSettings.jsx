@@ -23,8 +23,6 @@ const GEOMETRY_FIELDS = [
     ['linerPadH', 'Lót: phần cộng 1 (cm)'],
     ['linerBaseH', 'Lót: phần cộng 2 (cm)'],
     ['linerReduceH', 'Lót: trừ chiều dài (mm)'],
-    ['linerCopies', 'Số lót / đế'],
-    ['linerSaleFactor', 'Lót: hệ số giá bán trên vốn'],
     ['lamSides', 'Số mặt cán áo (0–2)'],
     ['baseMin', 'Giá carton tối thiểu khi làm 1 đế (đ)'],
 ];
@@ -141,6 +139,60 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
                         Cán màng tính riêng. Giá ram KTS chỉ là giá vốn; không dùng giá ram làm giá
                         báo khách. Chọn “toàn bộ giá KTS” thì không cộng giấy/in thêm lần nữa.
                     </p>
+                </Section>
+                <Section title="Giá giấy lót trong">
+                    <p className="text-sm text-gray-300">
+                        Giá báo khách giấy lót = tổng giá vốn giấy lót × hệ số bên dưới. Khoản này
+                        cộng một lần vào giá đế, không tính theo bậc số lượng.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <NumberField
+                            label="Lót: hệ số giá bán trên vốn"
+                            value={draft.geometry.linerSaleFactor}
+                            onChange={(value) =>
+                                update((c) => {
+                                    c.geometry.linerSaleFactor = value;
+                                })
+                            }
+                        />
+                        <NumberField
+                            label="Số lót / đế"
+                            min={1}
+                            step={1}
+                            value={draft.geometry.linerCopies}
+                            onChange={(value) =>
+                                update((c) => {
+                                    c.geometry.linerCopies = value;
+                                })
+                            }
+                        />
+                    </div>
+                    <p className="text-sm text-cyan-300">
+                        Ví dụ tổng vốn giấy lót 10.000 đ → giá báo khách{' '}
+                        {Number.isFinite(draft.geometry.linerSaleFactor)
+                            ? (10000 * draft.geometry.linerSaleFactor).toLocaleString('vi-VN') +
+                              ' đ'
+                            : '—'}
+                        .
+                    </p>
+                    <div className="text-sm text-gray-400 space-y-2">
+                        <p>
+                            <strong className="text-gray-200">Giấy ram:</strong> lấy giá vốn từ bảng
+                            giá ram của In KTS khổ nhỏ. Sửa giá ram tại Cài Đặt của module KTS.
+                        </p>
+                        <p>
+                            <strong className="text-gray-200">Giấy mỹ thuật:</strong> nhập giá vốn
+                            mỗi tờ trong{' '}
+                            <a className="text-cyan-400 underline" href="#calendar-art-papers">
+                                Danh mục giấy mỹ thuật
+                            </a>{' '}
+                            bên dưới, hoặc ô giá giấy lót khi tính đơn hàng (admin).
+                        </p>
+                        <p>
+                            Chọn giấy lót riêng ở mục “4. Giấy lót trong” trên màn Tính Giá. Giá vốn
+                            dựa vào số tờ giấy nguyên cần dùng theo khổ lót và khổ giấy đã chọn.
+                        </p>
+                    </div>
                 </Section>
                 <Section title="Kích thước và định mức">
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -284,78 +336,80 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
                         </button>
                     </Section>
                 ))}
-                <Section title="Danh mục giấy mỹ thuật">
-                    {draft.artPapers.map((p, i) => (
-                        <div
-                            key={i}
-                            className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 border-b border-gray-600 pb-3"
-                        >
-                            <label className="text-sm">
-                                Tên giấy
-                                <input
-                                    aria-label={`Tên giấy mỹ thuật ${i + 1}`}
-                                    className={fieldClass}
-                                    value={p.name}
-                                    onChange={(e) =>
-                                        update((c) => {
-                                            c.artPapers[i].name = e.target.value;
-                                        })
-                                    }
-                                />
-                            </label>
-                            {[
-                                ['w', 'Ngang (cm)'],
-                                ['h', 'Dài (cm)'],
-                                ['cost', 'Vốn / tờ (đ)'],
-                            ].map(([key, label]) => (
-                                <NumberField
-                                    key={key}
-                                    label={`${label} · giấy ${i + 1}`}
-                                    value={p[key]}
-                                    onChange={(v) =>
-                                        update((c) => {
-                                            c.artPapers[i][key] = v;
-                                        })
-                                    }
-                                />
-                            ))}
-                            <button
-                                className={buttonClass}
-                                disabled={draft.artPapers.length === 1}
-                                onClick={() =>
-                                    update((c) => {
-                                        c.artPapers.splice(i, 1);
-                                    })
-                                }
+                <div id="calendar-art-papers">
+                    <Section title="Danh mục giấy mỹ thuật">
+                        {draft.artPapers.map((p, i) => (
+                            <div
+                                key={i}
+                                className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 border-b border-gray-600 pb-3"
                             >
-                                Xóa giấy
-                            </button>
-                        </div>
-                    ))}
-                    <button
-                        className={buttonClass}
-                        onClick={() =>
-                            update((c) => {
-                                let n = c.artPapers.length + 1;
-                                while (c.artPapers.some((p) => p.name === `Giấy mỹ thuật ${n}`))
-                                    n++;
-                                c.artPapers.push({
-                                    name: `Giấy mỹ thuật ${n}`,
-                                    w: 70,
-                                    h: 100,
-                                    cost: 0,
-                                });
-                                c.pricesConfirmed = false;
-                            })
-                        }
-                    >
-                        + Thêm giấy mỹ thuật
-                    </button>
-                    <p className="text-sm text-gray-400">
-                        Đây là thông số điền sẵn. Khi tính giá, áo và lót có ô khổ chuẩn/tùy chọn và
-                        giá tờ riêng.
-                    </p>
-                </Section>
+                                <label className="text-sm">
+                                    Tên giấy
+                                    <input
+                                        aria-label={`Tên giấy mỹ thuật ${i + 1}`}
+                                        className={fieldClass}
+                                        value={p.name}
+                                        onChange={(e) =>
+                                            update((c) => {
+                                                c.artPapers[i].name = e.target.value;
+                                            })
+                                        }
+                                    />
+                                </label>
+                                {[
+                                    ['w', 'Ngang (cm)'],
+                                    ['h', 'Dài (cm)'],
+                                    ['cost', 'Vốn / tờ (đ)'],
+                                ].map(([key, label]) => (
+                                    <NumberField
+                                        key={key}
+                                        label={`${label} · giấy ${i + 1}`}
+                                        value={p[key]}
+                                        onChange={(v) =>
+                                            update((c) => {
+                                                c.artPapers[i][key] = v;
+                                            })
+                                        }
+                                    />
+                                ))}
+                                <button
+                                    className={buttonClass}
+                                    disabled={draft.artPapers.length === 1}
+                                    onClick={() =>
+                                        update((c) => {
+                                            c.artPapers.splice(i, 1);
+                                        })
+                                    }
+                                >
+                                    Xóa giấy
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            className={buttonClass}
+                            onClick={() =>
+                                update((c) => {
+                                    let n = c.artPapers.length + 1;
+                                    while (c.artPapers.some((p) => p.name === `Giấy mỹ thuật ${n}`))
+                                        n++;
+                                    c.artPapers.push({
+                                        name: `Giấy mỹ thuật ${n}`,
+                                        w: 70,
+                                        h: 100,
+                                        cost: 0,
+                                    });
+                                    c.pricesConfirmed = false;
+                                })
+                            }
+                        >
+                            + Thêm giấy mỹ thuật
+                        </button>
+                        <p className="text-sm text-gray-400">
+                            Đây là thông số điền sẵn. Khi tính giá, áo và lót có ô khổ chuẩn/tùy
+                            chọn và giá tờ riêng.
+                        </p>
+                    </Section>
+                </div>
                 <Section title="Xác nhận bảng giá">
                     <label className="flex gap-3 items-start">
                         <input

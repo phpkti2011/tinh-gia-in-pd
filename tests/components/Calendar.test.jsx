@@ -42,6 +42,7 @@ function Inputs() {
     const [input, setInput] = useState(() => structuredClone(CALENDAR_DEFAULT_INPUT));
     return (
         <CalendarInput
+            canViewCost
             input={input}
             config={CALENDAR_DEFAULT_CONFIG}
             printConfig={DEFAULT_CONFIG}
@@ -50,6 +51,66 @@ function Inputs() {
     );
 }
 describe('Calendar user flows', () => {
+    it('giá lót có mục riêng, sửa hệ số và định mức được lưu đúng khóa hiện có', async () => {
+        const save = vi.fn().mockResolvedValue({ local: true, cloud: true });
+        render(
+            <CalendarSettings config={CALENDAR_DEFAULT_CONFIG} onSave={save} onCancel={() => {}} />
+        );
+        const section = screen
+            .getByRole('heading', { name: 'Giá giấy lót trong' })
+            .closest('section');
+        expect(within(section).getByLabelText('Lót: hệ số giá bán trên vốn').value).toBe('2');
+        expect(within(section).getByText(/không tính theo bậc số lượng/)).toBeTruthy();
+        fireEvent.change(within(section).getByLabelText('Lót: hệ số giá bán trên vốn'), {
+            target: { value: '3' },
+        });
+        fireEvent.change(within(section).getByLabelText('Số lót / đế'), { target: { value: '2' } });
+        expect(within(section).getByText(/30.000 đ/)).toBeTruthy();
+        fireEvent.click(screen.getAllByText('Lưu cài đặt lịch')[0]);
+        await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+        expect(save.mock.calls[0][0].geometry).toMatchObject({
+            linerSaleFactor: 3,
+            linerCopies: 2,
+        });
+    });
+    it.each(['guest', 'staff', 'loading', 'error'])(
+        'ẩn toàn bộ giá vốn trên giao diện cho %s',
+        async (mode) => {
+            if (mode === 'guest') mocks.auth.mockReturnValue({ user: null, loading: false });
+            if (mode === 'loading')
+                mocks.role.mockReturnValue({ isAdmin: true, loading: true, error: null });
+            if (mode === 'error')
+                mocks.role.mockReturnValue({ isAdmin: true, loading: false, error: 'Lỗi quyền' });
+            render(<CalendarModule onBack={() => {}} />);
+            await waitFor(() =>
+                expect(screen.queryByText('Đang tải bảng giá mới nhất…')).toBeNull()
+            );
+            expect(screen.queryByRole('columnheader', { name: 'Giá vốn' })).toBeNull();
+            expect(document.body.textContent).not.toMatch(/vốn/i);
+            expect(screen.getByRole('columnheader', { name: 'Báo khách' })).toBeTruthy();
+            fireEvent.change(screen.getByLabelText('Nguồn giấy áo'), { target: { value: 'art' } });
+            fireEvent.change(screen.getByLabelText('Nguồn giấy lót'), { target: { value: 'art' } });
+            expect(screen.queryByLabelText('Giá vốn 1 tờ mỹ thuật áo (đ)')).toBeNull();
+            expect(screen.queryByLabelText('Giá vốn 1 tờ mỹ thuật lót (đ)')).toBeNull();
+            expect(document.body.textContent).not.toMatch(/vốn/i);
+            expect(screen.getByLabelText('Loại mỹ thuật lót')).toBeTruthy();
+        }
+    );
+    it('admin thấy vốn và ô giá giấy; đăng xuất ẩn ngay dù role cũ còn là admin', async () => {
+        mocks.role.mockReturnValue({ isAdmin: true, loading: false, error: null });
+        const view = render(<CalendarModule onBack={() => {}} />);
+        await waitFor(() => expect(screen.queryByText('Đang tải bảng giá mới nhất…')).toBeNull());
+        expect(screen.getByRole('columnheader', { name: 'Giá vốn' })).toBeTruthy();
+        expect(screen.getByText(/Riêng phần đế: vốn/)).toBeTruthy();
+        fireEvent.change(screen.getByLabelText('Nguồn giấy áo'), { target: { value: 'art' } });
+        fireEvent.change(screen.getByLabelText('Nguồn giấy lót'), { target: { value: 'art' } });
+        expect(screen.getByLabelText('Giá vốn 1 tờ mỹ thuật áo (đ)')).toBeTruthy();
+        expect(screen.getByLabelText('Giá vốn 1 tờ mỹ thuật lót (đ)')).toBeTruthy();
+        mocks.auth.mockReturnValue({ user: null, loading: false });
+        view.rerender(<CalendarModule onBack={() => {}} />);
+        expect(document.body.textContent).not.toMatch(/vốn/i);
+        expect(screen.queryByLabelText('Giá vốn 1 tờ mỹ thuật lót (đ)')).toBeNull();
+    });
     it('áo/lót mỹ thuật chọn riêng, nút dùng cùng giấy sao chép khổ + giá nhưng không liên kết về sau', () => {
         render(<Inputs />);
         fireEvent.change(screen.getByLabelText('Nguồn giấy áo'), { target: { value: 'art' } });

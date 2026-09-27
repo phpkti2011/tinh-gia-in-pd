@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import AdminGate from '../../../auth/AdminGate';
+import { useAuth } from '../../../auth/useAuth';
+import { useUserRole } from '../../../auth/useUserRole';
 import { loadConfig, loadConfigFromCloud } from '../../../utils/configStorage';
 import { CALENDAR_DEFAULT_INPUT } from '../config/defaultConfig';
 import {
@@ -14,6 +16,9 @@ import CalendarResult from './CalendarResult';
 import CalendarSettings from './CalendarSettings';
 
 export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch Bàn' }) {
+    const { user, loading: authLoading } = useAuth();
+    const { isAdmin, loading: roleLoading, error: roleError } = useUserRole(user);
+    const canViewCost = Boolean(user && isAdmin && !authLoading && !roleLoading && !roleError);
     const [config, setConfig] = useState(loadCalendarConfig),
         [printConfig, setPrintConfig] = useState(loadConfig);
     const [input, setInput] = useState(() => structuredClone(CALENDAR_DEFAULT_INPUT)),
@@ -129,6 +134,7 @@ export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch B�
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1 min-w-0">
                         <CalendarInput
+                            canViewCost={canViewCost}
                             input={input}
                             config={config}
                             printConfig={printConfig}
@@ -145,6 +151,7 @@ export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch B�
                             </div>
                         ) : (
                             <CalendarResult
+                                canViewCost={canViewCost}
                                 result={calculation.result}
                                 input={input}
                                 config={config}

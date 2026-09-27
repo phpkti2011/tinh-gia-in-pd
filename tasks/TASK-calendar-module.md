@@ -51,3 +51,11 @@ Rà soát tiêu chuẩn và yêu cầu bằng đọc mã/diff cùng các kiểm 
 - Đã kiểm tra: chỉ thêm import, tile và nhánh tải/điều hướng lịch trong App; không sửa nhánh tính cũ. Thêm nhãn/tile và cập nhật test số module 10→11 là thay đổi hợp đồng có chủ đích.
 - Không chạy migration hoặc kiểm chứng RPC trên Supabase thật; file migration riêng phục vụ bước triển khai. Đây là giới hạn kiểm chứng, không ghi nhận cloud đã hoạt động.
 - Thuật toán carton tìm phương án khả thi; UI nói rõ chưa bảo đảm tối ưu toàn cục. Các giới hạn tìm kiếm được ghi ở README module.
+
+## Bổ sung ngày 27/09/2026: giá lót và hiển thị vốn
+
+- Tách mục cài đặt giá giấy lót trong, giữ các khóa cấu hình và công thức hiện có: vốn × hệ số (mặc định 2), cộng vào đế, không có bậc.
+- Chỉ admin đã xác thực thấy tổng/cột vốn, vốn đế và ô giá giấy mỹ thuật áo/lót. Người dùng thường vẫn chọn giấy riêng và xem báo khách. Các mô tả công thức có thể lộ vốn cũng được ẩn.
+- Không sửa engine, nguồn bảng giá, quyền hoặc giao diện module cũ.
+- Kiểm chứng: 45 test liên quan đạt (calendar engine/storage/UI và AdminGate), ESLint đạt, build Vite đạt; chỉ còn các cảnh báo build có sẵn.
+- Kiểm tra browser: cấu hình hiển thị được tải về ẩn tile lịch với phiên chưa đăng nhập; không thay đổi cấu hình cloud để phục vụ kiểm tra. Quyền admin/staff và cài đặt lót được kiểm chứng bằng component test.
