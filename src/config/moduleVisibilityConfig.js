@@ -65,6 +65,10 @@ export const MODULE_VISIBILITY_DEFAULT_LABELS = {
         title: 'Tính Giá Lịch Bàn',
         desc: 'Tờ lịch in KTS, đế carton, giấy áo/lót riêng, lò xo và ép kim. Xem sơ đồ cắt và giá vốn/báo khách.',
     },
+    envelope: {
+        title: 'Tính Giá Bao Thư',
+        desc: 'Nhập kích thước, nắp, tay dán và kiểu khuôn → khổ trải. Giấy + in KTS khổ nhỏ, bế, dán, ép nhũ; xem hình khổ trải.',
+    },
 };
 
 // Các field nhãn được phép sửa + giới hạn độ dài (dùng cho maxLength của input và validator).
@@ -85,6 +89,7 @@ export const MODULE_VISIBILITY_DEFAULT_CONFIG = {
         flyer: true,
         cheapdecal: true,
         calendar: true,
+        envelope: true,
     },
     MODULE_LABELS: MODULE_VISIBILITY_DEFAULT_LABELS,
 };

@@ -20,10 +20,11 @@ const MODULE_IDS = [
     'flyer',
     'cheapdecal',
     'calendar',
+    'envelope',
 ];
 
 describe('Module visibility config', () => {
-    it('default pass validation + đủ 11 module = true', () => {
+    it('default pass validation + đủ 12 module = true', () => {
         const v = validateModuleVisibilityConfig(MODULE_VISIBILITY_DEFAULT_CONFIG);
         expect(v.isValid).toBe(true);
         const map = MODULE_VISIBILITY_DEFAULT_CONFIG.MODULE_VISIBILITY;
@@ -50,7 +51,7 @@ describe('Module visibility config', () => {
 });
 
 describe('Module labels (tên module admin sửa được)', () => {
-    it('default có đủ 11 module × 2 field, đều là chuỗi không rỗng', () => {
+    it('default có đủ 12 module × 2 field, đều là chuỗi không rỗng', () => {
         expect(Object.keys(MODULE_VISIBILITY_DEFAULT_LABELS)).toEqual(MODULE_IDS);
         for (const id of MODULE_IDS) {
             const entry = MODULE_VISIBILITY_DEFAULT_LABELS[id];

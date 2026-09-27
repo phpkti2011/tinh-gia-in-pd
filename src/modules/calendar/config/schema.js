@@ -1,33 +1,9 @@
 import { CALENDAR_DEFAULT_CONFIG } from './defaultConfig';
+import { requireValue, validateTiers } from '../../../utils/priceTiers.js';
 
-export function requireValue(ok, message) {
-    if (!ok) throw new Error(message);
-}
-
-export function validateTiers(tiers) {
-    requireValue(Array.isArray(tiers) && tiers.length > 0, 'Mỗi loại cần ít nhất một bậc giá.');
-    let last = 0;
-    for (const t of tiers) {
-        requireValue(
-            t && Number.isSafeInteger(t.from) && t.from > last,
-            'Mốc bậc phải là số nguyên tăng dần, không trùng.'
-        );
-        requireValue(
-            Number.isFinite(t.cost) && t.cost >= 0 && Number.isFinite(t.sale) && t.sale >= 0,
-            'Đơn giá phải là số không âm.'
-        );
-        last = t.from;
-    }
-    requireValue(tiers[0].from === 1, 'Bậc đầu phải bắt đầu từ 1.');
-}
-
-export function pickTier(tiers, quantity) {
-    validateTiers(tiers);
-    requireValue(Number.isSafeInteger(quantity) && quantity > 0, 'Số lượng tra bậc không hợp lệ.');
-    let index = 0;
-    while (index + 1 < tiers.length && quantity >= tiers[index + 1].from) index++;
-    return { ...tiers[index], index: index + 1 };
-}
+// requireValue/validateTiers/pickTier chuyển sang utils/priceTiers.js (dùng chung với bao thư);
+// giữ re-export để engine, UI và test của lịch không đổi đường import.
+export { requireValue, validateTiers, pickTier } from '../../../utils/priceTiers.js';
 
 export function validateCalendarConfig(config) {
     try {

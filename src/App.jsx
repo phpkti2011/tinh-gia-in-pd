@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 const CalendarModule = React.lazy(() => import('./modules/calendar/ui/CalendarModule'));
+const EnvelopeModule = React.lazy(() => import('./modules/envelope/ui/EnvelopeModule'));
 import InputPanel from './components/smallprint/InputPanel';
 import ResultPanel from './components/smallprint/ResultPanel';
 import SettingsPanel from './components/smallprint/SettingsPanel';
@@ -169,6 +170,13 @@ const MODULES = [
         border: 'hover:border-cyan-500',
         titleHover: 'group-hover:text-cyan-400',
         link: 'text-cyan-400',
+    },
+    {
+        id: 'envelope',
+        icon: '✉️',
+        border: 'hover:border-lime-500',
+        titleHover: 'group-hover:text-lime-400',
+        link: 'text-lime-400',
     },
 ];
 
@@ -2061,6 +2069,14 @@ function App() {
                     fallback={<p className="p-8 text-gray-300">Đang mở module lịch…</p>}
                 >
                     <CalendarModule onBack={home} heading={heading('calendar')} />
+                </React.Suspense>
+            );
+        if (currentModule === 'envelope')
+            return (
+                <React.Suspense
+                    fallback={<p className="p-8 text-gray-300">Đang mở module bao thư…</p>}
+                >
+                    <EnvelopeModule onBack={home} heading={heading('envelope')} />
                 </React.Suspense>
             );
         return (

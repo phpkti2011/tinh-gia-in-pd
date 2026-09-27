@@ -39,3 +39,6 @@ export { calculateCustomerQuote } from './quote.js';
 export { calculateFloorPrice, floorIncludesPaper } from './floorPrice.js';
 
 export { computeA4Factor, getA4Rates } from './a4.js';
+
+// Adapter gọi chéo cho module khác (lịch bàn, bao thư): một khổ in / chỉ giấy trắng.
+export { kts, paperQuote } from './quoteAdapter.js';
