@@ -37,7 +37,48 @@ begin
     end if;
 end;
 $migration$;
+
+-- Lưu riêng lịch có kiểm tra phiên bản: an toàn khi tự gửi lại sau mất mạng.
+-- Không thay chữ ký/cách lưu của các module cũ.
+create or replace function public.save_calendar_price_config(
+    p_data jsonb,
+    p_schema_version text,
+    p_expected_version integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $calendar_save$
+declare
+    v_current public.price_configs%rowtype;
+begin
+    if not public.is_admin() then
+        raise exception 'forbidden: admin role required' using errcode = '42501';
+    end if;
+    if p_expected_version is null or p_expected_version < 0 or
+       p_data is null or jsonb_typeof(p_data) <> 'object' or p_schema_version <> '1.0.0' or
+       p_schema_version is null then
+        raise exception 'invalid calendar price payload' using errcode = '22023';
+    end if;
+    -- Serialize the first publication too, when no current row exists yet.
+    perform pg_advisory_xact_lock(hashtextextended('calendar-price-config', 0));
+    select * into v_current from public.price_configs where module = 'calendar' for update;
+    -- Response may have been lost after commit: identical retry has no new side effect.
+    if v_current.data = p_data and v_current.schema_version = p_schema_version then
+        return jsonb_build_object('ok', true, 'new_version', v_current.current_version);
+    end if;
+    if coalesce(v_current.current_version, 0) <> p_expected_version then
+        raise exception 'calendar_version_conflict' using errcode = '40001';
+    end if;
+    return public.save_price_config('calendar', p_data, p_schema_version, 'Calendar synchronized save');
+end;
+$calendar_save$;
+
+revoke all on function public.save_calendar_price_config(jsonb, text, integer) from public, anon;
+grant execute on function public.save_calendar_price_config(jsonb, text, integer) to authenticated;
+notify pgrst, 'reload schema';
 commit;
 
 -- Sau triển khai: đăng nhập admin, lưu cài đặt lịch; phải có thông báo đồng bộ thành công.
--- Chưa chạy migration: module vẫn tính bằng cấu hình local, báo rõ lỗi đồng bộ khi lưu.
+-- Chưa chạy migration hoặc chưa có giá trên máy chủ: module chặn báo giá, giữ nháp để tự thử lại.

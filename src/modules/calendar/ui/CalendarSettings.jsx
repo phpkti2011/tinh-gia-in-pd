@@ -27,7 +27,7 @@ const GEOMETRY_FIELDS = [
     ['baseMin', 'Giá carton tối thiểu khi làm 1 đế (đ)'],
 ];
 
-export default function CalendarSettings({ config, onSave, onCancel }) {
+export default function CalendarSettings({ config, onSave, onCancel, onReload, syncReady }) {
     const [draft, setDraft] = useState(() => structuredClone(config)),
         [status, setStatus] = useState(''),
         [saving, setSaving] = useState(false);
@@ -61,7 +61,7 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
                 r.cloud
                     ? 'Đã lưu và đồng bộ bảng giá lịch.'
                     : r.local
-                      ? `Đã lưu trên máy này; chưa đồng bộ. ${r.error || ''}`
+                      ? `Đã giữ bản nháp; chưa đồng bộ và chưa áp dụng để báo giá. Phần mềm sẽ tự thử đồng bộ lại. ${r.error || ''}`
                       : `Chưa lưu được. ${r.error || ''}`
             );
         } catch (error) {
@@ -75,6 +75,11 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6 border-b border-gray-700 pb-4">
                 <h2 className="text-2xl font-bold text-white">⚙ Cài đặt giá lịch bàn</h2>
                 <div className="flex items-center gap-3">
+                    {onReload && (
+                        <button disabled={saving} className={buttonClass} onClick={onReload}>
+                            Nạp bảng giá đã đồng bộ để chỉnh lại
+                        </button>
+                    )}
                     <button disabled={saving} className={buttonClass} onClick={onCancel}>
                         Về tính giá
                     </button>
@@ -89,7 +94,9 @@ export default function CalendarSettings({ config, onSave, onCancel }) {
             </div>
             {status && (
                 <p role="status" className="border border-gray-600 rounded-lg p-3 mb-4 text-sm">
-                    {status}
+                    {syncReady && status.startsWith('Đã giữ bản nháp')
+                        ? 'Bản nháp đã được tự động đồng bộ với máy chủ.'
+                        : status}
                 </p>
             )}
             <fieldset disabled={saving} className="space-y-5">

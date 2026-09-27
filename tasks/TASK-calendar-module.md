@@ -59,3 +59,18 @@ Rà soát tiêu chuẩn và yêu cầu bằng đọc mã/diff cùng các kiểm 
 - Không sửa engine, nguồn bảng giá, quyền hoặc giao diện module cũ.
 - Kiểm chứng: 45 test liên quan đạt (calendar engine/storage/UI và AdminGate), ESLint đạt, build Vite đạt; chỉ còn các cảnh báo build có sẵn.
 - Kiểm tra browser: cấu hình hiển thị được tải về ẩn tile lịch với phiên chưa đăng nhập; không thay đổi cấu hình cloud để phục vụ kiểm tra. Quyền admin/staff và cài đặt lót được kiểm chứng bằng component test.
+
+## Sửa đồng bộ bảng giá — 27/09/2026
+
+Trạng thái: **mã nguồn đã kiểm chứng; triển khai máy chủ chưa hoàn tất, đang chờ quyền quản trị Supabase**.
+
+- Nguyên nhân trong mã cũ: cờ pending ngăn đọc cloud; save thất bại vẫn áp dụng local để tính và sao chép báo giá. Ngoài ra file migration lịch chưa được chạy khi triển khai module.
+- Đọc kiểm tra máy chủ thật bằng kết nối ứng dụng (chỉ đọc): HTTP 200, có small-print v31, không có hàng calendar. Không có công cụ quản trị DB hoặc thông tin kết nối DDL trong môi trường; đã yêu cầu người dùng mở phiên quản trị hoặc tự chạy SQL.
+- Bỏ dùng cache/default để báo khách; đọc calendar + small-print trong một truy vấn, kiểm tra dữ liệu và phiên bản. Bản local chưa đồng bộ là nháp riêng, không được áp dụng.
+- Tự tải mỗi 15 giây khi tab hiện, khi focus/visibility/online và storage thay đổi. Offline chặn ngay; phản hồi trước đó không mở lại giá. Trước copy kiểm tra lại phiên bản và chỉ sao chép khi vẫn đúng giá đang hiển thị.
+- Thêm RPC lịch có khóa giao dịch, so sánh phiên bản, kiểm tra admin; gửi lại dữ liệu giống hệt không tăng phiên bản. Nháp có chủ sở hữu; không tự gửi bằng tài khoản khác. Nháp cũ thiếu phiên bản chỉ được thử với expected version 0.
+- Cập nhật danh mục làm mất sự tương ứng chỉ số thì chặn để chọn lại vật tư; không ghi đè form admin đang sửa. Không thay đổi nguồn/engine/UI của các module cũ.
+- Kiểm chứng: **103 file / 1.532 test đạt**; 50 test lịch trong đó. ESLint các file thay đổi đạt; build đạt, chỉ còn cảnh báo Browserslist/chunk có sẵn.
+- PostgreSQL WASM: migration chạy hai lần; admin lưu mới/cập nhật; gửi lại không trùng version/log; xung đột bị chặn; staff/anon bị từ chối; dữ liệu KTS cũ nguyên vẹn và RPC cũ vẫn lưu được. Script: `scripts/check-calendar-migration.cjs`.
+- Browser QA dùng đúng module qua trang kiểm tra tạm: đọc máy chủ thật, hiện “Máy chủ chưa có bảng giá lịch”, không có bảng tiền hoặc nút sao chép. Trang tạm đã đóng và xóa. Không giả lập admin hay sửa dữ liệu thật để kiểm tra.
+- Còn phải làm: áp dụng `docs/database/migration-calendar-module.sql` trên Supabase thật; admin mở module để tự gửi nháp hoặc lưu bảng giá lần đầu; xác nhận máy khác đọc cùng phiên bản. Chưa tuyên bố đồng bộ thật đã hoạt động.

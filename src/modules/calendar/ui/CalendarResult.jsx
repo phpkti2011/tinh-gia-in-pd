@@ -3,16 +3,28 @@ import CalendarDiagrams from './CalendarDiagrams';
 import { buttonClass } from './Fields';
 const money = (n) => (n == null ? 'Chưa đủ giá' : Math.round(n).toLocaleString('vi-VN') + ' đ');
 
-export default function CalendarResult({ result: r, input, config, canViewCost = false }) {
+export default function CalendarResult({
+    result: r,
+    input,
+    config,
+    canViewCost = false,
+    onBeforeCopy,
+}) {
     const [copied, setCopied] = useState('');
+    const [checking, setChecking] = useState(false);
     const copy = async () => {
+        if (!r.complete || checking) return;
+        setChecking(true);
         try {
+            if (!onBeforeCopy || !(await onBeforeCopy())) return;
             await navigator.clipboard.writeText(
                 `Lịch bàn ${r.lay.W} × ${r.lay.H} cm · ${input.n} cuốn\n${input.leaves} tờ/cuốn, in ${input.sides} mặt\nĐơn giá: ${money(r.unit)}\nTổng báo khách: ${money(r.sale)}`
             );
             setCopied('Đã sao chép');
         } catch {
             setCopied('Chưa sao chép được, vui lòng thử lại.');
+        } finally {
+            setChecking(false);
         }
     };
     return (
@@ -37,12 +49,16 @@ export default function CalendarResult({ result: r, input, config, canViewCost =
                     Đơn giá: <span className="font-bold">{money(r.unit)}</span> / cuốn
                 </p>
                 <div className="mt-3 flex justify-center">
-                    <button className={buttonClass} disabled={!r.complete} onClick={copy}>
+                    <button
+                        className={buttonClass}
+                        disabled={!r.complete || checking}
+                        onClick={copy}
+                    >
                         Sao chép báo giá
                     </button>
                 </div>
                 <p className="text-xs" role="status">
-                    {copied}
+                    {checking ? 'Đang kiểm tra bảng giá mới nhất…' : copied}
                 </p>
                 {canViewCost && (
                     <p className="mt-2 text-sm text-cyan-300">

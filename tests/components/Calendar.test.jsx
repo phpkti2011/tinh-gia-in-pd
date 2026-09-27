@@ -2,7 +2,7 @@
 /* eslint react/jsx-uses-vars: "error" */
 import { useState } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within, act } from '@testing-library/react';
 import {
     CALENDAR_DEFAULT_CONFIG,
     CALENDAR_DEFAULT_INPUT,
@@ -31,11 +31,17 @@ beforeEach(() => {
     localStorage.clear();
     mocks.role.mockReturnValue({ isAdmin: false, role: 'staff', loading: false, error: null });
     mocks.auth.mockReturnValue({
-        user: { email: 'staff@example.test' },
+        user: { id: 'user-a', email: 'staff@example.test' },
         loading: false,
         signOut: vi.fn(),
     });
-    mocks.load.mockResolvedValue(structuredClone(CALENDAR_DEFAULT_CONFIG));
+    mocks.load.mockResolvedValue({
+        ready: true,
+        version: 1,
+        printVersion: 31,
+        config: structuredClone(CALENDAR_DEFAULT_CONFIG),
+        printConfig: structuredClone(DEFAULT_CONFIG),
+    });
     mocks.save.mockResolvedValue({ local: true, cloud: false, error: 'Chưa đồng bộ' });
 });
 function Inputs() {
@@ -173,7 +179,7 @@ describe('Calendar user flows', () => {
         expect(screen.getByText('Tài khoản này không có quyền admin')).toBeTruthy();
         expect(screen.queryByText('Lưu cài đặt lịch')).toBeNull();
     });
-    it('admin lưu giá rồi trở lại tính; không tải cloud cũ đè bản vừa lưu local', async () => {
+    it('admin lưu lỗi thì giữ nháp và chặn báo giá, chỉ mở lại khi tải được giá đã đồng bộ', async () => {
         mocks.role.mockReturnValue({ isAdmin: true, role: 'admin', loading: false, error: null });
         render(<CalendarModule onBack={() => {}} />);
         await waitFor(() => expect(screen.queryByText('Đang tải bảng giá mới nhất…')).toBeNull());
@@ -192,9 +198,115 @@ describe('Calendar user flows', () => {
             expect(screen.getByRole('status').textContent).toContain('chưa đồng bộ')
         );
         fireEvent.click(screen.getByRole('button', { name: 'Về tính giá' }));
-        expect(screen.getByRole('button', { name: 'Sao chép báo giá' }).disabled).toBe(false);
-        expect(mocks.load).toHaveBeenCalledTimes(1);
-        const table = screen.getByRole('table');
-        expect(within(table).getByText('Giấy lót trong')).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Sao chép báo giá' })).toBeNull();
+        await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+        expect(screen.getByRole('button', { name: 'Sao chép báo giá' }).disabled).toBe(true);
+    });
+});
+
+describe('Calendar automatic synchronization safety', () => {
+    const ready = (version = 1, printVersion = 31) => {
+        const config = structuredClone(CALENDAR_DEFAULT_CONFIG);
+        config.pricesConfirmed = true;
+        config.wrapperSale.blank = 'cost-factor';
+        return {
+            ready: true,
+            version,
+            printVersion,
+            config,
+            printConfig: structuredClone(DEFAULT_CONFIG),
+        };
+    };
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+    it('không hiển thị giá cache trong lúc chờ mạng hoặc khi máy chủ thiếu bảng lịch', async () => {
+        let finish;
+        mocks.load.mockReturnValue(
+            new Promise((resolve) => {
+                finish = resolve;
+            })
+        );
+        render(<CalendarModule onBack={() => {}} />);
+        expect(screen.queryByRole('table')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Sao chép báo giá' })).toBeNull();
+        await act(async () =>
+            finish({ ready: false, version: 0, error: 'Máy chủ chưa có bảng giá lịch.' })
+        );
+        expect(screen.getByRole('alert').textContent).toContain('chưa có');
+        expect(screen.queryByRole('table')).toBeNull();
+    });
+    it('tự tải lại sau 15 giây, cập nhật giá và không ghi đè form admin đang sửa', async () => {
+        vi.useFakeTimers();
+        mocks.role.mockReturnValue({ isAdmin: true, loading: false });
+        mocks.load.mockResolvedValue(ready());
+        render(<CalendarModule onBack={() => {}} />);
+        await act(async () => {});
+        fireEvent.click(screen.getByRole('button', { name: 'Cài đặt giá lịch' }));
+        fireEvent.change(screen.getByLabelText('Lót: hệ số giá bán trên vốn'), {
+            target: { value: '3' },
+        });
+        const next = ready(2, 32);
+        next.config.geometry.linerSaleFactor = 4;
+        mocks.load.mockResolvedValue(next);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(15000);
+        });
+        expect(screen.getByText(/Lịch v2 · KTS v32/)).toBeTruthy();
+        expect(screen.getByLabelText('Lót: hệ số giá bán trên vốn').value).toBe('3');
+        fireEvent.click(screen.getAllByText('Lưu cài đặt lịch')[0]);
+        await act(async () => {});
+        expect(mocks.save.mock.calls[0][1]).toEqual({ ownerId: 'user-a', baseVersion: 1 });
+        expect(mocks.save.mock.calls[0][0].geometry.linerSaleFactor).toBe(3);
+    });
+    it('offline ẩn giá ngay; phản hồi cũ không mở lại; online tự phục hồi', async () => {
+        mocks.load.mockResolvedValue(ready());
+        render(<CalendarModule onBack={() => {}} />);
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+        let finish;
+        mocks.load.mockReturnValueOnce(
+            new Promise((resolve) => {
+                finish = resolve;
+            })
+        );
+        fireEvent(window, new Event('focus'));
+        fireEvent(window, new Event('offline'));
+        expect(screen.queryByRole('table')).toBeNull();
+        await act(async () => finish(ready()));
+        expect(screen.queryByRole('table')).toBeNull();
+        fireEvent(window, new Event('online'));
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+    });
+    it('kiểm tra lại KTS trước sao chép; thay phiên bản thì tính lại và chưa sao chép giá cũ', async () => {
+        const writeText = vi.fn().mockResolvedValue();
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+        mocks.load.mockResolvedValue(ready());
+        render(<CalendarModule onBack={() => {}} />);
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+        mocks.load.mockResolvedValue(ready(1, 32));
+        fireEvent.click(screen.getByRole('button', { name: 'Sao chép báo giá' }));
+        await waitFor(() =>
+            expect(screen.getByText(/Bảng giá vừa được admin cập nhật/)).toBeTruthy()
+        );
+        expect(writeText).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole('button', { name: 'Sao chép báo giá' }));
+        await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    });
+    it('đổi danh mục không âm thầm áp giá loại khác theo chỉ số cũ', async () => {
+        mocks.load.mockResolvedValue(ready());
+        render(<CalendarModule onBack={() => {}} />);
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+        const next = ready(2);
+        next.config.materials.carton.reverse();
+        next.config.materials.carton[0].name = 'Carton khác';
+        mocks.load.mockResolvedValue(next);
+        fireEvent(window, new Event('focus'));
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: 'Đã kiểm tra giấy và vật tư' })).toBeTruthy()
+        );
+        expect(screen.queryByRole('table')).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'Đã kiểm tra giấy và vật tư' }));
+        expect(screen.getByRole('table')).toBeTruthy();
     });
 });

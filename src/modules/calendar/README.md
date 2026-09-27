@@ -6,7 +6,7 @@
 
 - `calculateCalendar(input, calendarConfig, printConfig)` là engine thuần; nhận cấu hình KTS hiện tại, không đọc storage/network.
 - `smallPrintAdapter.js` gọi trực tiếp engine small-print cho tờ lịch, vùng in áo, giá sàn và ép kim. Không sửa hoặc ghi lại bảng giá KTS.
-- `config/storage.js` chỉ ghi `calendarConfig`, `calendarConfigPending` và module cloud `calendar`. Không đăng ký lại hoặc thay đổi storage của module cũ.
+- `config/storage.js` chỉ ghi cache/nháp lịch (`calendarConfig`, `calendarConfigDraft`, đọc tương thích `calendarConfigPending`). Đọc lịch và KTS cùng một lượt từ máy chủ; chỉ ghi module cloud `calendar` qua RPC riêng có kiểm tra phiên bản. Không sửa storage/module cũ.
 - Cài đặt dùng AdminGate hiện có; RPC cloud vẫn kiểm tra admin phía server. Local cache không phải ranh giới bảo mật.
 - Giao diện chỉ hiện tổng/cột giá vốn, vốn đế và ô nhập vốn giấy mỹ thuật khi đã xác nhận tài khoản admin; ẩn khi chưa đăng nhập, đang xác thực hoặc lỗi quyền. Đây là phân quyền hiển thị, không thay đổi việc tính giá trên client.
 
@@ -34,7 +34,20 @@ Tấm 60×100 cm nạp cạnh 60 vào máy 76. Sinh các dải cắt ngang rồi
 1. Module chạy trong bản build của phần mềm.
 2. Chạy `docs/database/migration-calendar-module.sql` trong Supabase khi triển khai đồng bộ. File chỉ mở rộng CHECK module và danh sách cho phép trong RPC, giữ các kiểm tra quyền và dữ liệu cũ. Chưa tự chạy migration trong phiên triển khai mã nguồn này.
 3. Admin mở **Cài đặt giá lịch**, cập nhật giá, chọn cách bán áo và xác nhận bảng giá; lưu phải báo **đã đồng bộ** để dùng trên nhiều máy.
-4. Nếu lỗi cloud, giữ bản local, báo chưa đồng bộ và chờ lưu lại. Không tự ghi đè bản local đang chờ bằng cloud cũ.
+4. Nếu lỗi cloud, giữ bản nháp riêng và chặn báo giá. Tự gửi lại dưới tài khoản admin đã lưu nháp; RPC từ chối bản cũ ghi đè phiên bản mới, gửi lại cùng dữ liệu không tạo lịch sử trùng. Bản nháp từ phiên bản cũ dùng phiên bản gốc 0, chỉ tạo mới hoặc xác nhận dữ liệu đã giống máy chủ.
+5. Trong lúc mở module, tự đọc cả bảng lịch và KTS mỗi 15 giây, khi trở lại cửa sổ/tab và khi có mạng. Mất mạng, thiếu bảng giá hoặc dữ liệu không hợp lệ thì ẩn toàn bộ kết quả tiền. Không dùng cache/default để báo khách. Trước sao chép phải kiểm tra máy chủ lần nữa; nếu phiên bản đổi thì tính lại và yêu cầu kiểm tra kết quả trước khi sao chép.
+6. Giá thay đổi tự tính lại. Danh mục giấy/vật tư đổi thứ tự hoặc thêm/bớt thì yêu cầu kiểm tra lại lựa chọn để tránh áp giá loại khác theo chỉ số cũ. Nháp đang chỉnh không bị làm mới ghi đè. Khi xung đột, dùng nút **Nạp bảng giá đã đồng bộ để chỉnh lại**, đối chiếu và lưu từ phiên bản mới.
+
+### Kiểm thử cơ sở dữ liệu độc lập
+
+Không kết nối Supabase thật. Chạy migration trên PostgreSQL WASM, kiểm tra quyền, phiên bản, gửi lại và giữ nguyên module cũ:
+
+```powershell
+npm install --prefix tmp/calendar-db-check --no-save --ignore-scripts @electric-sql/pglite
+node scripts/check-calendar-migration.cjs
+```
+
+Kiểm chứng này không thay thế bước áp dụng migration và xác nhận lưu/đọc giữa các máy trên Supabase thật.
 
 ## Kiểm chứng
 

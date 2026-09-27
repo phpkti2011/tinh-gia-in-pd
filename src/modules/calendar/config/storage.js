@@ -1,75 +1,165 @@
 import { CALENDAR_DEFAULT_CONFIG, CALENDAR_SCHEMA_VERSION } from './defaultConfig';
 import { validateCalendarConfig } from './schema';
-import { loadConfigFromSupabase, saveConfigToSupabase } from '../../../lib/priceConfigStore';
+import { DEFAULT_CONFIG, validateSmallPrintConfig } from '../../small-print/config';
+import { restoreInfinity } from '../../../utils/restoreInfinity';
+import { readCalendarPrices, publishCalendarPrices } from './cloud';
 
 const KEY = 'calendarConfig';
 const PENDING_KEY = 'calendarConfigPending';
+const DRAFT_KEY = 'calendarConfigDraft';
 let writeRevision = 0;
-export function hasPendingCalendarConfig() {
+
+const readLocal = (key) => {
     try {
-        return localStorage.getItem(PENDING_KEY) === 'true';
+        return JSON.parse(localStorage.getItem(key));
     } catch {
-        return false;
+        return null;
     }
-}
+};
+
+// Cache/default is only an editor/input seed; it never authorizes a quote.
 export function loadCalendarConfig() {
-    try {
-        const saved = JSON.parse(localStorage.getItem(KEY));
-        if (validateCalendarConfig(saved).isValid) return saved;
-    } catch {
-        /* Missing/corrupt cache falls back only inside the calendar namespace. */
-    }
-    return structuredClone(CALENDAR_DEFAULT_CONFIG);
+    const cached = readLocal(KEY);
+    return validateCalendarConfig(cached).isValid
+        ? cached
+        : structuredClone(CALENDAR_DEFAULT_CONFIG);
 }
 
-export async function loadCalendarFromCloud() {
+export function loadCalendarDraft() {
+    const draft = readLocal(DRAFT_KEY);
+    if (validateCalendarConfig(draft?.data).isValid) return draft;
+    if (readLocal(PENDING_KEY) === true) {
+        const data = readLocal(KEY);
+        if (validateCalendarConfig(data).isValid)
+            return { id: 'legacy', data, baseVersion: null, ownerId: null };
+    }
+    return null;
+}
+
+export const hasPendingCalendarConfig = () => Boolean(loadCalendarDraft());
+
+function clearDraft(id) {
+    if (loadCalendarDraft()?.id !== id) return;
+    try {
+        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem(PENDING_KEY);
+    } catch {
+        /* Reconcile with the server on the next read. */
+    }
+}
+
+export function calendarSyncError(error) {
+    const message = error?.message || String(error || '');
+    if (/save_calendar_price_config|invalid module|module_check|PGRST202/i.test(message))
+        return 'Máy chủ chưa bật đồng bộ lịch. Cần cập nhật cơ sở dữ liệu cho module lịch.';
+    if (/calendar_version_conflict/i.test(message))
+        return 'Admin khác đã cập nhật bảng giá. Bản nháp được giữ lại; hãy đối chiếu bảng giá mới trước khi lưu.';
+    if (/forbidden|42501|JWT|permission/i.test(message))
+        return 'Cần đăng nhập lại bằng tài khoản admin để đồng bộ bản nháp.';
+    return 'Chưa xác nhận được bảng giá từ máy chủ. Phần mềm sẽ tự thử lại khi có kết nối.';
+}
+
+async function publishDraft(draft) {
+    const result = await publishCalendarPrices(
+        draft.data,
+        CALENDAR_SCHEMA_VERSION,
+        draft.baseVersion
+    );
+    clearDraft(draft.id);
+    return result;
+}
+
+// ownerId may only be supplied after the UI has verified the admin role.
+export async function loadCalendarFromCloud({ ownerId = null } = {}) {
     const revision = writeRevision;
-    if (hasPendingCalendarConfig()) return loadCalendarConfig();
     try {
-        const result = await loadConfigFromSupabase('calendar');
-        if (revision !== writeRevision) return loadCalendarConfig();
-        if (validateCalendarConfig(result?.data).isValid) {
+        let rows = await readCalendarPrices();
+        const draft = loadCalendarDraft();
+        let retryError = null;
+        if (draft && ownerId && revision === writeRevision) {
             try {
-                localStorage.setItem(KEY, JSON.stringify(result.data));
-            } catch {
-                /* Cloud data remains usable. */
+                if (draft.id === 'legacy') {
+                    // Version 0 can create, or acknowledge an identical committed retry.
+                    // An existing different server price is rejected by the RPC.
+                    await publishDraft({ ...draft, baseVersion: 0 });
+                    rows = await readCalendarPrices();
+                } else if (draft.ownerId === ownerId && Number.isSafeInteger(draft.baseVersion)) {
+                    await publishDraft(draft);
+                    rows = await readCalendarPrices();
+                }
+            } catch (error) {
+                retryError = calendarSyncError(error);
             }
-            return result.data;
         }
-    } catch {
-        /* Offline: retain local configuration. */
-    }
-    return loadCalendarConfig();
-}
-
-export async function saveCalendarConfig(config) {
-    const validation = validateCalendarConfig(config);
-    if (!validation.isValid)
-        return { local: false, cloud: false, error: validation.errors.join(' ') };
-    writeRevision++;
-    let local = false;
-    try {
-        localStorage.setItem(KEY, JSON.stringify(config));
-        local = true;
-        localStorage.setItem(PENDING_KEY, 'true');
-    } catch {
-        /* Still attempt authenticated cloud save. */
-    }
-    try {
-        const result = await saveConfigToSupabase('calendar', config, CALENDAR_SCHEMA_VERSION);
-        if (result.ok) {
+        const calendar = rows.find((r) => r.module === 'calendar');
+        const print = rows.find((r) => r.module === 'small-print');
+        const printData = restoreInfinity(print?.data);
+        const calendarValid = validateCalendarConfig(calendar?.data).isValid;
+        const printValid = validateSmallPrintConfig(printData).isValid;
+        const version = calendar ? calendar.current_version : 0;
+        const versionsValid =
+            Number.isSafeInteger(version) &&
+            (calendar ? version > 0 : version === 0) &&
+            Number.isSafeInteger(print?.current_version) &&
+            print.current_version > 0;
+        const pending = loadCalendarDraft();
+        const ready = calendarValid && printValid && versionsValid && !pending;
+        if (calendarValid && !pending && revision === writeRevision) {
             try {
-                localStorage.removeItem(PENDING_KEY);
+                localStorage.setItem(KEY, JSON.stringify(calendar.data));
             } catch {
-                /* Retry remains safe. */
+                /* optional cache */
             }
         }
         return {
-            local,
-            cloud: result.ok,
-            error: result.ok ? null : result.error?.message || 'Chưa đồng bộ được bảng giá lịch.',
+            ready,
+            version,
+            printVersion: print?.current_version ?? null,
+            config: calendarValid ? calendar.data : null,
+            printConfig: printValid ? { ...structuredClone(DEFAULT_CONFIG), ...printData } : null,
+            error: ready
+                ? null
+                : retryError ||
+                  (pending
+                      ? 'Bản điều chỉnh đang chờ đồng bộ. Chưa thể báo giá; admin cần kiểm tra trạng thái trong Cài Đặt.'
+                      : !calendar
+                        ? 'Máy chủ chưa có bảng giá lịch. Admin cần hoàn tất đồng bộ trước khi báo giá.'
+                        : 'Bảng giá lịch hoặc KTS trên máy chủ chưa hợp lệ. Chưa thể báo giá.'),
         };
     } catch (error) {
-        return { local, cloud: false, error: error.message };
+        return {
+            ready: false,
+            version: null,
+            config: null,
+            printConfig: null,
+            error: calendarSyncError(error),
+        };
+    }
+}
+
+export async function saveCalendarConfig(config, { ownerId, baseVersion } = {}) {
+    const validation = validateCalendarConfig(config);
+    if (!validation.isValid)
+        return { local: false, cloud: false, error: validation.errors.join(' ') };
+    if (!ownerId || !Number.isSafeInteger(baseVersion) || baseVersion < 0)
+        return {
+            local: false,
+            cloud: false,
+            error: 'Chưa xác nhận được phiên bản bảng giá hoặc quyền admin. Hãy kết nối lại trước khi lưu.',
+        };
+    writeRevision++;
+    const draft = { id: crypto.randomUUID(), ownerId, baseVersion, data: structuredClone(config) };
+    let local = false;
+    try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        local = true;
+    } catch {
+        /* Failed drafts remain in the editor if browser storage is unavailable. */
+    }
+    try {
+        const result = await publishDraft(draft);
+        return { local, cloud: true, version: result.new_version, error: null };
+    } catch (error) {
+        return { local, cloud: false, error: calendarSyncError(error) };
     }
 }
