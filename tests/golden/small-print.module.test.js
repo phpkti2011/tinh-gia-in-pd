@@ -1,7 +1,7 @@
 // Smoke test cho module path mới sau TASK-0009 (extract small-print engine).
 //
 // Mục tiêu:
-//   1. Module path mới export đủ 16 public function (15 calculator + 1 quote).
+//   1. Module path mới export đủ 17 public function (16 calculator + 1 quote).
 //   2. Compat shim cũ (src/utils/calculator.js + customerQuote.js) re-export
 //      đúng reference (same function identity — đảm bảo không có wrapper/proxy).
 //   3. Behavior identical: spot-check 2-3 case golden qua cả 2 path.
@@ -22,6 +22,7 @@ describe('TASK-0009: small-print module path + compat shims', () => {
         'calculateVariableDataCost',
         'calculatePrintContentSurcharge',
         'calculateFinishingCost',
+        'calculateGluingCost', // 1.9.0 — dán thành phẩm
         'calculateLamination',
         'calculateDieCuttingCosts',
         'calculateFoilStamping',
@@ -32,14 +33,14 @@ describe('TASK-0009: small-print module path + compat shims', () => {
         'calculateDecalOptions',
     ];
 
-    it('module path mới export đủ 16 hàm từ calculator + 1 từ customerQuote = 17', () => {
+    it('module path mới export đủ 17 hàm từ calculator + 1 từ customerQuote = 18', () => {
         for (const fn of calcFunctions) {
             expect(typeof newPath[fn]).toBe('function');
         }
         expect(typeof newPath.calculateCustomerQuote).toBe('function');
     });
 
-    it('compat shim src/utils/calculator.js re-export cùng reference (16 fn)', () => {
+    it('compat shim src/utils/calculator.js re-export cùng reference (17 fn)', () => {
         for (const fn of calcFunctions) {
             expect(oldCalc[fn]).toBe(newPath[fn]);
         }

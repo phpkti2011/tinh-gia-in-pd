@@ -9,12 +9,26 @@
 const tiers = (values) => values.map(([from, cost, sale]) => ({ from, cost, sale }));
 
 export const ENVELOPE_SCHEMA_VERSION = '1.0.0';
+export const ENVELOPE_ART_PAPERS = [{ name: 'Giấy mỹ thuật', w: 70, h: 100, cost: 0 }];
+export const ENVELOPE_SIZE_PRESETS = [
+    { id: '220x120', w: 220, h: 120 },
+    { id: '220x110', w: 220, h: 110 },
+    { id: '230x160', w: 230, h: 160 },
+    { id: '350x250', w: 350, h: 250 },
+];
+export const ENVELOPE_CUT_LABELS = {
+    none: 'Không bế',
+    mold: 'Bế có khuôn',
+    digital: 'Bế kỹ thuật số (không khuôn)',
+};
 
 export const FEE_MODES = ['per_item', 'package'];
 export const FEE_MODE_LABELS = { per_item: 'Mỗi bao thư', package: 'Trọn gói mỗi đơn' };
 
 export const ENVELOPE_DEFAULT_CONFIG = {
     pricesConfirmed: false,
+    artPapers: ENVELOPE_ART_PAPERS,
+    sizePresets: ENVELOPE_SIZE_PRESETS,
     // allowed: số thứ tự giấy trong PAPER_STOCK_DATA của KTS (chỉ giấy ram). Rỗng = mọi giấy ram.
     papers: { allowed: [], defaultPaper: 5, defaultStock: 0 },
     // Giá trị điền sẵn cho màn nhập; người dùng vẫn đổi được từng đơn.
@@ -26,7 +40,7 @@ export const ENVELOPE_DEFAULT_CONFIG = {
         tabMm: 15,
         color: '4color',
     },
-    // Bế khuôn: gapCm = khoảng cách bình giữa các khổ trải trên tờ in (như nhánh mold của KTS).
+    // Dữ liệu bế cũ giữ để đọc cấu hình đã lưu; giá/bình bế hiện dùng trực tiếp KTS.
     dieCut: {
         gapCm: 0.4,
         mode: 'per_item',
@@ -48,12 +62,15 @@ export const ENVELOPE_DEFAULT_CONFIG = {
     orderMin: { fixedCost: 0, fixedSale: 0, minSale: 0 },
     // Mặt sau rời KHÔNG in: giá khách = vốn giấy ram × hệ số.
     backPaperFactor: 2,
+    flapTape: { costPerCm: 0, salePerCm: 0, minCost: 0, minSale: 0 },
 };
 
 // W/H để trống (NaN) — ô trống không phải 0; người dùng phải nhập.
 export const ENVELOPE_DEFAULT_INPUT = {
     unit: 'mm',
     w: NaN,
+    sizePreset: 'custom',
+    dieCuttingType: 'mold',
     h: NaN,
     flap: 40,
     tab: 15,
@@ -62,9 +79,13 @@ export const ENVELOPE_DEFAULT_INPUT = {
     backPrint: null,
     quantity: 100,
     paper: 5,
+    paperSource: 'ream',
+    artIndex: 0,
+    artInput: null,
     stock: 0,
     color: '4color',
     foil: false,
+    flapTape: false,
     molds: [{ w: 6, h: 3, impressions: 1, special: false }],
 };
 

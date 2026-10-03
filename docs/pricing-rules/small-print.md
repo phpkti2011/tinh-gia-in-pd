@@ -283,7 +283,7 @@ Khớp với cách phía giá khách vốn đã làm: decal cuộn và decal xi 
 | Tiền in | Thay bằng `mức sàn × số trang A4` |
 | Tiền giấy in + giấy trắng bồi | Chỉ khi **không** phải giấy ram |
 | Cán màng (giá vốn) | Có — nằm trong "giá vốn thành phẩm" |
-| Dữ liệu biến đổi, bấm lỗ, cấn, công bồi, gia công thêm, khuôn bế, công bế, ép kim | Có |
+| Dữ liệu biến đổi, bấm lỗ, cấn, công bồi, gia công thêm, dán thành phẩm, khuôn bế, công bế, ép kim | Có |
 | Sàn ép plastic | Có |
 | Phụ thu nhiều nội dung | Có, áp % lên cả sàn |
 
@@ -335,3 +335,75 @@ Khoá bởi `tests/golden/small-print.floor-price.test.js`,
 `tests/components/ResultPanel.floor-price.test.jsx`, và phần `withPaperReferenceDefaults`
 trong `tests/golden/small-print.config.storage.test.js` +
 `tests/lib/configStorage.supabase-read.test.js`.
+
+---
+
+## Dán thành phẩm (config v1.9.0)
+
+Gia công dán keo lên thành phẩm: **dán keo phá màng**, **dán keo 2 mặt vàng**… Khác "Gia công
+thêm" (mỗi đơn chỉ chọn một): **một đơn thêm được nhiều dòng dán**, vì một sản phẩm có thể
+dán nhiều kiểu keo. Màn nhập có nút "＋ Thêm kiểu dán"; mỗi dòng chọn một kiểu.
+
+Key: `GLUING_TYPES` (optional — config cũ thiếu key vẫn hợp lệ; key mới ở tầng 1 nên merge
+nông tự bù bảng mặc định, không cần `withXDefaults`). Validator + helper thêm dòng:
+[`config/gluingTypes.js`](../../src/modules/small-print/config/gluingTypes.js). Engine thuần:
+`calculateGluingCost()` trong
+[`engine/pricing.js`](../../src/modules/small-print/engine/pricing.js). Bảng sửa ở Cài Đặt
+In KTS, mục "Dán Thành Phẩm"
+([`GluingSettings.jsx`](../../src/components/smallprint/GluingSettings.jsx)).
+
+```txt
+GLUING_TYPES = [
+  { id, name,
+    cost_tiers:     [{ max_qty, price, type: 'package' | 'per_piece' }, …],   // giá vốn
+    customer_tiers: [{ max_qty, price, type }, …] },                          // giá khách
+  …
+]
+params.gluingLines = [{ typeId }, { typeId }, …]      // mỗi dòng = một kiểu dán
+
+Tiền một dòng = tra bậc theo SỐ THÀNH PHẨM (bậc đầu tiên có qty ≤ max_qty)
+                  'package'   → price            (một giá cho cả đơn)
+                  'per_piece' → qty × price
+Tiền dán      = tổng các dòng
+```
+
+Mặc định (⚠ **giá mẫu** — admin kiểm tra lại trong Cài Đặt trước khi báo khách):
+
+| Kiểu dán | ≤ 100 SP (trọn gói) vốn / khách | > 100 SP (mỗi SP) vốn / khách |
+|---|---|---|
+| Dán keo phá màng | 30.000 / 60.000 | 300 / 600 |
+| Dán keo 2 mặt vàng | 40.000 / 80.000 | 400 / 800 |
+
+Quy tắc:
+
+1. **Số lượng tra bậc = `productQuantity`** (số thành phẩm), như đục lỗ và cấn — không theo
+   số tờ in. Cùng hàm `calculateFinishingCost()`, cùng cấu trúc bậc, mốc `max_qty` là biên
+   đóng (đúng 100 vẫn ở bậc ≤ 100).
+2. **Mỗi dòng tính một lần cho cả đơn.** Hai dòng cùng kiểu = dán hai đường ⇒ tính hai lần
+   (bậc trọn gói cũng tính hai gói).
+3. **Tiền dán vào giá khách như mọi gia công khác**: cộng vào `baseCustomerCost` qua
+   `finishingCustomerPrices.gluing` nên **chịu phụ thu nhiều nội dung**. `quote.js` đọc key
+   này bằng `|| 0` — Catalogue, Lò xo, Lịch bàn, Bao thư gọi chung hàm với object 3 key và
+   không đổi một đồng.
+4. **Giá vốn dán vào cả "Giá vốn × biên" lẫn Giá Tối Thiểu (giá sàn)** — xem bảng Thành phần
+   ở mục Giá sàn.
+5. **`id` kiểu dán cố định, không đổi khi đổi tên.** Đơn đang mở tham chiếu bằng id.
+6. **Hai trường hợp ra 0 đ đều có cảnh báo, không im lặng:**
+   - `missing` — kiểu đã bị admin xoá: dòng giữ nguyên ở màn nhập với ô "— Chọn kiểu dán —",
+     màn kết quả nhắc chọn lại.
+   - `uncovered` — số lượng vượt bậc cuối hữu hạn: **không** tự lấy giá bậc cuối (bậc trọn
+     gói cho ≤ N cái mà áp cho đơn gấp 10 lần là báo thiếu tiền). Màn kết quả cảnh báo
+     "chưa có bậc giá cho N sản phẩm"; Cài Đặt cũng nhắc khi bậc cuối không phải "Không
+     giới hạn". Bảng mặc định có bậc cuối không giới hạn.
+7. **Cài Đặt chặn lưu khi bảng chưa hợp lệ**: tên trống / trùng, mốc không tăng dần, hai
+   bảng vốn – khách lệch mốc hoặc lệch cách tính, giá để trống hoặc âm. Kiểu và bậc mới
+   thêm có giá **để trống** (không phải 0) nên không thể lỡ tay lưu giá 0 đ.
+8. Admin xoá hết kiểu dán (`[]`) ⇒ ô "Dán thành phẩm" ẩn ở màn tính giá, giá không đổi.
+9. "Copy quy cách" ghi tên từng kiểu dán (viết thường, không lặp) sau các gia công khác,
+   trước phần bế / cắt thành phẩm.
+
+Khoá bởi `tests/golden/small-print.gluing.test.js`,
+`tests/components/InputPanel.gluing.test.jsx`,
+`tests/components/ResultPanel.gluing.test.jsx`,
+`tests/components/SettingsPanel.gluing.test.jsx` và ca dán trong
+`tests/golden/job-spec.test.js`.

@@ -31,3 +31,10 @@ export {
 } from './paperStock.js';
 
 export { tierPrintTotal, auditCustomerPriceTiers } from './priceTierAudit.js';
+
+export {
+    validateGluingTypes,
+    newGluingTypeId,
+    emptyGluingTier,
+    emptyGluingType,
+} from './gluingTypes.js';

@@ -12,7 +12,8 @@ src/modules/small-print/
 │   │                        calculateMaxCuttableSheetsLayout)
 │   ├── pricing.js         — cost helpers + tier lookups (public: getProfitMargin,
 │   │                        calculateVariableDataCost, calculatePrintContentSurcharge,
-│   │                        calculateFinishingCost)
+│   │                        calculateFinishingCost, calculateGluingCost — dán thành
+│   │                        phẩm nhiều dòng mỗi đơn, config 1.9.0)
 │   ├── finishing.js       — finishing operations (public: calculateLamination,
 │   │                        calculateDieCuttingCosts, calculateFoilStamping,
 │   │                        calculatePlasticLamination — ép plastic, xem
@@ -24,7 +25,7 @@ src/modules/small-print/
 │   │                        imports: ./layout, ./finishing
 │   ├── quote.js           — customer-facing quote (public: calculateCustomerQuote)
 │   │                        imports: ./pricing
-│   └── index.js           — barrel re-export tất cả 16 public function
+│   └── index.js           — barrel re-export tất cả 17 public function
 └── README.md              — file này
 
 (config/ — chưa tách trong TASK-0009, vẫn ở src/config/defaultConfig.js;

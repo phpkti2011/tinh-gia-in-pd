@@ -11,9 +11,12 @@
 //     * inner sanity: LAMINATION_CONFIG, PROFIT_MARGIN_TIERS,
 //       CUSTOMER_PRICE_TIERS, PRINTER_CONFIG, PAPER_STOCK_DATA
 //     * optional (config cũ thiếu vẫn hợp lệ, có thì phải đúng shape):
-//       LAMINATION_FILMS, PLASTIC_LAMINATION_CONFIG, PAPER_REFERENCE_CONFIG…
+//       LAMINATION_FILMS, PLASTIC_LAMINATION_CONFIG, PAPER_REFERENCE_CONFIG,
+//       GLUING_TYPES (dán thành phẩm, 1.9.0)…
 // - Cho phép Infinity ở các trường upper-bound (typeof Infinity === 'number').
 // - Pure JS, không thư viện ngoài.
+
+import { validateGluingTypes } from './gluingTypes.js';
 
 const REQUIRED_OBJECT_GROUPS = [
     'PRINTABLE_AREA_CONFIG',
@@ -480,6 +483,12 @@ export function validateSmallPrintConfig(config) {
 
     validateLaminationFilms(config.LAMINATION_FILMS, 'LAMINATION_FILMS', errors);
     validatePlasticLamination(config.PLASTIC_LAMINATION_CONFIG, errors);
+    // Dán thành phẩm — OPTIONAL: validator này chạy trên config thô đã lưu, TRƯỚC khi merge
+    // default, nên biến thành key bắt buộc là mọi config lưu trước 1.9.0 bị loại.
+    if (config.GLUING_TYPES != null) {
+        for (const message of validateGluingTypes(config.GLUING_TYPES))
+            errors.push(`GLUING_TYPES: ${message}`);
+    }
 
     return { isValid: errors.length === 0, errors };
 }

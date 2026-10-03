@@ -116,6 +116,38 @@ describe('small-print — In KTS khổ nhỏ', () => {
         expect(out).toContain('cán màng mờ 2 mặt, bồi 2 lớp, có cấn, đục lỗ 2 vị trí, ép kim');
     });
 
+    it('dán thành phẩm — tên từng kiểu keo theo thứ tự nhập, không lặp, sau các gia công khác', () => {
+        // Hai dòng cùng keo = hai đường dán (tiền tính hai lần) nhưng quy cách chỉ ghi một
+        // lần. Kiểu đã bị xoá khỏi Cài Đặt thì bỏ qua, không in "undefined".
+        const out = buildJobSpec('small-print', {
+            params: {
+                ...params,
+                creasingType: 'co_can',
+                gluingLines: [
+                    { typeId: 'glue-peel-seal' },
+                    { typeId: 'glue-double-sided-yellow' },
+                    { typeId: 'glue-peel-seal' },
+                    { typeId: 'glue-da-xoa' },
+                ],
+            },
+            result,
+            config: { ...config, GLUING_TYPES: SMALL_PRINT_DEFAULT.GLUING_TYPES },
+        });
+        expect(out).toContain(
+            'cán màng mờ 2 mặt, có cấn, dán keo phá màng, dán keo 2 mặt vàng, cắt thành phẩm chữ nhật'
+        );
+        expect(out).not.toContain('undefined');
+    });
+
+    it('có dòng dán nhưng config cũ không có GLUING_TYPES → quy cách y như không dán', () => {
+        const out = buildJobSpec('small-print', {
+            params: { ...params, gluingLines: [{ typeId: 'glue-peel-seal' }] },
+            result,
+            config,
+        });
+        expect(out).toBe(buildJobSpec('small-print', { params, result, config }));
+    });
+
     it('bồi 3 lớp — nhãn riêng, đúng chỗ cũ của bồi 2 lớp', () => {
         // v1.5.0 đổi 'bồi carton' → 'bồi 2 lớp' / 'bồi 3 lớp': giờ có 2 kiểu bồi, và
         // "carton" không còn đúng vì lớp kia là tờ giấy (chọn được loại).

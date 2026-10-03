@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { MATERIAL_LABELS } from '../config/defaultConfig';
+import { materialAllowed, artAllowed, isPlasticDecal } from '../config/wrapperMaterials';
+import { DEFAULT_CONFIG } from '../../small-print/config/defaultConfig';
+import { MATERIAL_LABELS, DEFAULT_CARTON_SHEET } from '../config/defaultConfig';
 import { validateCalendarConfig } from '../config/schema';
-import { NumberField, SelectField, Section, fieldClass, buttonClass } from './Fields';
+import { normalizeCalendarConfig, withStockMirror } from '../config/normalize';
+import {
+    NumberField,
+    SelectField,
+    Section,
+    fieldClass,
+    buttonClass,
+    formatPerCm2,
+    formatRatio,
+} from './Fields';
 
 const GEOMETRY_FIELDS = [
-    ['stockW', 'Cạnh nạp tấm carton (cm)'],
-    ['stockH', 'Chiều dài tấm carton (cm)'],
     ['machine', 'Khổ ngang máy cắt (cm)'],
     ['allowance', 'Bù mỗi kích thước carton (mm)'],
     ['strip', 'Rộng thanh chân (cm)'],
@@ -23,12 +32,135 @@ const GEOMETRY_FIELDS = [
     ['linerPadH', 'Lót: phần cộng 1 (cm)'],
     ['linerBaseH', 'Lót: phần cộng 2 (cm)'],
     ['linerReduceH', 'Lót: trừ chiều dài (mm)'],
-    ['lamSides', 'Số mặt cán áo (0–2)'],
+    ['lamSides', 'Số mặt cán áo C150 / decal (1–2)'],
     ['baseMin', 'Giá carton tối thiểu khi làm 1 đế (đ)'],
 ];
 
-export default function CalendarSettings({ config, onSave, onCancel, onReload, syncReady }) {
-    const [draft, setDraft] = useState(() => structuredClone(config)),
+const GEOMETRY_GROUPS = [
+    {
+        title: 'Carton — phôi đế và máy cắt',
+        keys: [
+            'machine',
+            'allowance',
+            'strip',
+            'largeCount',
+            'smallCount',
+            'trim',
+            'gap',
+            'baseMin',
+        ],
+    },
+    {
+        title: 'Áo bọc — khổ giấy và vùng in',
+        keys: ['wrapPadW', 'wrapFactor', 'wrapPadH', 'wrapCopies', 'wrapPrintInset', 'lamSides'],
+    },
+    {
+        title: 'Giấy lót — khổ giấy bên trong',
+        keys: ['linerReduceW', 'linerFactor', 'linerPadH', 'linerBaseH', 'linerReduceH'],
+    },
+];
+
+function GeometryFormula({ group, geometry: g, cartons }) {
+    const n = (value) =>
+        Number.isFinite(value) ? value.toLocaleString('vi-VN', { maximumFractionDigits: 6 }) : '…';
+    return (
+        <div className="rounded-lg border border-cyan-800 bg-gray-900/60 p-4 text-sm text-cyan-100 space-y-2">
+            <p className="font-semibold">Công thức đang áp dụng · kích thước tính bằng cm</p>
+            {group === 0 ? (
+                <>
+                    <p>
+                        Mặt carton: (W + {n(g.allowance / 10)}) × (H + {n(g.allowance / 10)}) cm ·{' '}
+                        {n(g.largeCount)} mặt/đế.
+                    </p>
+                    <p>
+                        Thanh chân: (W + {n(g.allowance / 10)}) × ({n(g.strip)} +{' '}
+                        {n(g.allowance / 10)}) cm · {n(g.smallCount)} thanh/đế.
+                    </p>
+                    <p>
+                        Tấm dùng để xếp phôi: (ngang − 2 × {n(g.trim)}) × (dài − 2 × {n(g.trim)})
+                        cm; khoảng cách phôi {n(g.gap)} cm. Ngang và dài lấy theo{' '}
+                        <strong>loại carton đang chọn</strong> ở màn tính giá — khai trong “Bảng giá
+                        carton lạnh” bên dưới.
+                    </p>
+                    <p className="text-gray-300">
+                        Khổ đang khai:{' '}
+                        {cartons.map((p) => `${p.name} ${n(p.w)} × ${n(p.h)} cm`).join(' · ')}.
+                    </p>
+                    <p className="text-gray-300">
+                        Bù {n(g.allowance)} mm = {n(g.allowance / 10)} cm, cộng một lần vào mỗi kích
+                        thước. Cạnh nạp không được vượt khổ ngang máy. Giá tối thiểu carton chỉ áp
+                        cho giá khách khi làm đúng 1 đế.
+                    </p>
+                </>
+            ) : group === 1 ? (
+                <>
+                    <p>Ngang áo = W + {n(g.wrapPadW)} cm.</p>
+                    <p>
+                        Dài áo = {n(g.wrapFactor)} × H + {n(g.wrapPadH)} cm.
+                    </p>
+                    <p>
+                        Vùng in áo = (ngang áo − 2 × {n(g.wrapPrintInset / 10)}) × (dài áo − 2 ×{' '}
+                        {n(g.wrapPrintInset / 10)}) cm.
+                    </p>
+                    <p>
+                        Số áo = số đế × {n(g.wrapCopies)}; áo C150/decal cán{' '}
+                        {n(Math.max(1, g.lamSides))} mặt. Áo mỹ thuật không cán màng.
+                    </p>
+                    <p className="text-gray-300">
+                        Chừa {n(g.wrapPrintInset)} mm ở mỗi mép in nên trừ hai mép trên mỗi chiều.
+                        Khổ giấy áo vẫn giữ nguyên.
+                    </p>
+                </>
+            ) : (
+                <>
+                    <p>Ngang lót = W − {n(g.linerReduceW / 10)} cm.</p>
+                    <p>
+                        Dài lót = {n(g.linerFactor)} × H + {n(g.linerPadH)} + {n(g.linerBaseH)} −{' '}
+                        {n(g.linerReduceH / 10)} cm.
+                    </p>
+                    <p>Số lót = số đế × {n(g.linerCopies)}.</p>
+                    <p className="text-gray-300">
+                        Các khoản trừ mm được chia 10 để đổi sang cm; trừ một lần mỗi chiều. Định
+                        mức số lót và hệ số bán nằm trong mục Giá giấy lót trong.
+                    </p>
+                </>
+            )}
+        </div>
+    );
+}
+
+export default function CalendarSettings({
+    config,
+    printConfig = DEFAULT_CONFIG,
+    onSave,
+    onCancel,
+    onReload,
+    syncReady,
+}) {
+    const [draft, setDraft] = useState(() =>
+            structuredClone(
+                normalizeCalendarConfig({
+                    ...config,
+                    allowedMaterials:
+                        config.allowedMaterials ??
+                        Object.fromEntries(
+                            ['wrap', 'liner'].map((role) => [
+                                role,
+                                [
+                                    ...printConfig.PAPER_STOCK_DATA.filter((p) =>
+                                        materialAllowed(config, role, p)
+                                    ).map((p) => p.name),
+                                    ...(artAllowed(config, role) ? ['art'] : []),
+                                    ...(role === 'liner' &&
+                                    !printConfig.PAPER_STOCK_DATA.some((p) => p.name === 'F120')
+                                        ? ['F120']
+                                        : []),
+                                ],
+                            ])
+                        ),
+                })
+            )
+        ),
         [status, setStatus] = useState(''),
         [saving, setSaving] = useState(false);
     const update = (fn) =>
@@ -43,12 +175,21 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
             while (c.materials[key].some((p) => p.name === `${MATERIAL_LABELS[key][0]} ${n}`)) n++;
             c.materials[key].push({
                 name: `${MATERIAL_LABELS[key][0]} ${n}`,
+                ...(key === 'carton'
+                    ? {
+                          w: c.materials.carton[0]?.w ?? DEFAULT_CARTON_SHEET.w,
+                          h: c.materials.carton[0]?.h ?? DEFAULT_CARTON_SHEET.h,
+                      }
+                    : {}),
                 tiers: [{ from: 1, cost: 0, sale: 0 }],
             });
             c.pricesConfirmed = false;
         });
     const save = async () => {
-        const valid = validateCalendarConfig(draft);
+        // Bản sao geometry.stockW/stockH chạy theo loại carton đầu tiên; phải cập nhật
+        // TRƯỚC khi kiểm tra, nếu không lỗi sẽ phát ra từ ô đã gỡ khỏi giao diện.
+        const next = withStockMirror(draft);
+        const valid = validateCalendarConfig(next);
         if (!valid.isValid) {
             setStatus(valid.errors.join(' '));
             return;
@@ -56,7 +197,7 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
         setSaving(true);
         setStatus('Đang lưu…');
         try {
-            const r = await onSave(draft);
+            const r = await onSave(next);
             setStatus(
                 r.cloud
                     ? 'Đã lưu và đồng bộ bảng giá lịch.'
@@ -100,6 +241,54 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                 </p>
             )}
             <fieldset disabled={saving} className="space-y-5">
+                <Section title="Vật liệu được phép dùng cho áo và lót">
+                    <p className="text-sm text-gray-300">
+                        Tích riêng cho từng phần. Lót mặc định C150, F120. Giá giấy lấy từ danh mục
+                        hiện hành; muốn dùng giấy mới, khai báo giấy và giá trước. Giấy dày từ C200
+                        thường không phù hợp bồi đế.
+                    </p>
+                    {['wrap', 'liner'].map((role) => (
+                        <div key={role} className="space-y-3">
+                            <h3 className="font-semibold text-cyan-300">
+                                {role === 'wrap' ? 'Giấy áo' : 'Giấy lót'}
+                            </h3>
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {[
+                                    ...printConfig.PAPER_STOCK_DATA.filter(
+                                        (p) =>
+                                            !p.hidden &&
+                                            (p.pricingModel === 'ream' || isPlasticDecal(p))
+                                    ).map((p) => p.name),
+                                    'art',
+                                ].map((name) => (
+                                    <label key={name} className="flex gap-2 items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={draft.allowedMaterials[role].includes(name)}
+                                            onChange={(e) =>
+                                                update((c) => {
+                                                    c.allowedMaterials[role] = e.target.checked
+                                                        ? [...c.allowedMaterials[role], name]
+                                                        : c.allowedMaterials[role].filter(
+                                                              (n) => n !== name
+                                                          );
+                                                })
+                                            }
+                                        />
+                                        {role === 'wrap' ? 'Áo' : 'Lót'}:{' '}
+                                        {name === 'art' ? 'Giấy mỹ thuật' : name}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                    {!printConfig.PAPER_STOCK_DATA.some((p) => /^F\s*120$/i.test(p.name)) && (
+                        <p className="text-amber-300 text-sm">
+                            Chưa thấy F120 trong bảng KTS đang tải. Nếu đã thêm F120, hãy kiểm tra
+                            đã lưu và đồng bộ bảng KTS, rồi nạp lại bảng giá lịch.
+                        </p>
+                    )}
+                </Section>
                 <Section title="Quy tắc bán giấy áo">
                     <div className="grid md:grid-cols-2 gap-4">
                         <SelectField
@@ -149,8 +338,9 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                 </Section>
                 <Section title="Giá giấy lót trong">
                     <p className="text-sm text-gray-300">
-                        Giá báo khách giấy lót = tổng giá vốn giấy lót × hệ số bên dưới. Khoản này
-                        cộng một lần vào giá đế, không tính theo bậc số lượng.
+                        Lót không in: giá khách = giá vốn giấy × hệ số bên dưới. Lót có in dùng tổng
+                        giá giấy + in KTS, không cộng lại hệ số này. Cán lót tính riêng theo loại
+                        màng đã chọn, cộng một lần vào giá đế.
                     </p>
                     <div className="grid md:grid-cols-2 gap-4">
                         <NumberField
@@ -202,24 +392,40 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                     </div>
                 </Section>
                 <Section title="Kích thước và định mức">
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {GEOMETRY_FIELDS.map(([key, label]) => (
-                            <NumberField
-                                key={key}
-                                label={label}
-                                value={draft.geometry[key]}
-                                onChange={(v) =>
-                                    update((c) => {
-                                        c.geometry[key] = v;
-                                    })
-                                }
-                            />
-                        ))}
-                    </div>
-                    <p className="text-sm text-gray-400">
-                        Bù 4 mm nghĩa là (W + 4 mm) × (H + 4 mm), không cộng 8 mm. Các phần trừ lót
-                        và mép in áo độc lập với bù carton.
+                    <p className="text-sm text-gray-300">
+                        W là chiều ngang, H là chiều cao của lịch theo hướng ngang/dọc đã chọn ở màn
+                        tính giá. Công thức bên dưới cập nhật theo thông số đang nhập; 10 mm = 1 cm.
                     </p>
+                    {GEOMETRY_GROUPS.map((group, index) => (
+                        <div
+                            key={group.title}
+                            className="border border-gray-600 rounded-xl p-4 sm:p-5 space-y-4"
+                        >
+                            <h3 className="text-lg font-semibold text-cyan-300">{group.title}</h3>
+                            <GeometryFormula
+                                group={index}
+                                geometry={draft.geometry}
+                                cartons={draft.materials.carton}
+                            />
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {group.keys.map((key) => {
+                                    const label = GEOMETRY_FIELDS.find(([id]) => id === key)[1];
+                                    return (
+                                        <NumberField
+                                            key={key}
+                                            label={label}
+                                            value={draft.geometry[key]}
+                                            onChange={(v) =>
+                                                update((c) => {
+                                                    c.geometry[key] = v;
+                                                })
+                                            }
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </Section>
                 {Object.entries(MATERIAL_LABELS).map(([key, [title, costLabel, saleLabel]]) => (
                     <Section key={key} title={`Bảng giá ${title.toLowerCase()}`}>
@@ -229,6 +435,14 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                                 : 'Tra bậc theo số cuốn.'}{' '}
                             Mốc “Từ” áp dụng tới trước mốc tiếp theo. Bậc cuối không giới hạn.
                         </p>
+                        {key === 'carton' && (
+                            <p className="text-sm text-gray-400">
+                                Mỗi loại carton khai khổ tấm nguyên của riêng nó.{' '}
+                                <strong>Ngang</strong> là cạnh đưa vào máy cắt, phải ≤ khổ ngang máy
+                                ({draft.geometry.machine} cm) — phần mềm không tự xoay tấm nguyên.
+                                Loại đang chọn ở màn tính giá quyết định sơ đồ cắt và số tấm.
+                            </p>
+                        )}
                         {draft.materials[key].map((material, i) => (
                             <div
                                 key={i}
@@ -260,6 +474,28 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                                         Xóa loại
                                     </button>
                                 </div>
+                                {key === 'carton' && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <NumberField
+                                            label={`Ngang tấm carton ${i + 1} (cm)`}
+                                            value={material.w}
+                                            onChange={(v) =>
+                                                update((c) => {
+                                                    c.materials.carton[i].w = v;
+                                                })
+                                            }
+                                        />
+                                        <NumberField
+                                            label={`Dài tấm carton ${i + 1} (cm)`}
+                                            value={material.h}
+                                            onChange={(v) =>
+                                                update((c) => {
+                                                    c.materials.carton[i].h = v;
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                )}
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
@@ -267,6 +503,12 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                                                 <th>Từ số lượng</th>
                                                 <th>{costLabel}</th>
                                                 <th>{saleLabel}</th>
+                                                {key === 'carton' && (
+                                                    <>
+                                                        <th>Vốn / cm² tấm nguyên</th>
+                                                        <th>Khách / Vốn</th>
+                                                    </>
+                                                )}
                                                 <th />
                                             </tr>
                                         </thead>
@@ -301,6 +543,38 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                                                             />
                                                         </td>
                                                     ))}
+                                                    {key === 'carton' &&
+                                                        (() => {
+                                                            const area = material.w * material.h;
+                                                            const unit =
+                                                                area > 0 &&
+                                                                Number.isFinite(tier.cost)
+                                                                    ? tier.cost / area
+                                                                    : NaN;
+                                                            return (
+                                                                <>
+                                                                    <td
+                                                                        className="p-1 text-right"
+                                                                        data-testid={`carton-${i}-tier-${j}-cost-per-cm2`}
+                                                                    >
+                                                                        {formatPerCm2(unit)}
+                                                                    </td>
+                                                                    <td
+                                                                        className="p-1 text-right"
+                                                                        data-testid={`carton-${i}-tier-${j}-ratio`}
+                                                                    >
+                                                                        {formatRatio(
+                                                                            unit > 0 &&
+                                                                                Number.isFinite(
+                                                                                    tier.sale
+                                                                                )
+                                                                                ? tier.sale / unit
+                                                                                : NaN
+                                                                        )}
+                                                                    </td>
+                                                                </>
+                                                            );
+                                                        })()}
                                                     <td>
                                                         <button
                                                             className={buttonClass}
@@ -336,6 +610,18 @@ export default function CalendarSettings({ config, onSave, onCancel, onReload, s
                                 >
                                     + Thêm bậc {title.toLowerCase()}
                                 </button>
+                                {key === 'carton' && (
+                                    <p className="text-xs text-gray-400">
+                                        Hai cột bên phải chỉ để <strong>đối chiếu</strong>, không
+                                        nhập được. <strong>Vốn / cm²</strong> = vốn một tấm ÷ (ngang
+                                        × dài) của tấm <strong>nguyên</strong> — chưa trừ hao khi
+                                        cắt phôi và chưa tính phần bù {draft.geometry.allowance} mm
+                                        mỗi chiều, nên vốn thật trên mỗi cm²{' '}
+                                        <strong>thành phẩm</strong> luôn cao hơn con số này.{' '}
+                                        <strong>Khách / Vốn</strong> là số lần giá khách mỗi cm²
+                                        thành phẩm so với vốn mỗi cm² tấm nguyên.
+                                    </p>
+                                )}
                             </div>
                         ))}
                         <button className={buttonClass} onClick={() => addType(key)}>

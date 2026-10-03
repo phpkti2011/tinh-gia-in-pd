@@ -158,6 +158,17 @@ function smallPrintSpec({ params, result, config }) {
     );
     if (custom?.name) fin.push(stripPriceNote(custom.name).toLowerCase());
 
+    // Dán thành phẩm: tên từng kiểu dán theo thứ tự nhập, KHỬ TRÙNG — hai dòng cùng keo là
+    // hai đường dán (tiền tính hai lần) nhưng xưởng chỉ cần biết dùng keo gì. Kiểu đã bị xoá
+    // khỏi Cài Đặt thì bỏ qua, không in "undefined" vào quy cách.
+    const glueNames = [];
+    for (const line of Array.isArray(params.gluingLines) ? params.gluingLines : []) {
+        const type = (config?.GLUING_TYPES || []).find((t) => t.id === line?.typeId);
+        const name = type?.name ? stripPriceNote(type.name).toLowerCase() : '';
+        if (name && !glueNames.includes(name)) glueNames.push(name);
+    }
+    fin.push(...glueNames);
+
     // Không bế → thành phẩm cắt chữ nhật/vuông (đúng luật người dùng nêu).
     if (SP_DIECUT[params.dieCuttingType]) {
         const mold =

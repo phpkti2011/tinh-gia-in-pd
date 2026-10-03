@@ -48,6 +48,7 @@ export default function ResultPanel({
     variableDataCost,
     foilResult,
     plasticResult,
+    gluingResult,
     onChange,
 }) {
     // P2-03: Admin reveal (giá vốn / giá tối thiểu) giờ dựa vào Supabase role.
@@ -146,6 +147,8 @@ export default function ResultPanel({
     const foilCost = foilResult ? foilResult.totalCost : 0;
     // Sàn bán ép plastic (engine tính sẵn) — là giá BÁN sàn chứ không phải giá vốn.
     const plasticFloor = plasticResult?.minPrice || 0;
+    // Giá vốn dán thành phẩm (tổng mọi dòng dán). `|| 0`: màn/test cũ không truyền prop này.
+    const gluingCost = gluingResult?.cost || 0;
 
     // Giá vốn THÀNH PHẨM: mọi thứ không phải tiền in và tiền giấy.
     const finishingTotalCost =
@@ -155,6 +158,7 @@ export default function ResultPanel({
         (creasingCost || 0) +
         (mountingCost || 0) +
         (customFinishingCost || 0) +
+        gluingCost +
         (moldCost || 0) +
         (laborCost || 0) +
         foilCost +
@@ -208,6 +212,7 @@ export default function ResultPanel({
         // Dòng này TRƯỚC ĐÂY BỊ THIẾU, trong khi bảng so sánh ngay dưới lại có cộng — nên
         // đơn có gia công thêm bị hụt tiền ở panel đầu trang.
         (customFinishingCost || 0) +
+        gluingCost +
         (moldCost || 0) +
         (laborCost || 0) +
         foilCost;
@@ -620,6 +625,32 @@ export default function ResultPanel({
                                         color="text-white"
                                     />
                                 )}
+                                {/* Dán thành phẩm: một dòng cho mỗi kiểu dán đã thêm ở màn
+                                    nhập. Số tiền theo số thành phẩm nên không đổi khi chọn
+                                    phương án in khác trong bảng so sánh. */}
+                                {(gluingResult?.lines || []).map(
+                                    (line, i) =>
+                                        line.customerPrice > 0 && (
+                                            <QuoteRow
+                                                key={`gluing-${i}`}
+                                                label={line.name || 'Dán thành phẩm'}
+                                                value={line.customerPrice}
+                                                color="text-white"
+                                            />
+                                        )
+                                )}
+                                {gluingResult?.uncoveredCount > 0 && (
+                                    <p className="text-xs text-yellow-400 border-b border-gray-700/40 pb-1.5">
+                                        ⚠ Dán thành phẩm: chưa có bậc giá cho {productQuantity} sản
+                                        phẩm — chưa tính tiền dán vào báo giá.
+                                    </p>
+                                )}
+                                {gluingResult?.missingCount > 0 && (
+                                    <p className="text-xs text-yellow-400 border-b border-gray-700/40 pb-1.5">
+                                        ⚠ Có dòng dán chưa chọn kiểu dán (kiểu cũ đã bị xoá trong
+                                        Cài Đặt) — chưa tính tiền dòng đó.
+                                    </p>
+                                )}
                                 {displayQuote.dieCuttingMoldCustomerPrice > 0 && (
                                     <QuoteRow
                                         label="Khuôn bế"
@@ -780,6 +811,7 @@ export default function ResultPanel({
                                 (creasingCost || 0) +
                                 (mountingCost || 0) +
                                 (customFinishingCost || 0) +
+                                gluingCost +
                                 (moldCost || 0) +
                                 (laborCost || 0) +
                                 foilCost;

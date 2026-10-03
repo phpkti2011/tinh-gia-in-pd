@@ -1,6 +1,10 @@
 const tiers = (values) => values.map(([from, cost, sale]) => ({ from, cost, sale }));
 
-export const CALENDAR_SCHEMA_VERSION = '1.0.0';
+export { CALENDAR_SCHEMA_VERSION, CALENDAR_CONFIG_LAST_UPDATED } from './version';
+
+// Khổ tấm carton dùng khi config cũ chưa khai và geometry cũng thiếu. Xem config/normalize.js.
+export const DEFAULT_CARTON_SHEET = { w: 60, h: 100 };
+
 export const CALENDAR_DEFAULT_CONFIG = {
     pricesConfirmed: false,
     geometry: {
@@ -8,6 +12,8 @@ export const CALENDAR_DEFAULT_CONFIG = {
         strip: 3,
         largeCount: 2,
         smallCount: 2,
+        // BẢN SAO của materials.carton[0].w/h — engine không đọc, Cài Đặt không cho sửa.
+        // Giữ để bundle cũ / đường rollback vẫn báo giá đúng. Xem config/normalize.js.
         stockW: 60,
         stockH: 100,
         machine: 76,
@@ -33,6 +39,9 @@ export const CALENDAR_DEFAULT_CONFIG = {
         carton: [
             {
                 name: 'Carton lạnh tiêu chuẩn',
+                // Khổ tấm nguyên của RIÊNG loại này; w là cạnh nạp vào máy cắt.
+                w: 60,
+                h: 100,
                 tiers: tiers([
                     [1, 45000, 18],
                     [10, 42000, 15],
@@ -85,11 +94,16 @@ export const CALENDAR_DEFAULT_INPUT = {
     wrapStock: 0,
     wrapArt: 0,
     wrapArtInput: null,
+    wrapGsm: NaN,
     linerSource: 'ream',
     linerPaper: 0,
     linerStock: 0,
     linerArt: 0,
     linerArtInput: null,
+    linerPrint: false,
+    linerColor: '4color',
+    linerLam: false,
+    linerLamType: 0,
     selected: { carton: 0, coil: 0, labor: 0, lam: 0 },
     foil: false,
     molds: [{ w: 6, h: 3, impressions: 1, special: false }],

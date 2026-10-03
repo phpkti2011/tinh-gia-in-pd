@@ -18,6 +18,7 @@ export {
     calculatePrintContentSurcharge,
     calculateFinishingCost,
     calculateCustomFinishingCost,
+    calculateGluingCost,
 } from './pricing.js';
 
 export {

@@ -1,4 +1,4 @@
-import { FEE_MODES } from './defaultConfig';
+import { FEE_MODES, ENVELOPE_ART_PAPERS } from './defaultConfig';
 import { requireValue, validateTiers } from '../../../utils/priceTiers.js';
 import { ENVELOPE_UNITS, FLAP_EDGES, CONSTRUCTIONS } from '../engine/layout.js';
 
@@ -13,6 +13,46 @@ export function validateEnvelopeConfig(config) {
             'Thiếu trạng thái xác nhận bảng giá.'
         );
         const p = config.papers;
+        // Thiếu trường: cấu hình cũ dùng danh sách mặc định. []: admin đã xóa hết.
+        if (config.sizePresets !== undefined) {
+            requireValue(Array.isArray(config.sizePresets), 'Danh sách khổ chuẩn không hợp lệ.');
+            const ids = new Set();
+            for (const size of config.sizePresets) {
+                requireValue(
+                    size &&
+                        typeof size.id === 'string' &&
+                        size.id.trim() &&
+                        size.id !== 'custom' &&
+                        !ids.has(size.id),
+                    'Mã khổ chuẩn phải khác nhau.'
+                );
+                requireValue(
+                    [size.w, size.h].every((n) => Number.isFinite(n) && n > 0),
+                    'Ngang và cao khổ chuẩn phải là số lớn hơn 0 mm.'
+                );
+                ids.add(size.id);
+                requireValue(
+                    size.name === undefined || typeof size.name === 'string',
+                    'Tên khổ chuẩn phải là văn bản.'
+                );
+            }
+        }
+        if (config.artPapers !== undefined) {
+            requireValue(
+                Array.isArray(config.artPapers) && config.artPapers.length > 0,
+                'Cần ít nhất một loại giấy mỹ thuật.'
+            );
+            for (const art of config.artPapers)
+                requireValue(
+                    art &&
+                        typeof art.name === 'string' &&
+                        art.name.trim() &&
+                        [art.w, art.h].every((n) => Number.isFinite(n) && n > 0) &&
+                        Number.isFinite(art.cost) &&
+                        art.cost >= 0,
+                    'Giấy mỹ thuật cần tên, khổ giấy dương và giá mỗi tờ không âm.'
+                );
+        }
         requireValue(
             p &&
                 Array.isArray(p.allowed) &&
@@ -54,6 +94,14 @@ export function validateEnvelopeConfig(config) {
                 `Cách tính phí ${label} phải là mỗi bao thư hoặc trọn gói.`
             );
             validateTiers(fee.tiers);
+            if (key === 'gluing') {
+                requireValue(
+                    fee.tiers.every(
+                        (tier) => tier.mode === undefined || FEE_MODES.includes(tier.mode)
+                    ),
+                    'Cách tính mỗi bậc dán bao thư phải là mỗi bao thư hoặc trọn gói.'
+                );
+            }
         }
         requireValue(
             Number.isFinite(config.dieCut.gapCm) &&
@@ -62,6 +110,23 @@ export function validateEnvelopeConfig(config) {
             'Khoảng cách bình khi bế phải từ 0 đến 5 cm.'
         );
         const m = config.orderMin;
+        if (config.flapTape !== undefined) {
+            requireValue(
+                config.flapTape &&
+                    ['costPerCm', 'salePerCm'].every(
+                        (key) => Number.isFinite(config.flapTape[key]) && config.flapTape[key] >= 0
+                    ),
+                'Giá dán keo nắp theo cm phải là số không âm.'
+            );
+            requireValue(
+                ['minCost', 'minSale'].every(
+                    (key) =>
+                        config.flapTape[key] === undefined ||
+                        (Number.isFinite(config.flapTape[key]) && config.flapTape[key] >= 0)
+                ),
+                'Phí dán keo nắp tối thiểu phải là số không âm.'
+            );
+        }
         for (const [key, label] of [
             ['fixedCost', 'vốn cố định'],
             ['fixedSale', 'phí cố định báo khách'],
@@ -79,6 +144,10 @@ export function validateEnvelopeConfig(config) {
     } catch (error) {
         return { isValid: false, errors: [error.message] };
     }
+}
+
+export function envelopeArtPaper(input, config) {
+    return input.artInput ?? (config.artPapers ?? ENVELOPE_ART_PAPERS)[input.artIndex ?? 0];
 }
 
 // Giấy ram KTS được phép dùng cho bao thư, GIỮ số thứ tự gốc (engine tra theo index).

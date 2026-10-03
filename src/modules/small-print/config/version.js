@@ -30,6 +30,13 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   1.3.0 - them LAMINATION_FILMS (optional): loai mang can (Mo/Bong/...),
 //           phu thu % cong tren tien can mang. Thieu field = mac dinh Mo/Bong 0%
 //           => gia khong doi.
+// 1.9.0 — GLUING_TYPES (optional array): DÁN THÀNH PHẨM (keo phá màng, keo 2 mặt vàng…).
+//   [{ id, name, cost_tiers, customer_tiers }] — bảng bậc cùng cấu trúc với đục lỗ / cấn,
+//   tra theo SỐ THÀNH PHẨM. Một đơn chọn được NHIỀU dòng dán (params.gluingLines), mỗi dòng
+//   tính cho toàn bộ số lượng; tiền dán vào giá khách, vào giá sàn và chịu phụ thu nội dung
+//   như mọi gia công khác. Xem config/gluingTypes.js + engine/pricing.js calculateGluingCost.
+//   Key MỚI ở tầng 1 ⇒ merge nông tự bù default (không cần withXDefaults). Thiếu key hoặc
+//   đơn không thêm dòng dán ⇒ giá không đổi một đồng. Admin xoá hết kiểu ([]) ⇒ ô chọn ẩn.
 // 1.8.0 — PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage (optional number): mức GIÁ SÀN
 //   thứ hai, đ/trang A4, dành cho giấy KHÔNG tính theo ram (m² / theo tờ / gõ tay) — sàn
 //   chỉ bao tiền IN, tiền giấy cộng theo giá thật. Giấy ram vẫn dùng minPrintPricePerPage
@@ -65,6 +72,6 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   cộng thẳng vào Giá Tối Thiểu). Thiếu field → engine trả 0, ô chọn ẩn ở màn
 //   tính giá → giá không đổi. Xem src/utils/plasticLamination.js.
 
-export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.8.0';
+export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.9.0';
 
-export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-09-24';
+export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-10-02';

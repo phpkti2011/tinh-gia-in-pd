@@ -89,7 +89,7 @@ export default function CalendarResult({
                                             : row.id === 'liner'
                                               ? `${r.liner.paperName} · ${r.linerW} × ${r.linerH} cm · ${r.liner.sheets} tờ ${r.liner.stock}`
                                               : row.id === 'carton'
-                                                ? `${config.materials.carton[input.selected.carton].name} · ${r.lay.count} tấm ${config.geometry.stockW} × ${config.geometry.stockH} cm`
+                                                ? `${r.carton.name} · ${r.carton.sheets} tấm ${r.carton.sheetW} × ${r.carton.sheetH} cm`
                                                 : row.detail}
                                     </div>
                                 </td>

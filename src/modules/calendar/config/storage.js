@@ -1,5 +1,6 @@
 import { CALENDAR_DEFAULT_CONFIG, CALENDAR_SCHEMA_VERSION } from './defaultConfig';
 import { validateCalendarConfig } from './schema';
+import { normalizeCalendarConfig, withStockMirror } from './normalize';
 import { DEFAULT_CONFIG, validateSmallPrintConfig } from '../../small-print/config';
 import { restoreInfinity } from '../../../utils/restoreInfinity';
 import { readCalendarPrices, publishCalendarPrices } from './cloud';
@@ -19,7 +20,7 @@ const readLocal = (key) => {
 
 // Cache/default is only an editor/input seed; it never authorizes a quote.
 export function loadCalendarConfig() {
-    const cached = readLocal(KEY);
+    const cached = normalizeCalendarConfig(readLocal(KEY));
     return validateCalendarConfig(cached).isValid
         ? cached
         : structuredClone(CALENDAR_DEFAULT_CONFIG);
@@ -27,9 +28,10 @@ export function loadCalendarConfig() {
 
 export function loadCalendarDraft() {
     const draft = readLocal(DRAFT_KEY);
-    if (validateCalendarConfig(draft?.data).isValid) return draft;
+    const draftData = normalizeCalendarConfig(draft?.data);
+    if (validateCalendarConfig(draftData).isValid) return { ...draft, data: draftData };
     if (readLocal(PENDING_KEY) === true) {
-        const data = readLocal(KEY);
+        const data = normalizeCalendarConfig(readLocal(KEY));
         if (validateCalendarConfig(data).isValid)
             return { id: 'legacy', data, baseVersion: null, ownerId: null };
     }
@@ -94,7 +96,9 @@ export async function loadCalendarFromCloud({ ownerId = null } = {}) {
         const calendar = rows.find((r) => r.module === 'calendar');
         const print = rows.find((r) => r.module === 'small-print');
         const printData = restoreInfinity(print?.data);
-        const calendarValid = validateCalendarConfig(calendar?.data).isValid;
+        // Bảng giá lưu trước schema 2.0.0 được nâng hình dạng ngay khi đọc; giá không đổi.
+        const calendarData = normalizeCalendarConfig(calendar?.data);
+        const calendarValid = validateCalendarConfig(calendarData).isValid;
         const printValid = validateSmallPrintConfig(printData).isValid;
         const version = calendar ? calendar.current_version : 0;
         const versionsValid =
@@ -106,7 +110,7 @@ export async function loadCalendarFromCloud({ ownerId = null } = {}) {
         const ready = calendarValid && printValid && versionsValid && !pending;
         if (calendarValid && !pending && revision === writeRevision) {
             try {
-                localStorage.setItem(KEY, JSON.stringify(calendar.data));
+                localStorage.setItem(KEY, JSON.stringify(calendarData));
             } catch {
                 /* optional cache */
             }
@@ -115,7 +119,7 @@ export async function loadCalendarFromCloud({ ownerId = null } = {}) {
             ready,
             version,
             printVersion: print?.current_version ?? null,
-            config: calendarValid ? calendar.data : null,
+            config: calendarValid ? calendarData : null,
             printConfig: printValid ? { ...structuredClone(DEFAULT_CONFIG), ...printData } : null,
             error: ready
                 ? null
@@ -138,7 +142,10 @@ export async function loadCalendarFromCloud({ ownerId = null } = {}) {
 }
 
 export async function saveCalendarConfig(config, { ownerId, baseVersion } = {}) {
-    const validation = validateCalendarConfig(config);
+    // Bản sao geometry.stockW/stockH phải khớp loại carton đầu tiên TRƯỚC khi kiểm tra,
+    // nếu không admin gặp lỗi phát ra từ một ô Cài Đặt không còn hiển thị.
+    const next = withStockMirror(config);
+    const validation = validateCalendarConfig(next);
     if (!validation.isValid)
         return { local: false, cloud: false, error: validation.errors.join(' ') };
     if (!ownerId || !Number.isSafeInteger(baseVersion) || baseVersion < 0)
@@ -148,7 +155,7 @@ export async function saveCalendarConfig(config, { ownerId, baseVersion } = {}) 
             error: 'Chưa xác nhận được phiên bản bảng giá hoặc quyền admin. Hãy kết nối lại trước khi lưu.',
         };
     writeRevision++;
-    const draft = { id: crypto.randomUUID(), ownerId, baseVersion, data: structuredClone(config) };
+    const draft = { id: crypto.randomUUID(), ownerId, baseVersion, data: structuredClone(next) };
     let local = false;
     try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));

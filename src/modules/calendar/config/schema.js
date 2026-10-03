@@ -5,6 +5,24 @@ import { requireValue, validateTiers } from '../../../utils/priceTiers.js';
 // giữ re-export để engine, UI và test của lịch không đổi đường import.
 export { requireValue, validateTiers, pickTier } from '../../../utils/priceTiers.js';
 
+// Khổ tấm nguyên của RIÊNG một loại carton. Cạnh w là cạnh nạp vào máy cắt — engine
+// không tự xoay tấm nguyên, nên w mới là cạnh phải lọt khổ ngang máy.
+function validateCartonSheet(item, g) {
+    for (const [side, label] of [
+        ['w', 'ngang'],
+        ['h', 'dài'],
+    ])
+        requireValue(
+            Number.isFinite(item?.[side]) && item[side] > 0 && item[side] <= 1000,
+            `Khổ ${label} của tấm carton "${item?.name ?? ''}" phải lớn hơn 0 và không vượt 1.000 cm.`
+        );
+    requireValue(item.w <= g.machine, `Cạnh nạp carton "${item.name}" vượt khổ ngang máy cắt.`);
+    requireValue(
+        g.trim * 2 < Math.min(item.w, item.h),
+        `Xén biên dùng hết tấm carton "${item.name}".`
+    );
+}
+
 export function validateCalendarConfig(config) {
     try {
         requireValue(
@@ -12,6 +30,17 @@ export function validateCalendarConfig(config) {
             'Thiếu trạng thái xác nhận bảng giá.'
         );
         const c = config.geometry;
+        if (config.allowedMaterials !== undefined) {
+            for (const role of ['wrap', 'liner'])
+                requireValue(
+                    Array.isArray(config.allowedMaterials?.[role]) &&
+                        config.allowedMaterials[role].length > 0 &&
+                        config.allowedMaterials[role].every(
+                            (name) => typeof name === 'string' && name.trim()
+                        ),
+                    'Mỗi phần áo/lót phải cho phép ít nhất một vật liệu.'
+                );
+        }
         for (const key of Object.keys(CALENDAR_DEFAULT_CONFIG.geometry)) {
             requireValue(
                 Number.isFinite(c?.[key]) && c[key] >= 0,
@@ -44,6 +73,7 @@ export function validateCalendarConfig(config) {
                     'Tên loại phải có nội dung và không trùng trong nhóm.'
                 );
                 names.add(name.toLowerCase());
+                if (key === 'carton') validateCartonSheet(item, c);
                 validateTiers(item.tiers);
             }
         }

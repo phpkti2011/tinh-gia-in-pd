@@ -165,29 +165,29 @@ export function describeEnvelopePanels(layout) {
                   flap(T, 0, W, N),
                   front(T, N),
                   back(T, N + H),
-                  tab('tab-left', 0, N + H, T, H),
-                  tab('tab-right', T + W, N + H, T, H),
+                  tab('tab-left', 0, N, T, H),
+                  tab('tab-right', T + W, N, T, H),
               ]
             : [
                   flap(0, T, N, H),
                   front(N, T),
                   back(N + W, T),
-                  tab('tab-top', N + W, 0, W, T),
-                  tab('tab-bottom', N + W, T + H, W, T),
+                  tab('tab-top', N, 0, W, T),
+                  tab('tab-bottom', N, T + H, W, T),
               ];
     else if (layout.construction === 'joined-side')
         main = flapOnW
             ? [
-                  flap(0, 0, W, N),
-                  front(0, N),
-                  back(W, N),
+                  flap(W, 0, W, N),
+                  front(W, N),
+                  back(0, N),
                   tab('tab-side', 2 * W, N, T, H),
                   tab('tab-bottom', W, N + H, W, T),
               ]
             : [
-                  flap(0, 0, N, H),
-                  front(N, 0),
-                  back(N, H),
+                  flap(0, H, N, H),
+                  front(N, H),
+                  back(N, 0),
                   tab('tab-bottom', N, 2 * H, W, T),
                   tab('tab-side', N + W, H, T, H),
               ];

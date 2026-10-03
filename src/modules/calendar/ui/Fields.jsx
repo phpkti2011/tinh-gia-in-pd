@@ -4,6 +4,17 @@ export const fieldClass =
     'w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-gray-200';
 export const buttonClass =
     'bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-2 rounded text-sm font-medium transition disabled:opacity-40';
+// Vốn mỗi cm² thường là số lẻ nhỏ; giữ thêm số thập phân khi dưới 1 đồng để còn đọc được.
+export const formatPerCm2 = (v) =>
+    Number.isFinite(v) && v > 0
+        ? v.toLocaleString('vi-VN', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: v < 1 ? 4 : 2,
+          })
+        : '—';
+export const formatRatio = (v) =>
+    Number.isFinite(v) && v > 0 ? v.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '—';
+
 export function NumberField({ label, value, onChange, min = 0, step = 'any' }) {
     const id = useId();
     const unit = label.match(/\((cm|mm|đ)\)$/)?.[1];

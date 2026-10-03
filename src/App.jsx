@@ -52,6 +52,7 @@ import {
     calculateDecalOptions,
     calculateFinishingCost,
     calculateCustomFinishingCost,
+    calculateGluingCost,
     calculateDieCuttingCosts,
     calculateFoilStamping,
     calculatePlasticLamination,
@@ -311,6 +312,9 @@ function SmallPrintModule({ onBack, heading }) {
         creasingType: 'none',
         holePunchingType: 'none',
         customFinishingType: 'none',
+        // Dán thành phẩm: mỗi dòng { typeId } trỏ tới một kiểu trong GLUING_TYPES, tính cho
+        // toàn bộ số lượng. Rỗng = không dán.
+        gluingLines: [],
         dieCuttingType: 'none',
         moldType: 'simple',
         tagHasHole: false,
@@ -470,6 +474,12 @@ function SmallPrintModule({ onBack, heading }) {
                 params.customFinishingType,
                 config.CUSTOM_FINISHING_TYPES
             );
+            // Dán thành phẩm — nhiều dòng dán mỗi đơn, mỗi dòng theo SỐ THÀNH PHẨM.
+            const gluingResult = calculateGluingCost(
+                totalQuantity,
+                params.gluingLines,
+                config.GLUING_TYPES
+            );
             // Ép plastic — theo SỐ THÀNH PHẨM (mỗi sản phẩm 1 tấm). customerPrice
             // vào báo giá khách; minPrice (sàn, admin) ResultPanel cộng vào Giá Tối Thiểu.
             const plasticResult = calculatePlasticLamination(
@@ -490,6 +500,7 @@ function SmallPrintModule({ onBack, heading }) {
                 mounting: mountingCustomerPrice,
                 customFinishing: customFinishingCustomerPrice,
                 plasticLamination: plasticResult.customerPrice,
+                gluing: gluingResult.customerPrice,
             };
             const dieCuttingCustomerPrice = { moldCost, laborCustomerPrice };
             const foilResult = calculateFoilStamping(params, config);
@@ -516,6 +527,7 @@ function SmallPrintModule({ onBack, heading }) {
                 dieCuttingCustomerPrice,
                 foilResult,
                 plasticResult,
+                gluingResult,
                 variableDataCost: params.variableData === 'yes' ? 10 : 0,
             });
         } catch (e) {

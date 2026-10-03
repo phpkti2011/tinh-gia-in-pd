@@ -10,7 +10,12 @@ import {
     envelopeInputKey,
 } from '../../src/modules/envelope/engine/pricing';
 import { DEFAULT_CONFIG } from '../../src/modules/small-print/config/defaultConfig';
-import { kts, paperQuote, calculateFoilStamping } from '../../src/modules/small-print/engine/index';
+import {
+    kts,
+    paperQuote,
+    calculateFoilStamping,
+    calculateDieCuttingCosts,
+} from '../../src/modules/small-print/engine/index';
 
 const config = () => ({ ...structuredClone(ENVELOPE_DEFAULT_CONFIG), pricesConfirmed: true });
 // Giá liền thân dùng khổ lọt máy KTS; bộ 350×250 vẫn kiểm tra riêng ở khổ tách/layout.
@@ -27,6 +32,153 @@ const split = (backPrint, patch = {}) =>
 const PAPER = ENVELOPE_DEFAULT_INPUT.paper;
 
 describe('Envelope pricing — tích hợp KTS khổ nhỏ', () => {
+    it('bế kỹ thuật số thiếu bậc giá phải báo lỗi, không trả miễn phí', () => {
+        const s = input({ dieCuttingType: 'digital' });
+        const sheets = run(s).dieCut.sheets;
+        const p = structuredClone(DEFAULT_CONFIG);
+        p.DIGITAL_DIE_CUTTING_CONFIG = {
+            cost_tiers: [{ max_qty: sheets, price: 50000, type: 'package' }],
+            customer_tiers: [{ max_qty: sheets, price: 100000, type: 'package' }],
+        };
+        expect(row(run(s, config(), p), 'die-cut')).toMatchObject({ cost: 50000, sale: 100000 });
+        p.DIGITAL_DIE_CUTTING_CONFIG.customer_tiers[0].max_qty = sheets - 1;
+        expect(() => run(s, config(), p)).toThrow(/Chưa có bậc giá bế kỹ thuật số/);
+        p.DIGITAL_DIE_CUTTING_CONFIG.customer_tiers[0].max_qty = sheets;
+        p.DIGITAL_DIE_CUTTING_CONFIG.cost_tiers = [];
+        expect(() => run(s, config(), p)).toThrow(/Chưa có bậc giá bế kỹ thuật số/);
+    });
+    it('phí keo tối thiểu áp riêng vốn/khách, không cộng hai lần hoặc áp khi bỏ chọn', () => {
+        const c = config();
+        c.flapTape = { costPerCm: 10, salePerCm: 50, minCost: 20000, minSale: 100000 };
+        const s = input({ w: 200, quantity: 30, flapTape: true });
+        const small = run(s, c);
+        expect(row(small, 'flap-tape')).toMatchObject({ cost: 20000, sale: 100000 });
+        expect(row(small, 'flap-tape').detail).toContain('100.000 đ');
+        expect(row(run({ ...s, quantity: 100 }, c), 'flap-tape')).toMatchObject({
+            cost: 20000,
+            sale: 100000,
+        });
+        expect(row(run({ ...s, quantity: 101 }, c), 'flap-tape')).toMatchObject({
+            cost: 20200,
+            sale: 101000,
+        });
+        const off = run({ ...s, flapTape: false }, c);
+        expect(row(off, 'flap-tape')).toBeUndefined();
+        expect(small.sale - off.sale).toBe(100000);
+        c.flapTape.minCost = 0;
+        expect(row(run(s, c), 'flap-tape')).toMatchObject({ cost: 6000, sale: 100000 });
+        c.flapTape.minSale = 0;
+        expect(row(run(s, c), 'flap-tape')).toMatchObject({ cost: 6000, sale: 30000 });
+        for (const invalid of [-1, NaN, null, '100000']) {
+            c.flapTape.minSale = invalid;
+            expect(validateEnvelopeConfig(c).isValid).toBe(false);
+        }
+    });
+    it('mỗi bậc dán có cách tính riêng, đổi đúng tại các mốc', () => {
+        const c = config();
+        c.gluing.tiers = [
+            { from: 1, cost: 10000, sale: 20000, mode: 'package' },
+            { from: 101, cost: 100, sale: 200, mode: 'per_item' },
+            { from: 201, cost: 80, sale: 150, mode: 'per_item' },
+            { from: 500, cost: 30000, sale: 60000, mode: 'package' },
+        ];
+        for (const [quantity, cost, sale] of [
+            [1, 10000, 20000],
+            [100, 10000, 20000],
+            [101, 10100, 20200],
+            [200, 20000, 40000],
+            [201, 16080, 30150],
+            [499, 39920, 74850],
+            [500, 30000, 60000],
+            [501, 30000, 60000],
+        ]) {
+            expect(row(run(input({ quantity }), c), 'gluing')).toMatchObject({ cost, sale });
+        }
+        c.gluing.tiers[0].mode = 'invalid';
+        expect(validateEnvelopeConfig(c).isValid).toBe(false);
+    });
+    it('keo nắp tính cạnh đặt nắp, theo cm và số bao; tách vốn/khách', () => {
+        const c = config();
+        c.flapTape = { costPerCm: 2, salePerCm: 5 };
+        for (const construction of ['joined-opposite', 'joined-side', 'split']) {
+            for (const flapEdge of ['W', 'H']) {
+                const s = input({
+                    w: 220,
+                    h: 120,
+                    flap: 30,
+                    flapEdge,
+                    construction,
+                    backPrint: false,
+                    flapTape: true,
+                });
+                const length = flapEdge === 'W' ? 22 : 12;
+                const r = run(s, c);
+                expect(row(r, 'flap-tape')).toMatchObject({
+                    cost: length * 100 * 2,
+                    sale: length * 100 * 5,
+                });
+                const cm = run({ ...s, unit: 'cm', w: 22, h: 12, flap: 3, tab: 1.5 }, c);
+                expect(row(cm, 'flap-tape')).toEqual(row(r, 'flap-tape'));
+                expect(row(run({ ...s, flap: 40 }, c), 'flap-tape')).toEqual(row(r, 'flap-tape'));
+                const off = run({ ...s, flapTape: false }, c);
+                expect(r.cost - off.cost).toBe(length * 100 * 2);
+                expect(r.sale - off.sale).toBe(length * 100 * 5);
+            }
+        }
+        expect(envelopeInputKey(input({ flapTape: true }))).not.toBe(envelopeInputKey(input()));
+        expect(() => run(input({ flapTape: true }))).toThrow(/Chưa có giá dán keo nắp/);
+        delete c.flapTape;
+        expect(run(input(), c).complete).toBe(true);
+        expect(() => run(input({ flapTape: true }), c)).toThrow(/Chưa có giá dán keo nắp/);
+        c.flapTape = { costPerCm: -1, salePerCm: 5 };
+        expect(validateEnvelopeConfig(c).isValid).toBe(false);
+    });
+    it('giấy mỹ thuật: phần in dùng đúng KTS, mặt sau trắng dùng giá mỗi tờ và không áp sàn in', () => {
+        const c = config();
+        c.artPapers = [{ name: 'Mỹ thuật kem', w: 70, h: 100, cost: 12500 }];
+        const s = split(false, { paperSource: 'art', artIndex: 0 });
+        const r = run(s, c);
+        const expected = kts(
+            DEFAULT_CONFIG,
+            38,
+            30.5,
+            100,
+            1,
+            PAPER,
+            1,
+            0,
+            0,
+            c.artPapers[0],
+            '4color',
+            '',
+            { gap: c.dieCut.gapCm }
+        );
+        expect(r.parts[0].sale).toBe(expected.sale);
+        expect(r.parts[0].cost).toBe(expected.cost);
+        expect(r.parts[1].cost).toBe(
+            paperQuote(DEFAULT_CONFIG, 34.7, 24.7, 100, PAPER, 0, null, c.artPapers[0]).cost
+        );
+        expect(r.parts[1].printCost).toBe(0);
+        expect(r.parts[1].printSale).toBe(0);
+        expect(r.parts[1].sale).toBe(r.parts[1].cost * c.backPaperFactor);
+    });
+    it('giấy mỹ thuật tùy chọn đổi khổ/giá; giá chưa nhập hoặc sai phải chặn', () => {
+        const s = input({
+            paperSource: 'art',
+            artInput: { name: 'Giấy riêng', w: 79, h: 109, cost: 20000 },
+        });
+        expect(run(s).parts[0].press.params.artPaperPrice).toBe(20000);
+        expect(() => run(input({ paperSource: 'art' }))).toThrow(/giá hợp lệ/);
+        expect(() => run({ ...s, artInput: { ...s.artInput, cost: -1 } })).toThrow();
+        expect(() => run({ ...s, artInput: { ...s.artInput, w: NaN } })).toThrow();
+        expect(envelopeInputKey(s)).not.toBe(
+            envelopeInputKey({ ...s, artInput: { ...s.artInput, cost: 21000 } })
+        );
+        const legacy = config();
+        delete legacy.artPapers;
+        expect(validateEnvelopeConfig(legacy).isValid).toBe(true);
+        expect(run(input(), legacy).sale).toBeGreaterThan(0);
+    });
     it('I02: 100 bao thư khuôn tách → 100 phần trước + 100 mặt sau, đúng khổ', () => {
         const r = run(split(false));
         expect(r.parts.map((p) => [p.id, p.widthMm, p.heightMm, p.quantity])).toEqual([
@@ -73,7 +225,7 @@ describe('Envelope pricing — tích hợp KTS khổ nhỏ', () => {
             '4color',
             '',
             {
-                gap: ENVELOPE_DEFAULT_CONFIG.dieCut.gapCm,
+                gap: 0,
             }
         );
         expect(r.parts[1].sale).toBe(expected.sale);
@@ -122,7 +274,7 @@ describe('Envelope pricing — tích hợp KTS khổ nhỏ', () => {
                 .productsPerSheet
         );
     });
-    it('phí bế/dán tra bậc theo số bao thư; mỗi bao thư nhân số lượng, trọn gói không nhân', () => {
+    it('phí dán tra bậc theo số bao thư, trọn gói không nhân; phí bế cũ không cộng thêm', () => {
         const c = config();
         c.dieCut.tiers = [
             { from: 1, cost: 500, sale: 1000 },
@@ -134,12 +286,49 @@ describe('Envelope pricing — tích hợp KTS khổ nhỏ', () => {
             { from: 500, cost: 30000, sale: 80000 },
         ];
         const r = run(input({ quantity: 99 }), c);
-        expect(row(r, 'die-cut')).toMatchObject({ cost: 99 * 500, sale: 99 * 1000 });
+        const withoutLegacy = config();
+        withoutLegacy.gluing = c.gluing;
+        expect(row(r, 'die-cut')).toEqual(
+            row(run(input({ quantity: 99 }), withoutLegacy), 'die-cut')
+        );
         expect(row(r, 'gluing')).toMatchObject({ cost: 20000, sale: 50000 });
         const r2 = run(input({ quantity: 500 }), c);
-        expect(row(r2, 'die-cut')).toMatchObject({ cost: 500 * 300, sale: 500 * 600 });
         expect(row(r2, 'gluing')).toMatchObject({ cost: 30000, sale: 80000 });
-        expect(r2.dieCut.tier.index).toBe(2);
+        expect(r2.gluing.tier.index).toBe(2);
+    });
+    it.each(['mold', 'digital', 'none'])(
+        'bế %s khớp KTS theo số tờ và khổ trải',
+        (dieCuttingType) => {
+            const s = input({ dieCuttingType });
+            const r = run(s);
+            const p = r.parts[0];
+            const expected = calculateDieCuttingCosts(
+                { dieCuttingType, moldType: 'envelope', productW: 25, productH: 26 },
+                p.press.sheets,
+                false,
+                DEFAULT_CONFIG
+            );
+            expect(row(r, 'die-cut').cost).toBe(Math.round(expected.moldCost + expected.laborCost));
+            expect(row(r, 'die-cut').sale).toBe(
+                Math.round(expected.moldCost + expected.laborCustomerPrice)
+            );
+            const press = kts(DEFAULT_CONFIG, 25, 26, 100, 1, PAPER, 1, 0, 0, null, '4color', '', {
+                gap: dieCuttingType === 'none' ? 0 : dieCuttingType === 'mold' ? 0.4 : 0.6,
+                digitalCutting: dieCuttingType === 'digital',
+            });
+            expect(p.press.best).toEqual(press.best);
+            expect(envelopeInputKey(s)).not.toBe(
+                envelopeInputKey({ ...s, dieCuttingType: 'other' })
+            );
+            if (dieCuttingType !== 'mold') expect(r.dieCut.moldCost).toBe(0);
+        }
+    );
+    it('khuôn tách chỉ bế phần trước, mặt sau in hay trắng không nhân phí bế', () => {
+        const off = run(split(false, { dieCuttingType: 'digital' }));
+        const on = run(split(true, { dieCuttingType: 'digital' }));
+        expect(off.dieCut).toEqual(on.dieCut);
+        expect(off.parts[1].printCost).toBe(0);
+        expect(() => run(input({ dieCuttingType: 'invalid' }))).toThrow(/hình thức bế/);
     });
     it('phí cố định và giá tối thiểu áp cho cả đơn; tổng bằng tổng các dòng', () => {
         const c = config();

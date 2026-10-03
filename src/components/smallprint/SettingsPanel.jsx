@@ -1,3 +1,7 @@
+import DigitalDieCutSettings from './DigitalDieCutSettings';
+import { validateDigitalDieCutTiers } from '../../modules/small-print/config/digitalDieCutTiers';
+import GluingSettings from './GluingSettings';
+import { validateGluingTypes } from '../../modules/small-print/config/gluingTypes';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import LaminationFilmSettings from '../common/LaminationFilmSettings';
 import { useCloudSave } from '../common/useCloudSave';
@@ -89,7 +93,24 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
         onSaved,
         invalidMessage: 'Cấu hình in KTS không hợp lệ, không lưu. Mở Console để xem chi tiết lỗi.',
     });
-    const handleSave = () => save(localConfig);
+    const [digitalError, setDigitalError] = useState('');
+    const [gluingError, setGluingError] = useState('');
+    const handleSave = () => {
+        const errors = [
+            ...validateDigitalDieCutTiers(localConfig.DIGITAL_DIE_CUTTING_CONFIG),
+            ...validateDigitalDieCutTiers(localConfig.DIE_CUTTING_LABOR_CONFIG).map((error) =>
+                error
+                    .replaceAll('bế kỹ thuật số', 'công bế khuôn')
+                    .replaceAll('Bế kỹ thuật số', 'Công bế khuôn')
+            ),
+        ];
+        setDigitalError(errors.join(' '));
+        // Dán thành phẩm báo lỗi ở state RIÊNG, hiện ngay tại mục của nó — không gộp vào
+        // digitalError để mỗi lỗi nằm cạnh bảng cần sửa.
+        const gluingErrors = validateGluingTypes(localConfig.GLUING_TYPES);
+        setGluingError(gluingErrors.join(' '));
+        if (!errors.length && !gluingErrors.length) return save(localConfig);
+    };
 
     // Soát bảng giá khách tìm vách bậc bị NGHỊCH (khách đặt thêm trang lại trả ít hơn).
     // Tính từ localConfig nên chạy theo từng phím gõ: sửa đơn giá là thấy cảnh báo mất
@@ -2041,122 +2062,27 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                     })}
                 </section>
 
-                {/* 9. Bế KTS */}
-                <section>
-                    <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
-                        Giá Bế Kỹ Thuật Số
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {localConfig.DIGITAL_DIE_CUTTING_CONFIG.cost_tiers.map((tier, idx) => {
-                            const rangeStr = `≤ ${tier.max_qty} SP`;
-                            return (
-                                <div key={idx} className="space-y-2 p-3 bg-gray-900/50 rounded">
-                                    <div className="text-gray-300 text-xs font-medium">
-                                        {rangeStr} — Trọn gói
-                                    </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá vốn</label>
-                                        <NumInput
-                                            configValue={tier.price}
-                                            step="100"
-                                            onCommit={(val) =>
-                                                updateNestedField(
-                                                    `DIGITAL_DIE_CUTTING_CONFIG.cost_tiers.${idx}.price`,
-                                                    val
-                                                )
-                                            }
-                                            className={inputClsPr}
-                                        />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
-                                    </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá KH</label>
-                                        <NumInput
-                                            configValue={
-                                                localConfig.DIGITAL_DIE_CUTTING_CONFIG
-                                                    .customer_tiers[idx].price
-                                            }
-                                            step="100"
-                                            onCommit={(val) =>
-                                                updateNestedField(
-                                                    `DIGITAL_DIE_CUTTING_CONFIG.customer_tiers.${idx}.price`,
-                                                    val
-                                                )
-                                            }
-                                            className={inputClsPr}
-                                        />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* 10. Bế khuôn - công bế */}
-                <section>
-                    <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
-                        Giá Công Bế Khuôn
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {localConfig.DIE_CUTTING_LABOR_CONFIG.cost_tiers.map((tier, idx) => {
-                            const rangeStr =
-                                tier.max_qty === Infinity
-                                    ? `> ${localConfig.DIE_CUTTING_LABOR_CONFIG.cost_tiers[idx - 1]?.max_qty || 0} SP`
-                                    : `≤ ${tier.max_qty} SP`;
-                            return (
-                                <div key={idx} className="space-y-2 p-3 bg-gray-900/50 rounded">
-                                    <div className="text-gray-300 text-xs font-medium">
-                                        {rangeStr} — Trọn gói
-                                    </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá vốn</label>
-                                        <NumInput
-                                            configValue={tier.price}
-                                            step="100"
-                                            onCommit={(val) =>
-                                                updateNestedField(
-                                                    `DIE_CUTTING_LABOR_CONFIG.cost_tiers.${idx}.price`,
-                                                    val
-                                                )
-                                            }
-                                            className={inputClsPr}
-                                        />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
-                                    </div>
-                                    <div className="relative">
-                                        <label className={labelCls}>Giá KH</label>
-                                        <NumInput
-                                            configValue={
-                                                localConfig.DIE_CUTTING_LABOR_CONFIG.customer_tiers[
-                                                    idx
-                                                ].price
-                                            }
-                                            step="100"
-                                            onCommit={(val) =>
-                                                updateNestedField(
-                                                    `DIE_CUTTING_LABOR_CONFIG.customer_tiers.${idx}.price`,
-                                                    val
-                                                )
-                                            }
-                                            className={inputClsPr}
-                                        />
-                                        <span className="absolute right-3 top-[32px] text-gray-500">
-                                            đ
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
+                {digitalError && (
+                    <p role="alert" className="text-red-400">
+                        {digitalError}
+                    </p>
+                )}
+                <DigitalDieCutSettings
+                    value={localConfig.DIGITAL_DIE_CUTTING_CONFIG}
+                    onChange={(value) => {
+                        setDigitalError('');
+                        setLocalConfig((prev) => ({ ...prev, DIGITAL_DIE_CUTTING_CONFIG: value }));
+                    }}
+                />
+                <DigitalDieCutSettings
+                    title="Giá Công Bế Khuôn"
+                    addLabel="+ Thêm bậc công bế khuôn"
+                    value={localConfig.DIE_CUTTING_LABOR_CONFIG}
+                    onChange={(value) => {
+                        setDigitalError('');
+                        setLocalConfig((prev) => ({ ...prev, DIE_CUTTING_LABOR_CONFIG: value }));
+                    }}
+                />
                 {/* 10b. Bế khuôn - giá khuôn theo hình dạng */}
                 <section>
                     <h3 className="text-lg font-semibold text-cyan-400 mb-4 pb-2 border-b border-gray-600">
@@ -2706,6 +2632,20 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                         ))}
                     </div>
                 </section>
+
+                {/* 10d-2. Dán thành phẩm — nhiều kiểu dán, mỗi kiểu một bảng bậc SL */}
+                {gluingError && (
+                    <p role="alert" className="text-red-400">
+                        {gluingError}
+                    </p>
+                )}
+                <GluingSettings
+                    value={localConfig.GLUING_TYPES || []}
+                    onChange={(value) => {
+                        setGluingError('');
+                        setLocalConfig((prev) => ({ ...prev, GLUING_TYPES: value }));
+                    }}
+                />
 
                 {/* 10e. Ép plastic — bảng giá chung khổ × bậc SL + độ dày tick khổ */}
                 <section>

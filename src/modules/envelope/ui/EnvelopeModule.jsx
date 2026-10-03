@@ -17,6 +17,7 @@ import EnvelopeInput from './EnvelopeInput';
 import EnvelopeDiagram from './EnvelopeDiagram';
 import EnvelopeResult from './EnvelopeResult';
 import EnvelopeSettings from './EnvelopeSettings';
+import envelopeMigration from '../../../../docs/database/migration-envelope-module.sql?raw';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -55,19 +56,25 @@ export default function EnvelopeModule({ onBack, heading = 'Tính Giá Bao Thư'
             s.printConfig.PAPER_STOCK_DATA.map((x) => [x.name, x.pricingModel, x.hidden]),
             s.printConfig.STANDARD_LARGE_SHEET_SIZES.map((x) => [x.name, x.w, x.h]),
             s.config.papers.allowed,
+            s.config.artPapers?.map((p) => [p.name, p.w, p.h]),
         ];
         if (!same(lists(old), lists(snapshot))) {
             setInput((prev) => ({
                 ...prev,
                 paper: snapshot.config.papers.defaultPaper,
                 stock: snapshot.config.papers.defaultStock,
+                artIndex: 0,
+                artInput: null,
             }));
             setSelectionReview(true);
         }
     }, [snapshot]);
     const errors = useMemo(() => {
         const e = { ...validateEnvelopeInput(input).errors };
-        if (!allowedPapers(config, printConfig).some((p) => p.index === input.paper))
+        if (
+            input.paperSource !== 'art' &&
+            !allowedPapers(config, printConfig).some((p) => p.index === input.paper)
+        )
             e.paper = 'Chọn loại giấy trong danh sách cho phép.';
         return e;
     }, [input, config, printConfig]);
@@ -83,14 +90,23 @@ export default function EnvelopeModule({ onBack, heading = 'Tính Giá Bao Thư'
     const calculation = useMemo(() => {
         if (!snapshot.ready || selectionReview || !inputValid) return { result: null, error: null };
         try {
-            return { result: calculateEnvelopeQuote(input, config, printConfig), error: null };
+            return {
+                result: calculateEnvelopeQuote(
+                    canViewCost ? input : { ...input, artInput: null },
+                    config,
+                    printConfig
+                ),
+                error: null,
+            };
         } catch (error) {
             return { result: null, error: error.message };
         }
-    }, [input, config, printConfig, snapshot.ready, selectionReview, inputValid]);
+    }, [input, config, printConfig, snapshot.ready, selectionReview, inputValid, canViewCost]);
     // Không bao giờ hiện kết quả của đầu vào cũ (I10).
     const result =
-        calculation.result && calculation.result.inputKey === envelopeInputKey(input)
+        calculation.result &&
+        calculation.result.inputKey ===
+            envelopeInputKey(canViewCost ? input : { ...input, artInput: null })
             ? calculation.result
             : null;
     const openSettings = () => {
@@ -182,6 +198,32 @@ export default function EnvelopeModule({ onBack, heading = 'Tính Giá Bao Thư'
                     {snapshot.printVersion}
                 </p>
             )}
+            {!snapshot.loading && !snapshot.ready && (
+                <div className="flex flex-wrap gap-3 items-center mb-4 text-sm">
+                    <button
+                        className="bg-gray-700 hover:bg-gray-600 rounded px-4 py-2"
+                        onClick={() => refresh()}
+                    >
+                        Kiểm tra đồng bộ lại
+                    </button>
+                    {canViewCost && (
+                        <>
+                            <a
+                                className="text-cyan-300 underline"
+                                download="migration-envelope-module.sql"
+                                href={`data:text/plain;charset=utf-8,${encodeURIComponent(envelopeMigration)}`}
+                            >
+                                Tải bản cập nhật cơ sở dữ liệu Bao thư
+                            </a>
+                            <p className="w-full text-gray-300">
+                                Nếu máy chủ chưa bật Bao thư: chạy file cập nhật trong SQL Editor
+                                của Supabase, sau đó vào Cài Đặt bao thư để kiểm tra giá và lưu bảng
+                                giá lần đầu.
+                            </p>
+                        </>
+                    )}
+                </div>
+            )}
             {notice && (
                 <p role="status" className="text-sm text-amber-300 mb-4">
                     {notice}
@@ -208,6 +250,7 @@ export default function EnvelopeModule({ onBack, heading = 'Tính Giá Bao Thư'
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1 min-w-0">
                         <EnvelopeInput
+                            canViewCost={canViewCost}
                             input={input}
                             config={config}
                             printConfig={printConfig}

@@ -42,6 +42,26 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
         );
     };
 
+    // Dán thành phẩm — danh sách dòng dán ({ typeId } trỏ tới GLUING_TYPES). Một đơn có thể
+    // dán nhiều kiểu keo; mỗi dòng tính cho toàn bộ số lượng. Danh sách rỗng = không dán.
+    const gluingTypes = config.GLUING_TYPES || [];
+    const gluingLines = params.gluingLines || [];
+    const addGluingLine = () => {
+        onChange('gluingLines', [...gluingLines, { typeId: gluingTypes[0].id }]);
+    };
+    const updateGluingLine = (index, typeId) => {
+        onChange(
+            'gluingLines',
+            gluingLines.map((line, i) => (i === index ? { ...line, typeId } : line))
+        );
+    };
+    const removeGluingLine = (index) => {
+        onChange(
+            'gluingLines',
+            gluingLines.filter((_, i) => i !== index)
+        );
+    };
+
     const paperData = config.PAPER_STOCK_DATA || [];
     const selectedPaper = paperData[params.paperType];
     const model = selectedPaper ? selectedPaper.pricingModel : '';
@@ -483,6 +503,72 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                                 </optgroup>
                             ))}
                         </select>
+                    </div>
+                )}
+                {gluingTypes.length > 0 && (
+                    <div className="mb-4">
+                        <label>Dán thành phẩm</label>
+                        <div className="space-y-3">
+                            {gluingLines.map((line, index) => {
+                                // Kiểu dán bị admin xoá sau khi đã chọn: giữ dòng lại để nhân
+                                // viên thấy và chọn lại, không lặng lẽ đổi sang kiểu khác.
+                                const known = gluingTypes.some((t) => t.id === line.typeId);
+                                return (
+                                    <div
+                                        key={index}
+                                        className="rounded-md border border-gray-600 bg-gray-900/40 p-3 space-y-2"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <label
+                                                htmlFor={`gluingLine${index}`}
+                                                className="text-sm font-semibold text-yellow-300"
+                                            >
+                                                Kiểu dán {index + 1}
+                                            </label>
+                                            <button
+                                                type="button"
+                                                aria-label={`Xóa kiểu dán ${index + 1}`}
+                                                onClick={() => removeGluingLine(index)}
+                                                className="text-xs text-red-400 hover:text-red-300"
+                                            >
+                                                ✕ Xóa
+                                            </button>
+                                        </div>
+                                        <select
+                                            id={`gluingLine${index}`}
+                                            value={known ? line.typeId : ''}
+                                            onChange={(e) =>
+                                                updateGluingLine(index, e.target.value)
+                                            }
+                                        >
+                                            {!known && <option value="">— Chọn kiểu dán —</option>}
+                                            {gluingTypes.map((t) => (
+                                                <option key={t.id} value={t.id}>
+                                                    {t.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {!known && (
+                                            <p className="text-xs text-yellow-400">
+                                                Kiểu dán này đã bị xoá trong Cài Đặt — chọn lại hoặc
+                                                xoá dòng. Dòng này chưa được tính tiền.
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={addGluingLine}
+                                className="w-full rounded-md border border-dashed border-yellow-500/60 py-2 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/10"
+                            >
+                                ＋ Thêm kiểu dán
+                            </button>
+                        </div>
+                        <p className="mt-2 text-xs text-gray-400">
+                            Mỗi dòng tính cho toàn bộ số lượng thành phẩm. Cần hai đường dán cùng
+                            kiểu thì thêm một dòng nữa.
+                        </p>
                     </div>
                 )}
                 <div className="mb-4">

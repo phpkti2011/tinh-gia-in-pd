@@ -51,6 +51,21 @@ create trigger trg_user_roles_touch
 alter table public.user_roles enable row level security;
 
 -- ============================================================================
+-- 3bis. GRANT cho Data API (bắt buộc từ 30/10 — Supabase bỏ auto-grant)
+--
+--   Từ 30/10, bảng MỚI tạo trong schema public KHÔNG còn được cấp quyền Data API
+--   tự động. Bảng đang chạy trên project hiện tại giữ nguyên quyền cũ, nhưng nếu
+--   chạy lại file này trên project mới / preview branch / `supabase db reset` mà
+--   thiếu GRANT thì PostgREST sẽ trả "permission denied".
+--
+--   Quyền ở đây cố ý HẸP, khớp đúng với RLS policy bên dưới: chỉ SELECT cho
+--   authenticated. Mọi thay đổi role vẫn chỉ làm bằng Service Role / Dashboard.
+--   GRANT là lớp thô, RLS mới là lớp chặn theo từng row — cần cả hai.
+-- ============================================================================
+grant select on public.user_roles to authenticated;
+grant all    on public.user_roles to service_role;
+
+-- ============================================================================
 -- 4. Policy: authenticated user chi doc duoc role cua chinh minh
 -- ============================================================================
 drop policy if exists "user_roles_self_read" on public.user_roles;

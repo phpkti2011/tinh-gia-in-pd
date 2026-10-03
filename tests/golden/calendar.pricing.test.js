@@ -24,6 +24,97 @@ const run = (s = input(), c = config(), p = DEFAULT_CONFIG) => calculateCalendar
 const row = (r, id) => r.rows.find((t) => t.id === id);
 
 describe('Calendar contracts', () => {
+    it('giấy F120 do admin thêm sau lấy giá từ bảng KTS được truyền vào', () => {
+        const p = structuredClone(DEFAULT_CONFIG);
+        const index = p.PAPER_STOCK_DATA.length;
+        p.PAPER_STOCK_DATA.push({
+            name: 'F120',
+            pricingModel: 'ream',
+            pricePerReam: 900000,
+            customerSurcharge: 0,
+        });
+        const s = { ...input(), linerPaper: index };
+        const first = run(s, config(), p);
+        expect(first.liner.paperName).toBe('F120');
+        expect(first.liner.pricePerReam).toBe(900000);
+        p.PAPER_STOCK_DATA[index].pricePerReam = 1800000;
+        expect(run(s, config(), p).liner.cost).toBe(first.liner.cost * 2);
+    });
+    it('lót in dùng tổng KTS, cán riêng độc lập và danh mục được kiểm tra', () => {
+        const c = config();
+        const s = { ...input(), linerPrint: true, linerColor: '1color', linerLam: true };
+        const r = run(s, c);
+        const expected = kts(
+            DEFAULT_CONFIG,
+            r.linerW,
+            r.linerH,
+            s.n * c.geometry.linerCopies,
+            1,
+            s.linerPaper,
+            1,
+            0,
+            s.linerStock,
+            null,
+            '1color'
+        );
+        expect(row(r, 'liner').cost).toBe(Math.round(expected.cost));
+        expect(row(r, 'liner').sale).toBe(Math.round(expected.sale));
+        expect(row(r, 'liner-lam').sale).toBeGreaterThan(0);
+        const off = run({ ...s, linerLam: false }, c);
+        expect(r.sale - off.sale).toBe(row(r, 'liner-lam').sale);
+        expect(() => run({ ...s, linerPaper: 1 }, c)).toThrow(/chưa được cho phép/);
+        c.allowedMaterials = { wrap: ['C150'], liner: ['C200'] };
+        expect(run({ ...s, linerPaper: 1 }, c).complete).toBe(true);
+        expect(() => run(s, c)).toThrow(/chưa được cho phép/);
+    });
+    it('áo mỹ thuật dưới 150gsm không cán; C150 bắt buộc cán và chặn C200', () => {
+        const s = { ...input(), wrapSource: 'art', wrapGsm: 120 };
+        const c = config();
+        c.geometry.lamSides = 2;
+        const r = run(s, c);
+        expect(row(r, 'lam')).toMatchObject({ cost: 0, sale: 0 });
+        expect(row(r, 'lam').detail).toContain('không cán màng');
+        for (const wrapGsm of [NaN, 0, 150, 200])
+            expect(() => run({ ...s, wrapGsm }, c)).toThrow(/150 gsm/);
+        c.geometry.lamSides = 0;
+        expect(row(run(input(), c), 'lam').sale).toBeGreaterThan(0);
+        expect(() => run({ ...input(), wrapPaper: 1 }, c)).toThrow(/chưa được cho phép/);
+    });
+    it('decal nhựa dùng giá m² KTS, giấy riêng và cán một lần, có/không in', () => {
+        const wrapPaper = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex((p) =>
+            p.name.includes('Decal nhựa')
+        );
+        for (const wrapperPrint of [false, true]) {
+            const r = run({ ...input(), wrapPaper, wrapStock: 2, wrapperPrint });
+            expect(r.wrap.unit).toBeCloseTo(
+                ((r.wrap.cutting.stockW * r.wrap.cutting.stockH) / 10000) *
+                    DEFAULT_CONFIG.PAPER_STOCK_DATA[wrapPaper].pricePerSqm
+            );
+            expect(r.wrap.cost).toBeCloseTo(r.wrap.unit * r.wrap.sheets);
+            expect(row(r, 'lam').sale).toBeGreaterThan(0);
+            if (wrapperPrint) {
+                expect(r.wrapPress.params.paperType).toBe(String(wrapPaper));
+                expect(r.wrapPress.params.laminationType).toBe('none');
+            }
+        }
+    });
+    it('sơ đồ giấy mỹ thuật khớp định mức giấy trắng và tờ máy có in', () => {
+        const art = { name: 'Mỹ thuật', w: 70, h: 100, cost: 50000 };
+        const blank = paperQuote(DEFAULT_CONFIG, 25, 43.1, 30, 0, 0, null, art);
+        const c = blank.cutting;
+        expect(c.columns * c.rows).toBe(blank.yieldPer);
+        expect(c.columns * c.pieceW).toBeLessThanOrEqual(70);
+        expect(c.rows * c.pieceH).toBeLessThanOrEqual(100);
+        expect(blank.sheets).toBe(Math.ceil(c.required / c.perSheet));
+        const press = kts(DEFAULT_CONFIG, 25, 43.1, 30, 1, 0, 1, 0, 0, art);
+        const printed = paperQuote(DEFAULT_CONFIG, 25, 43.1, 30, 0, 0, press, art);
+        expect(printed.cutting.pieces.length).toBe(press.best.numCuttableSheets);
+        expect(printed.sheets).toBe(Math.ceil(printed.cutting.required / printed.cutting.perSheet));
+        for (const p of printed.cutting.pieces) {
+            expect(p.x + p.w).toBeLessThanOrEqual(70 + 1e-8);
+            expect(p.y + p.h).toBeLessThanOrEqual(100 + 1e-8);
+        }
+    });
     it('20×15: carton bù 4 mm, áo và lót theo công thức đã chốt', () => {
         const r = run();
         expect([r.lay.W, r.lay.H]).toEqual([20, 15]);
@@ -46,7 +137,7 @@ describe('Calendar contracts', () => {
         'cắt %i cuốn đủ từng loại, không chồng/vượt và dải lọt máy',
         (n) => {
             const c = config(),
-                r = layout({ ...input(), n, cfg: c.geometry });
+                r = layout({ ...input(), n, cfg: c.geometry, sheet: { w: 60, h: 100 } });
             expect(r.producedL).toBeGreaterThanOrEqual(n * 2);
             expect(r.producedS).toBeGreaterThanOrEqual(n * 2);
             expect(r.groups.reduce((sum, g) => sum + g.repeat, 0)).toBe(r.count);
@@ -58,18 +149,19 @@ describe('Calendar contracts', () => {
     );
     it('chặn nạp cạnh 100 vào máy 76; khổ không lọt không cho giá giả', () => {
         const c = config();
-        c.geometry.stockW = 100;
-        c.geometry.stockH = 60;
+        c.materials.carton[0].w = 100;
+        c.materials.carton[0].h = 60;
         expect(() => run(input(), c)).toThrow(/Cạnh nạp/);
+        expect(validateCalendarConfig(c).errors[0]).toMatch(/vượt khổ ngang máy cắt/);
         expect(() => run({ ...input(), a: 200, b: 150 })).toThrow();
     });
     it('kích thước lẻ và bù lẻ được giữ đến 0,1 mm, không làm nhỏ phôi', () => {
         const c = config();
         c.geometry.allowance = 4.2;
-        const r = layout({ ...input(), a: 20.05, cfg: c.geometry });
+        const r = layout({ ...input(), a: 20.05, cfg: c.geometry, sheet: { w: 60, h: 100 } });
         expect(r.l.w).toBe(204.7);
         expect(r.l.h).toBe(154.2);
-        const r2 = layout({ ...input(), a: 20.051, cfg: c.geometry });
+        const r2 = layout({ ...input(), a: 20.051, cfg: c.geometry, sheet: { w: 60, h: 100 } });
         expect(r2.l.w).toBe(204.8);
     });
     it('áo mỹ thuật có in chạy cùng KTS với khổ giấy tùy chọn và màu đen', () => {
@@ -77,6 +169,7 @@ describe('Calendar contracts', () => {
             ...input(),
             wrapperPrint: true,
             wrapSource: 'art',
+            wrapGsm: 120,
             wrapColor: '1color',
             wrapArtInput: { size: 'custom', w: 70, h: 100, cost: 9000 },
         };
@@ -147,10 +240,12 @@ describe('Calendar contracts', () => {
         const s = {
             ...input(),
             wrapSource: 'art',
+            wrapGsm: 120,
             linerSource: 'art',
             wrapArtInput: { size: 'custom', w: 80, h: 120, cost: 9000 },
             linerArtInput: { size: 'custom', w: 70, h: 100, cost: 3000 },
         };
+        c.allowedMaterials = { wrap: ['C150', 'art'], liner: ['C150', 'art'] };
         const r = run(s, c, p);
         expect(r.wrap.unit).toBe(9000);
         expect(r.liner.unit).toBe(3000);
@@ -231,5 +326,57 @@ describe('Calendar contracts', () => {
         const c2 = config();
         c2.geometry.linerReduceW = 300;
         expect(() => run(input(), c2)).toThrow(/Khổ lót/);
+    });
+    it('dòng carton xuất vốn/cm² tấm nguyên và vốn/cm² thành phẩm thật của đơn', () => {
+        const r = run();
+        expect(r.carton).toMatchObject({
+            sheetW: 60,
+            sheetH: 100,
+            sheets: 14,
+            area: 72000,
+            salePerCm2: 12,
+        });
+        // 14 tấm nguyên rơi vào bậc vốn "từ 10" = 42.000đ/tấm ⇒ 42000 / (60 × 100) = 7 đ/cm².
+        expect(r.carton).toMatchObject({ sheetCost: 42000, costTier: 2, saleTier: 3 });
+        expect(r.carton.costPerRawCm2).toBeCloseTo(7);
+        // Thành phẩm chỉ 72.000 cm² trên 84.000 cm² tấm nguyên ⇒ vốn thật mỗi cm² cao hơn.
+        expect(r.carton.costPerFinishedCm2).toBeCloseTo(588000 / 72000);
+        expect(r.carton.costPerFinishedCm2 * r.carton.area).toBeCloseTo(row(r, 'carton').cost);
+        expect(r.carton.wasteFactor).toBeGreaterThan(1);
+        expect(row(r, 'carton').detail).toContain('60 × 100 cm');
+        expect(row(r, 'carton').detail).toContain('7.00 đ/cm² tấm nguyên');
+        expect(row(r, 'carton').detail).toContain('8.17 đ/cm² thành phẩm');
+    });
+    it('đổi loại carton đổi luôn khổ tấm, không dùng lại sơ đồ của loại trước', () => {
+        const c = config();
+        const t = [{ from: 1, cost: 45000, sale: 18 }];
+        c.materials.carton = [
+            { name: 'Khổ 60×100', w: 60, h: 100, tiers: structuredClone(t) },
+            { name: 'Khổ 76×100', w: 76, h: 100, tiers: structuredClone(t) },
+        ];
+        const s = input();
+        const a = run(s, c),
+            b = run({ ...s, selected: { ...s.selected, carton: 1 } }, c),
+            again = run(s, c);
+        expect([a.lay.sw, b.lay.sw]).toEqual([600, 760]);
+        expect([a.carton.sheetW, b.carton.sheetW]).toEqual([60, 76]);
+        expect(a.carton.costPerRawCm2).not.toBeCloseTo(b.carton.costPerRawCm2);
+        expect(again.lay.count).toBe(a.lay.count);
+        expect(again.carton.sheetW).toBe(60);
+    });
+    it('mỗi loại carton phải có khổ hợp lệ, lọt máy cắt và còn dư sau khi xén biên', () => {
+        const missing = config();
+        delete missing.materials.carton[0].w;
+        expect(validateCalendarConfig(missing).isValid).toBe(false);
+        expect(() => run(input(), missing)).toThrow(/Khổ ngang của tấm carton/);
+        const wide = config();
+        wide.materials.carton[0].w = 100;
+        expect(validateCalendarConfig(wide).errors[0]).toMatch(/máy cắt/);
+        const huge = config();
+        huge.materials.carton[0].h = 1001;
+        expect(validateCalendarConfig(huge).isValid).toBe(false);
+        const trimmed = config();
+        trimmed.geometry.trim = 40;
+        expect(validateCalendarConfig(trimmed).errors[0]).toMatch(/Xén biên/);
     });
 });

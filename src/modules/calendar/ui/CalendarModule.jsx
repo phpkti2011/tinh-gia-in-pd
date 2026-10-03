@@ -169,6 +169,7 @@ export default function CalendarModule({ onBack, heading = 'Tính Giá Lịch B�
                         <CalendarSettings
                             key={editor.key}
                             config={editor.config}
+                            printConfig={printConfig}
                             syncReady={snapshot.ready}
                             onReload={reloadEditor}
                             onSave={save}

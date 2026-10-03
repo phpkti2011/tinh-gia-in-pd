@@ -42,3 +42,23 @@ Rà soát và sửa: giữ ít nhất một giấy được chọn để không 
 **Còn trước triển khai:** chạy migration trên Supabase, kiểm tra lưu bằng tài khoản admin thật, xác nhận giá thực tế thay số mẫu. Chưa push/deploy và chưa thay dữ liệu máy chủ. Các phép kiểm tra quyền/đồng bộ ở trên dùng test giả lập và PostgreSQL cục bộ.
 
 Hoàn tác: bỏ phần tích hợp Bao thư và khôi phục adapter từ phiên bản trước; không xóa các chỉnh sửa ngoài phạm vi đã có trong workspace.
+
+## Bổ sung giấy mỹ thuật và kiểm tra đồng bộ
+
+- Đã thêm nguồn giấy mỹ thuật, danh mục tên/khổ/giá mỗi tờ trong cài đặt. Admin có thể nhập khổ/giá riêng cho đơn; staff dùng giá đã lưu và không thấy ô giá vốn. Giá 0 chặn tính cho loại giấy đó, không tự lấy giá mẫu.
+- Giấy mỹ thuật có in dùng adapter KTS custom; mặt sau trắng chỉ dùng giấy theo giá mỗi tờ. Cấu hình cũ vẫn tương thích.
+- Đã thêm nút kiểm tra đồng bộ lại và tải migration SQL cho admin khi chưa đồng bộ.
+- Kiểm tra thật bằng quyền công khai: truy vấn metadata trả HTTP 200, chỉ có KTS v31; RPC Bao thư trả HTTP 404/PGRST202. Không thay dữ liệu máy chủ. Cần phiên quản trị Supabase để chạy migration; đã yêu cầu người dùng mở trang quản trị.
+- Khởi động lại bản xem thử 5178 với cấu hình kết nối từ `.env.local` (lượt kiểm thử tự động vẫn để biến Supabase trống).
+- Toàn bộ 107 file / 1613 test đạt; ESLint module và test liên quan đạt; build đạt, còn cảnh báo bundle chung lớn.
+- Yêu cầu trước đó về hình: tay dán nối mặt trước cho cả 6 trường hợp, bo hai góc ngoài nắp/tay dán, giữ nguyên kích thước và giá.
+
+## Khổ chuẩn và thành phẩm (28/09/2026)
+
+Cập nhật tiếp: danh sách khổ chuẩn chuyển vào `sizePresets` trong cấu hình Bao thư. Admin thêm/sửa/xóa trong Cài Đặt; khổ trống hoặc kích thước không dương bị chặn khi lưu. Xóa hết được phép, không tự khôi phục khổ mặc định. Khi danh sách đổi, giữ kích thước đơn đang nhập và hiện Tùy chỉnh nếu khổ không còn khớp. 56 kiểm tra giao diện, lưu cấu hình và tính giá đạt.
+
+- Thêm khổ chọn nhanh 220×120, 220×110, 230×160, 350×250 mm và Tùy chỉnh. Danh sách tạm dùng theo đề xuất, chờ người dùng bổ sung khổ xưởng. Đổi đơn vị giữ kích thước; sửa W/H bỏ lựa chọn khổ chuẩn.
+- Thành phẩm có Không bế / Bế có khuôn / Bế kỹ thuật số. Dùng giá khuôn bao thư và công theo số tờ máy từ engine KTS; không cộng bảng phí bế Bao thư cũ. Mặt sau rời cắt thẳng không thêm bế, giữ quy tắc đã chốt.
+- Adapter nhận tùy chọn biên bế kỹ thuật số; khoảng cách bình 0 / 0,4 / 0,6 cm theo KTS. Lịch bàn giữ mặc định như trước.
+- 61 test engine Bao thư, giao diện và hồi quy Lịch bàn đạt. ESLint các file liên quan đạt; build đạt (còn cảnh báo kích thước bundle chung).
+- Việc chạy migration và lưu bảng giá Bao thư lần đầu trên Supabase vẫn chưa thực hiện; bổ sung UI này không tự giải quyết phần đồng bộ đang chờ quyền quản trị.

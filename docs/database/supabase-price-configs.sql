@@ -137,6 +137,33 @@ alter table public.price_config_versions enable row level security;
 alter table public.price_change_logs     enable row level security;
 
 -- ============================================================================
+-- 4bis. GRANT cho Data API (bat buoc tu 30/10 — Supabase bo auto-grant)
+--
+--   Tu 30/10, bang MOI tao trong schema public KHONG con duoc cap quyen Data API
+--   tu dong. Bang dang chay tren project hien tai giu nguyen quyen cu, nhung neu
+--   chay lai file nay tren project moi / preview branch / `supabase db reset` ma
+--   thieu GRANT thi PostgREST se tra "permission denied".
+--
+--   Quyen o day co y HEP, khop dung voi RLS policy ben duoi:
+--     - price_configs: anon + authenticated doc duoc (calculator public), admin
+--       ghi duoc (RLS chan non-admin).
+--     - versions / logs: chi authenticated, append-only (khong grant update/delete).
+--   GRANT la lop tho, RLS moi la lop chan theo tung row — can ca hai.
+--
+--   Luu y: save_price_config() la security definer nen chay bang quyen owner,
+--   khong phu thuoc cac GRANT nay; grant insert/update duoi day la cho duong
+--   ghi truc tiep qua Data API ma RLS policy muc 5–7 da mo.
+-- ============================================================================
+grant select         on public.price_configs         to anon, authenticated;
+grant insert, update on public.price_configs         to authenticated;
+grant select, insert on public.price_config_versions to authenticated;
+grant select, insert on public.price_change_logs     to authenticated;
+
+grant all on public.price_configs         to service_role;
+grant all on public.price_config_versions to service_role;
+grant all on public.price_change_logs     to service_role;
+
+-- ============================================================================
 -- 5. RLS Policies — price_configs
 --    SELECT: anon + authenticated → cho public calculator hoat dong.
 --    INSERT/UPDATE: admin only.

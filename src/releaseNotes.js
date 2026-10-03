@@ -16,6 +16,28 @@
 
 export const RELEASE_NOTES = [
     {
+        id: '2026-10-02-kho-tam-carton',
+        date: '2026-10-02',
+        title: 'Khổ tấm carton khai riêng cho từng loại (lịch bàn)',
+        items: [
+            'Cài Đặt lịch bàn: bảng giá carton lạnh có thêm ô "Ngang" và "Dài" cho từng loại carton. Hai ô "Cạnh nạp / Chiều dài tấm carton" ở mục Kích thước đã chuyển vào đây; ô "Khổ ngang máy cắt" vẫn giữ nguyên chỗ cũ.',
+            'Bấm "+ Thêm loại carton lạnh" để thêm loại khổ khác; loại mới lấy sẵn khổ của loại đầu tiên, sửa lại rồi lưu. Ngang là cạnh đưa vào máy cắt nên phải nhỏ hơn hoặc bằng khổ ngang máy.',
+            'Bảng giá carton có thêm hai cột chỉ để xem: "Vốn / cm² tấm nguyên" (vốn một tấm chia cho ngang × dài) và "Khách / Vốn" (giá khách gấp bao nhiêu lần vốn) — tiện đối chiếu từng bậc. Đây là cm² tấm nguyên, chưa trừ hao khi cắt phôi.',
+            'Màn Tính Giá: chọn loại carton khác thì số tấm nguyên và sơ đồ cắt đổi theo đúng khổ của loại đó. Dòng Carton lạnh ghi thêm vốn mỗi cm² tấm nguyên và vốn mỗi cm² thành phẩm thực tế của đơn.',
+            'Bảng giá đang dùng không phải nhập lại: phần mềm tự điền khổ cũ vào từng loại, giá không thay đổi.',
+        ],
+    },
+    {
+        id: '2026-10-02-dan-thanh-pham',
+        date: '2026-10-02',
+        title: 'Dán thành phẩm cho In KTS khổ nhỏ',
+        items: [
+            'In KTS khổ nhỏ: mục Thành Phẩm có thêm ô "Dán thành phẩm". Bấm "+ Thêm kiểu dán" để thêm từng kiểu keo (dán keo phá màng, dán keo 2 mặt vàng…); một đơn thêm được nhiều dòng dán, mỗi dòng tính cho toàn bộ số lượng.',
+            'Cài Đặt In KTS: có bảng giá "Dán Thành Phẩm" — thêm, đổi tên, xoá kiểu dán; mỗi kiểu có các bậc số lượng, mỗi bậc chọn trọn gói hoặc tính theo từng sản phẩm.',
+            'Giá dán ban đầu là giá mẫu: quản trị viên cần kiểm tra và sửa lại trong Cài Đặt trước khi báo khách.',
+        ],
+    },
+    {
         id: '2026-09-24-gia-san',
         date: '2026-09-24',
         title: 'Giá sàn cho In KTS khổ nhỏ + Bế Formex',

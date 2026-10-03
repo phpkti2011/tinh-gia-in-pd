@@ -4,8 +4,16 @@ const units = (v) => Math.ceil(v * 100 - 1e-8);
 let layoutCache = { key: '', value: null };
 export function layout(s) {
     const c = s.cfg,
+        sheet = s.sheet,
         W = s.orientation === 'landscape' ? Math.max(s.a, s.b) : Math.min(s.a, s.b),
         H = s.orientation === 'landscape' ? Math.min(s.a, s.b) : Math.max(s.a, s.b);
+    must(
+        Number.isFinite(sheet?.w) && sheet.w > 0 && Number.isFinite(sheet?.h) && sheet.h > 0,
+        'Thiếu khổ tấm carton của loại đang chọn. Khai ngang và dài trong Bảng giá carton lạnh.'
+    );
+    // sheet.w/sheet.h BẮT BUỘC nằm trong key: layoutCache chỉ nhớ một ô, thiếu hai giá
+    // trị này thì đổi loại carton sẽ dùng lại sơ đồ của loại trước — sai số tấm, sai
+    // tiền carton, không có lỗi nào bật lên.
     const key = JSON.stringify([
         s.n,
         W,
@@ -14,15 +22,15 @@ export function layout(s) {
         c.strip,
         c.largeCount,
         c.smallCount,
-        c.stockW,
-        c.stockH,
+        sheet.w,
+        sheet.h,
         c.machine,
         c.trim,
         c.gap,
     ]);
     if (key === layoutCache.key) return layoutCache.value;
-    const sw = Math.floor(c.stockW * 100 + 1e-8),
-        sh = Math.floor(c.stockH * 100 + 1e-8),
+    const sw = Math.floor(sheet.w * 100 + 1e-8),
+        sh = Math.floor(sheet.h * 100 + 1e-8),
         trim = units(c.trim),
         gap = units(c.gap),
         uw = sw - 2 * trim,
@@ -218,6 +226,8 @@ export function layout(s) {
                 })),
             },
         })),
+        sheetW: sheet.w,
+        sheetH: sheet.h,
         sw: sw / 10,
         sh: sh / 10,
         trim: trim / 10,

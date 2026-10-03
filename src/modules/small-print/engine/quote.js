@@ -5,7 +5,7 @@
 // quy đổi sang trang A4 + áp CUSTOMER_PRICE_TIERS.
 //
 // finishingCustomerPrices: { holePunching, creasing, mounting, customFinishing?,
-// plasticLamination? } — key thiếu coi như 0 (test cũ truyền object 3 key).
+// plasticLamination?, gluing? } — key thiếu coi như 0 (test cũ truyền object 3 key).
 
 import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pricing.js';
 import { filmMultiplier } from '../../../utils/laminationFilm.js';
@@ -234,6 +234,9 @@ export function calculateCustomerQuote(
         (finishingCustomerPrices.mounting || 0) +
         (finishingCustomerPrices.customFinishing || 0) +
         (finishingCustomerPrices.plasticLamination || 0) +
+        // Dán thành phẩm (1.9.0) — tổng mọi dòng dán. Luôn `|| 0`: catalogue, lò xo, lịch,
+        // bao thư gọi hàm này với object 3 key, không có `gluing`.
+        (finishingCustomerPrices.gluing || 0) +
         dieCuttingCustomerPrice.moldCost +
         dieCuttingCustomerPrice.laborCustomerPrice +
         variableDataCost +
@@ -266,6 +269,7 @@ export function calculateCustomerQuote(
         sheetsPerSet,
         customFinishingCustomerPrice: finishingCustomerPrices.customFinishing || 0,
         plasticLaminationCustomerPrice: finishingCustomerPrices.plasticLamination || 0,
+        gluingCustomerPrice: finishingCustomerPrices.gluing || 0,
         dieCuttingMoldCustomerPrice: dieCuttingCustomerPrice.moldCost || 0,
         dieCuttingLaborCustomerPrice: dieCuttingCustomerPrice.laborCustomerPrice || 0,
         variableDataCost,

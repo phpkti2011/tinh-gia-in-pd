@@ -178,6 +178,16 @@ describe('Envelope panels — hình mô tả khớp công thức', () => {
                 construction === 'split' ? 3 : 2
             );
             expect(main.panels.some((p) => p.id === 'back')).toBe(construction !== 'split');
+            const front = main.panels.find((p) => p.id === 'front');
+            for (const tab of main.panels.filter((p) => p.id.startsWith('tab'))) {
+                const sharedVerticalEdge =
+                    (tab.x + tab.w === front.x || front.x + front.w === tab.x) &&
+                    Math.min(tab.y + tab.h, front.y + front.h) > Math.max(tab.y, front.y);
+                const sharedHorizontalEdge =
+                    (tab.y + tab.h === front.y || front.y + front.h === tab.y) &&
+                    Math.min(tab.x + tab.w, front.x + front.w) > Math.max(tab.x, front.x);
+                expect(sharedVerticalEdge || sharedHorizontalEdge).toBe(true);
+            }
             expect(main.folds.length).toBeGreaterThanOrEqual(4);
         }
     );

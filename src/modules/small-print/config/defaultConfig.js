@@ -237,6 +237,39 @@ export const DEFAULT_CONFIG = {
     // dùng lại calculateFinishingCost() không đổi). Chọn tối đa 1 gia công (kèm
     // 1 sub-loại) mỗi đơn qua dropdown "Gia công thêm" ở màn nhập liệu.
     CUSTOM_FINISHING_TYPES: [],
+    // Dán thành phẩm (config 1.9.0, optional) — xem config/gluingTypes.js.
+    // Mỗi kiểu dán có bảng bậc CÙNG cấu trúc {max_qty, price, type:'package'|'per_piece'}
+    // như HOLE_PUNCHING_CONFIG, tra theo SỐ THÀNH PHẨM bằng calculateFinishingCost().
+    // Khác "Gia công thêm": một đơn chọn được NHIỀU dòng dán (params.gluingLines), mỗi dòng
+    // một kiểu, tính cho toàn bộ số lượng — xem engine/pricing.js calculateGluingCost.
+    // `id` cố định, không đổi khi admin đổi tên (đơn đang mở tham chiếu bằng id).
+    // ⚠ Các con số dưới đây là GIÁ MẪU để chạy thử; admin kiểm tra lại trong Cài Đặt.
+    GLUING_TYPES: [
+        {
+            id: 'glue-peel-seal',
+            name: 'Dán keo phá màng',
+            cost_tiers: [
+                { max_qty: 100, price: 30000, type: 'package' },
+                { max_qty: Infinity, price: 300, type: 'per_piece' },
+            ],
+            customer_tiers: [
+                { max_qty: 100, price: 60000, type: 'package' },
+                { max_qty: Infinity, price: 600, type: 'per_piece' },
+            ],
+        },
+        {
+            id: 'glue-double-sided-yellow',
+            name: 'Dán keo 2 mặt vàng',
+            cost_tiers: [
+                { max_qty: 100, price: 40000, type: 'package' },
+                { max_qty: Infinity, price: 400, type: 'per_piece' },
+            ],
+            customer_tiers: [
+                { max_qty: 100, price: 80000, type: 'package' },
+                { max_qty: Infinity, price: 800, type: 'per_piece' },
+            ],
+        },
+    ],
     // Ép plastic (màng nhiệt bỏ túi) — xem src/utils/plasticLamination.js.
     // Bảng giá CHUNG cho mọi độ dày: `tiers` hàng = bậc SL (tra "qty <= max_qty"
     // như calculateFinishingCost), cột = khổ (id trong `sizes`). Mỗi độ dày trong

@@ -10,10 +10,20 @@
 // Nắp và tay dán đã nằm trong khổ trải; KHÔNG cộng thêm ở đây. Bleed 0.3 cm do kts() tự
 // cộng khi bình tờ (giống màn KTS), không đổi khổ khuôn đầu ra.
 
-import { calculateFoilStamping, kts, paperQuote } from '../../small-print/engine/index.js';
+import {
+    calculateFoilStamping,
+    calculateDieCuttingCosts,
+    kts,
+    paperQuote,
+} from '../../small-print/engine/index.js';
 import { pickTier, requireValue as must } from '../../../utils/priceTiers.js';
-import { FEE_MODE_LABELS } from '../config/defaultConfig.js';
-import { validateEnvelopeConfig, allowedPapers, PRINT_COLORS } from '../config/schema.js';
+import { FEE_MODE_LABELS, ENVELOPE_CUT_LABELS } from '../config/defaultConfig.js';
+import {
+    validateEnvelopeConfig,
+    allowedPapers,
+    PRINT_COLORS,
+    envelopeArtPaper,
+} from '../config/schema.js';
 import {
     computeEnvelopeLayout,
     describeEnvelopePanels,
@@ -34,10 +44,15 @@ const INPUT_KEYS = [
     'backPrint',
     'quantity',
     'paper',
+    'paperSource',
+    'artIndex',
+    'artInput',
     'stock',
     'color',
     'foil',
+    'flapTape',
     'molds',
+    'dieCuttingType',
 ];
 
 // Khóa nhận diện đầu vào: UI chỉ hiển thị kết quả có khóa trùng với input hiện tại (I10).
@@ -51,11 +66,24 @@ export function calculateEnvelopeQuote(input, config, printConfig) {
     const validInput = validateEnvelopeInput(input);
     must(validInput.ok, Object.values(validInput.errors).join(' '));
     const s = input;
+    const cutType = s.dieCuttingType ?? 'mold';
+    must(Object.hasOwn(ENVELOPE_CUT_LABELS, cutType), 'Chọn hình thức bế hợp lệ.');
+    must(['ream', 'art'].includes(s.paperSource ?? 'ream'), 'Nguồn giấy không hợp lệ.');
+    const isArt = s.paperSource === 'art';
+    const art = isArt ? envelopeArtPaper(s, config) : null;
     const papers = allowedPapers(config, printConfig);
     const paperEntry = papers.find((p) => p.index === s.paper);
-    must(paperEntry, 'Chọn loại giấy bao thư trong danh sách giấy cho phép.');
+    if (isArt) {
+        must(
+            art &&
+                typeof art.name === 'string' &&
+                art.name.trim() &&
+                [art.w, art.h, art.cost].every((n) => Number.isFinite(n) && n > 0),
+            'Giấy mỹ thuật chưa có khổ hoặc giá hợp lệ. Admin cần nhập giá mỗi tờ trong Cài Đặt.'
+        );
+    } else must(paperEntry, 'Chọn loại giấy bao thư trong danh sách giấy cho phép.');
     const stock = printConfig.STANDARD_LARGE_SHEET_SIZES?.[s.stock];
-    must(stock, 'Chọn khổ giấy ram hợp lệ.');
+    if (!isArt) must(stock, 'Chọn khổ giấy ram hợp lệ.');
     must(PRINT_COLORS.includes(s.color), 'Màu in không hợp lệ.');
     if (s.foil) {
         must(Array.isArray(s.molds) && s.molds.length > 0, 'Cần ít nhất một khuôn ép nhũ.');
@@ -97,15 +125,24 @@ export function calculateEnvelopeQuote(input, config, printConfig) {
                 1,
                 0,
                 s.stock,
-                null,
+                art,
                 s.color,
                 '',
-                { gap: config.dieCut.gapCm }
+                // Mặt sau rời cắt thẳng; chỉ phần thân/trước cần bế.
+                {
+                    gap:
+                        part.id === 'back' || cutType === 'none'
+                            ? 0
+                            : cutType === 'digital'
+                              ? 0.6
+                              : 0.4,
+                    digitalCutting: part.id !== 'back' && cutType === 'digital',
+                }
             );
             row(
                 part.id,
                 `${label} · giấy + in`,
-                `${size} · ${part.quantity} cái · ${paperEntry.paper.name} · in ${colorLabel} · ${press.sheets} tờ máy`,
+                `${size} · ${part.quantity} cái · ${art?.name ?? paperEntry.paper.name} · in ${colorLabel} · ${press.sheets} tờ máy`,
                 press.cost,
                 press.sale
             );
@@ -120,7 +157,7 @@ export function calculateEnvelopeQuote(input, config, printConfig) {
                 printSale: press.printSale,
             };
         }
-        const paper = paperQuote(printConfig, wCm, hCm, part.quantity, s.paper, s.stock);
+        const paper = paperQuote(printConfig, wCm, hCm, part.quantity, s.paper, s.stock, null, art);
         const sale = paper.cost * config.backPaperFactor;
         row(
             part.id,
@@ -144,18 +181,74 @@ export function calculateEnvelopeQuote(input, config, printConfig) {
     const fee = (key, id, name) => {
         const cfg = config[key],
             tier = pickTier(cfg.tiers, qty),
-            times = cfg.mode === 'package' ? 1 : qty;
+            mode = tier.mode ?? cfg.mode,
+            times = mode === 'package' ? 1 : qty;
         row(
             id,
             name,
-            `${qty} bao thư · bậc ${tier.index} · ${FEE_MODE_LABELS[cfg.mode].toLowerCase()}`,
+            `${qty} bao thư · bậc ${tier.index} · ${FEE_MODE_LABELS[mode].toLowerCase()}`,
             tier.cost * times,
             tier.sale * times
         );
         return { tier, cost: tier.cost * times, sale: tier.sale * times };
     };
-    const dieCut = fee('dieCut', 'die-cut', 'Bế khuôn');
+    const main = parts[0];
+    if (cutType === 'digital') {
+        const digital = printConfig.DIGITAL_DIE_CUTTING_CONFIG;
+        must(
+            ['cost_tiers', 'customer_tiers'].every((key) =>
+                digital?.[key]?.some((tier) => main.press.sheets <= tier.max_qty)
+            ),
+            `Chưa có bậc giá bế kỹ thuật số cho ${main.press.sheets} tờ máy. Cần bổ sung giá vốn và giá khách trong Cài Đặt In KTS khổ nhỏ trước khi báo giá.`
+        );
+    }
+    const cutting = calculateDieCuttingCosts(
+        {
+            dieCuttingType: cutType,
+            moldType: 'envelope',
+            productW: main.widthMm / 10,
+            productH: main.heightMm / 10,
+        },
+        main.press.sheets,
+        false,
+        printConfig
+    );
+    const dieCut = {
+        ...cutting,
+        type: cutType,
+        sheets: main.press.sheets,
+        cost: cutting.moldCost + cutting.laborCost,
+        sale: cutting.moldCost + cutting.laborCustomerPrice,
+    };
+    row(
+        'die-cut',
+        ENVELOPE_CUT_LABELS[cutType],
+        cutType === 'none'
+            ? 'Không tính phí bế'
+            : `${main.press.sheets} tờ máy · ${main.label} · ${cutType === 'mold' ? 'khuôn bao thư + công bế' : 'không tính tiền khuôn'} · bảng giá KTS`,
+        dieCut.cost,
+        dieCut.sale
+    );
     const gluing = fee('gluing', 'gluing', 'Dán bao thư');
+    if (s.flapTape) {
+        const tape = config.flapTape;
+        must(
+            tape && tape.costPerCm > 0 && tape.salePerCm > 0,
+            'Chưa có giá dán keo nắp. Nhập giá vốn và giá khách lớn hơn 0 trong Cài Đặt bao thư.'
+        );
+        const lengthCm = precise(layout.dimensionsMm[s.flapEdge] / 10);
+        const totalCm = precise(lengthCm * qty);
+        row(
+            'flap-tape',
+            'Dán keo 2 mặt nắp',
+            `${lengthCm} cm/bao × ${qty} bao = ${totalCm} cm keo` +
+                (totalCm * tape.salePerCm < (tape.minSale ?? 0)
+                    ? ` · áp phí keo tối thiểu báo khách ${tape.minSale.toLocaleString('vi-VN')} đ`
+                    : ''),
+            Math.max(totalCm * tape.costPerCm, tape.minCost ?? 0),
+            Math.max(totalCm * tape.salePerCm, tape.minSale ?? 0)
+        );
+    }
 
     const foil = calculateFoilStamping(
         { foilStamping: s.foil ? 'yes' : 'none', productQuantity: qty, foilMolds: s.molds },

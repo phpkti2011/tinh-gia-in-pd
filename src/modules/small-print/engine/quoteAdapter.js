@@ -13,7 +13,7 @@
 // nhánh mold của màn KTS (App.jsx SmallPrintModule).
 
 import { largeSheetPrice } from './paper.js';
-import { calculatePaperOptions } from './options.js';
+import { calculatePaperOptions, calculateDecalOptions } from './options.js';
 import { calculateCustomerQuote } from './quote.js';
 import { calculateFloorPrice } from './floorPrice.js';
 
@@ -48,7 +48,8 @@ export function kts(
     must(
         paper &&
             !paper.hidden &&
-            (paper.pricingModel === 'ream' || (art && paper.pricingModel === 'custom')),
+            (['ream', 'sqm'].includes(paper.pricingModel) ||
+                (art && paper.pricingModel === 'custom')),
         'Chưa có loại giấy phù hợp trong bộ tính KTS.'
     );
     const params = {
@@ -74,7 +75,16 @@ export function kts(
     if (art) params.artPaperPrice = art.cost;
     params.printColorMode = color;
     const results = [];
-    calculatePaperOptions(params, paper, w + 0.3, h + 0.3, results, gap, false, config);
+    (paper.pricingModel === 'sqm' ? calculateDecalOptions : calculatePaperOptions)(
+        params,
+        paper,
+        w + 0.3,
+        h + 0.3,
+        results,
+        gap,
+        opts.digitalCutting === true,
+        config
+    );
     const valid = results
         .filter((r) => Number.isFinite(r.costPerProduct) && r.productsPerSheet > 0)
         .sort((a, b) => a.costPerProduct - b.costPerProduct);
@@ -125,11 +135,21 @@ export function paperQuote(
     const paper = art
         ? { name: art.name, pricingModel: 'custom' }
         : printConfig.PAPER_STOCK_DATA[paperIndex];
-    must(art || paper?.pricingModel === 'ream', 'Chọn giấy theo ram trong danh mục KTS.');
+    must(art || ['ream', 'sqm'].includes(paper?.pricingModel), 'Chọn giấy hợp lệ trong danh mục.');
     must(!paper.hidden, 'Giấy đã ẩn trong KTS. Vui lòng chọn lại giấy.');
     const stock = press
         ? { w: press.best.largeSheetW, h: press.best.largeSheetH }
-        : art || printConfig.STANDARD_LARGE_SHEET_SIZES[stockIndex];
+        : art ||
+          (paper.pricingModel === 'sqm'
+              ? {
+                    w: (printConfig.DECAL_SHEET_SIZES?.length
+                        ? printConfig.DECAL_SHEET_SIZES
+                        : printConfig.COMMON_SHEET_SIZES)[stockIndex]?.w,
+                    h: (printConfig.DECAL_SHEET_SIZES?.length
+                        ? printConfig.DECAL_SHEET_SIZES
+                        : printConfig.COMMON_SHEET_SIZES)[stockIndex]?.h,
+                }
+              : printConfig.STANDARD_LARGE_SHEET_SIZES[stockIndex]);
     must(stock, 'Chưa chọn khổ giấy hợp lệ.');
     const yieldPer = press
         ? press.best.productsPerSheet
@@ -139,12 +159,49 @@ export function paperQuote(
           );
     must(yieldPer > 0, 'Khổ áo/lót không lọt giấy nguyên đã chọn.');
     const whole = press
-            ? Math.ceil(press.sheets / press.best.numCuttableSheets)
+            ? Math.ceil(
+                  press.sheets / (paper.pricingModel === 'sqm' ? 1 : press.best.numCuttableSheets)
+              )
             : Math.ceil(qty / yieldPer),
-        unit = art ? art.cost : largeSheetPrice(paper, stock, printConfig, 0);
+        unit = art
+            ? art.cost
+            : paper.pricingModel === 'sqm'
+              ? ((stock.w * stock.h) / 10000) * paper.pricePerSqm
+              : largeSheetPrice(paper, stock, printConfig, 0);
     must(Number.isFinite(unit) && unit > 0, 'Giá vốn giấy phải là số dương.');
     const cost = whole * unit;
+    const rotated =
+        !press &&
+        Math.floor(stock.w / h) * Math.floor(stock.h / w) >
+            Math.floor(stock.w / w) * Math.floor(stock.h / h);
+    const pieceW = rotated ? h : w,
+        pieceH = rotated ? w : h;
+    const cutting = press
+        ? {
+              stockW: stock.w,
+              stockH: stock.h,
+              kind: 'press',
+              pieces:
+                  paper.pricingModel === 'sqm'
+                      ? [{ x: 0, y: 0, w: stock.w, h: stock.h }]
+                      : press.best.cuttableSheetLayout,
+              perSheet: paper.pricingModel === 'sqm' ? 1 : press.best.numCuttableSheets,
+              required: press.sheets,
+              productsPerPressSheet: press.best.productsPerSheet,
+          }
+        : {
+              stockW: stock.w,
+              stockH: stock.h,
+              kind: 'blank',
+              pieceW,
+              pieceH,
+              columns: Math.floor(stock.w / pieceW),
+              rows: Math.floor(stock.h / pieceH),
+              perSheet: yieldPer,
+              required: qty,
+          };
     return {
+        cutting,
         cost,
         sheets: whole,
         yieldPer,

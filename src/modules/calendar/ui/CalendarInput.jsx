@@ -135,23 +135,57 @@ export default function CalendarInput({
                     printConfig={printConfig}
                     onChange={onChange}
                 />
+                <label className="flex gap-2 items-center">
+                    <input
+                        type="checkbox"
+                        checked={s.linerPrint ?? false}
+                        onChange={(e) => set('linerPrint', e.target.checked)}
+                    />
+                    In giấy lót (1 mặt)
+                </label>
+                {s.linerPrint && color('linerColor', 'Màu in giấy lót')}
+                <label className="flex gap-2 items-center">
+                    <input
+                        type="checkbox"
+                        checked={s.linerLam ?? false}
+                        onChange={(e) => set('linerLam', e.target.checked)}
+                    />
+                    Cán màng giấy lót (1 mặt)
+                </label>
+                {s.linerLam && (
+                    <SelectField
+                        label="Loại màng giấy lót"
+                        value={s.linerLamType ?? 0}
+                        onChange={(v) => set('linerLamType', Number(v))}
+                    >
+                        {config.materials.lam.map((film, i) => (
+                            <option key={i} value={i}>
+                                {film.name}
+                            </option>
+                        ))}
+                    </SelectField>
+                )}
             </Section>
             <Section title="5. Vật tư và gia công">
                 <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(MATERIAL_LABELS).map(([key, [name]]) => (
-                        <SelectField
-                            key={key}
-                            label={name}
-                            value={s.selected[key]}
-                            onChange={(v) => set('selected', { ...s.selected, [key]: Number(v) })}
-                        >
-                            {config.materials[key].map((p, i) => (
-                                <option key={i} value={i}>
-                                    {p.name}
-                                </option>
-                            ))}
-                        </SelectField>
-                    ))}
+                    {Object.entries(MATERIAL_LABELS)
+                        .filter(([key]) => key !== 'lam' || s.wrapSource !== 'art')
+                        .map(([key, [name]]) => (
+                            <SelectField
+                                key={key}
+                                label={name}
+                                value={s.selected[key]}
+                                onChange={(v) =>
+                                    set('selected', { ...s.selected, [key]: Number(v) })
+                                }
+                            >
+                                {config.materials[key].map((p, i) => (
+                                    <option key={i} value={i}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                            </SelectField>
+                        ))}
                 </div>
                 <label className="flex gap-2 items-center">
                     <input

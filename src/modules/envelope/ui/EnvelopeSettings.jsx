@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { FEE_MODE_LABELS } from '../config/defaultConfig';
+import {
+    FEE_MODE_LABELS,
+    ENVELOPE_ART_PAPERS,
+    ENVELOPE_SIZE_PRESETS,
+} from '../config/defaultConfig';
 import { validateEnvelopeConfig } from '../config/schema';
 import { CONSTRUCTION_LABELS, FLAP_EDGE_LABELS } from '../engine/layout';
 import { NumberField, SelectField, Section, fieldClass, buttonClass } from './Fields';
 
-const FEES = [
-    ['dieCut', 'bế khuôn', 'Vốn bế', 'Khách bế'],
-    ['gluing', 'dán bao thư', 'Vốn dán', 'Khách dán'],
-];
+const FEES = [['gluing', 'dán bao thư', 'Giá vốn (đ)', 'Giá khách (đ)']];
 
 function TierEditor({ prefix, tiers, onChange, costLabel, saleLabel }) {
     const edit = (fn) => {
@@ -24,6 +25,7 @@ function TierEditor({ prefix, tiers, onChange, costLabel, saleLabel }) {
                             <th>Từ số lượng</th>
                             <th>{costLabel}</th>
                             <th>{saleLabel}</th>
+                            <th>Cách tính phí</th>
                             <th />
                         </tr>
                     </thead>
@@ -50,6 +52,24 @@ function TierEditor({ prefix, tiers, onChange, costLabel, saleLabel }) {
                                         />
                                     </td>
                                 ))}
+                                <td className="p-1">
+                                    <select
+                                        aria-label={`${prefix} bậc ${j + 1} cách tính`}
+                                        className={fieldClass + ' min-w-44'}
+                                        value={tier.mode}
+                                        onChange={(e) =>
+                                            edit((rows) => {
+                                                rows[j].mode = e.target.value;
+                                            })
+                                        }
+                                    >
+                                        {Object.entries(FEE_MODE_LABELS).map(([id, label]) => (
+                                            <option key={id} value={id}>
+                                                {label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </td>
                                 <td>
                                     <button
                                         className={buttonClass}
@@ -91,7 +111,27 @@ export default function EnvelopeSettings({
     onReload,
     syncReady,
 }) {
-    const [draft, setDraft] = useState(() => structuredClone(config)),
+    const [draft, setDraft] = useState(() =>
+            structuredClone({
+                ...config,
+                artPapers: config.artPapers ?? ENVELOPE_ART_PAPERS,
+                sizePresets: config.sizePresets ?? ENVELOPE_SIZE_PRESETS,
+                flapTape: {
+                    costPerCm: 0,
+                    salePerCm: 0,
+                    minCost: 0,
+                    minSale: 0,
+                    ...config.flapTape,
+                },
+                gluing: {
+                    ...config.gluing,
+                    tiers: config.gluing.tiers.map((tier) => ({
+                        ...tier,
+                        mode: tier.mode ?? config.gluing.mode,
+                    })),
+                },
+            })
+        ),
         [status, setStatus] = useState(''),
         [saving, setSaving] = useState(false);
     const update = (fn) =>
@@ -187,6 +227,63 @@ export default function EnvelopeSettings({
                 </p>
             )}
             <fieldset disabled={saving} className="space-y-5">
+                <Section title="Khổ bao thư chuẩn">
+                    <p className="text-sm text-gray-400">
+                        Thêm, sửa hoặc xóa khổ chọn nhanh. Kích thước lưu bằng mm; màn tính giá tự
+                        quy đổi theo đơn vị đang chọn. Xóa hết vẫn dùng được Tùy chỉnh.
+                    </p>
+                    {draft.sizePresets.map((preset, i) => (
+                        <div
+                            key={preset.id}
+                            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end border border-gray-600 rounded p-3"
+                        >
+                            <label className="block">
+                                Tên khổ chuẩn {i + 1}
+                                <input
+                                    type="text"
+                                    className={fieldClass}
+                                    placeholder="VD: Bao thư nhỏ"
+                                    value={preset.name ?? ''}
+                                    onChange={(e) =>
+                                        update((c) => {
+                                            c.sizePresets[i].name = e.target.value;
+                                        })
+                                    }
+                                />
+                            </label>
+                            {number(['sizePresets', i, 'w'], `Ngang khổ chuẩn ${i + 1} (mm)`)}
+                            {number(['sizePresets', i, 'h'], `Cao khổ chuẩn ${i + 1} (mm)`)}
+                            <button
+                                type="button"
+                                className={buttonClass}
+                                onClick={() =>
+                                    update((c) => {
+                                        c.sizePresets.splice(i, 1);
+                                    })
+                                }
+                            >
+                                Xóa khổ chuẩn {i + 1}
+                            </button>
+                        </div>
+                    ))}
+                    {!draft.sizePresets.length && (
+                        <p className="text-sm text-gray-300">
+                            Chưa có khổ chuẩn. Màn tính giá chỉ hiển thị Tùy chỉnh.
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        className={buttonClass}
+                        onClick={() => {
+                            const id = crypto.randomUUID();
+                            update((c) => {
+                                c.sizePresets.push({ id, name: '', w: NaN, h: NaN });
+                            });
+                        }}
+                    >
+                        + Thêm khổ chuẩn
+                    </button>
+                </Section>
                 <Section title="Giấy bao thư">
                     <p className="text-sm text-gray-400">
                         Chỉ giấy ram trong danh mục KTS. Giá ram, click và bảng giá khách sửa tại
@@ -238,6 +335,63 @@ export default function EnvelopeSettings({
                             ))}
                         </SelectField>
                     </div>
+                </Section>
+                <Section title="Giấy mỹ thuật — nhập giá vốn giấy">
+                    <p className="text-sm text-gray-400">
+                        Nhập khổ nguyên và giá vốn mỗi tờ. Giá khách cho phần có in do bảng giá KTS
+                        tính từ giá giấy này; mặt sau không in lấy giá vốn giấy nhân hệ số giá khách
+                        bên dưới. Giá 0 là chưa khai báo và không thể báo giá loại giấy đó.
+                    </p>
+                    {draft.artPapers.map((art, i) => (
+                        <div key={i} className="border border-gray-600 rounded p-3 space-y-3">
+                            <label className="block">
+                                Tên giấy mỹ thuật {i + 1}
+                                <input
+                                    className={fieldClass}
+                                    value={art.name}
+                                    onChange={(e) =>
+                                        update((c) => {
+                                            c.artPapers[i].name = e.target.value;
+                                        })
+                                    }
+                                />
+                            </label>
+                            <div className="grid md:grid-cols-3 gap-3">
+                                {number(['artPapers', i, 'w'], `Ngang giấy mỹ thuật ${i + 1} (cm)`)}
+                                {number(['artPapers', i, 'h'], `Dài giấy mỹ thuật ${i + 1} (cm)`)}
+                                {number(
+                                    ['artPapers', i, 'cost'],
+                                    `Giá vốn mỗi tờ mỹ thuật ${i + 1} (đ)`
+                                )}
+                            </div>
+                            <button
+                                className={buttonClass}
+                                disabled={draft.artPapers.length === 1}
+                                onClick={() =>
+                                    update((c) => {
+                                        c.artPapers.splice(i, 1);
+                                    })
+                                }
+                            >
+                                Xóa giấy mỹ thuật {i + 1}
+                            </button>
+                        </div>
+                    ))}
+                    <button
+                        className={buttonClass}
+                        onClick={() =>
+                            update((c) => {
+                                c.artPapers.push({
+                                    name: 'Giấy mỹ thuật mới',
+                                    w: 70,
+                                    h: 100,
+                                    cost: 0,
+                                });
+                            })
+                        }
+                    >
+                        + Thêm giấy mỹ thuật
+                    </button>
                 </Section>
                 <Section title="Giá trị điền sẵn khi nhập">
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -300,31 +454,14 @@ export default function EnvelopeSettings({
                     </div>
                 </Section>
                 {FEES.map(([key, title, costLabel, saleLabel]) => (
-                    <Section key={key} title={`Phí ${title}`}>
+                    <Section key={key} title={`Phí ${title} — giá vốn và giá khách`}>
                         <p className="text-sm text-gray-400">
                             Tra bậc theo số bao thư. Mốc “Từ” áp dụng tới trước mốc tiếp theo; bậc
                             cuối không giới hạn. “Mỗi bao thư” nhân với số lượng; “Trọn gói” áp một
-                            lần cho cả đơn.
+                            lần cho cả đơn. Cột Giá vốn tính chi phí sản xuất; cột Giá khách tính
+                            tiền báo khách. Mỗi dòng có cách tính riêng. Ví dụ mốc 1 và 101 tương
+                            ứng bậc đầu từ 1–100 bao; muốn đổi giá từ 201 bao thì thêm mốc 201.
                         </p>
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <SelectField
-                                label={`Cách tính phí ${title}`}
-                                value={draft[key].mode}
-                                onChange={(v) =>
-                                    update((c) => {
-                                        c[key].mode = v;
-                                    })
-                                }
-                            >
-                                {Object.entries(FEE_MODE_LABELS).map(([id, label]) => (
-                                    <option key={id} value={id}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </SelectField>
-                            {key === 'dieCut' &&
-                                number(['dieCut', 'gapCm'], 'Khoảng cách bình khi bế (cm)')}
-                        </div>
                         <TierEditor
                             prefix={title}
                             tiers={draft[key].tiers}
@@ -338,25 +475,70 @@ export default function EnvelopeSettings({
                         />
                     </Section>
                 ))}
-                <Section title="Phí cố định và giá tối thiểu mỗi đơn">
+                <Section title="Dán keo 2 mặt nắp — giá vốn và giá khách">
+                    <p className="text-sm text-gray-400">
+                        Phí = chiều dài cạnh đặt nắp (cm) × số bao thư × đơn giá. Nắp ở cạnh 22 cm,
+                        cao 3 cm: tính 22 cm keo mỗi bao. Khoản này cộng riêng với phí dán thân bao
+                        thư khi chọn dán keo nắp. Nhập cả hai giá lớn hơn 0 để sử dụng.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                        {number(['flapTape', 'costPerCm'], 'Dán keo nắp — giá vốn (đ/cm)')}
+                        {number(['flapTape', 'salePerCm'], 'Dán keo nắp — giá khách (đ/cm)')}
+                        {number(
+                            ['flapTape', 'minCost'],
+                            'Dán keo nắp — giá vốn tối thiểu mỗi đơn (đ)'
+                        )}
+                        {number(
+                            ['flapTape', 'minSale'],
+                            'Dán keo nắp — giá khách tối thiểu mỗi đơn (đ)'
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-400">
+                        Nếu phí theo chiều dài thấp hơn mức tối thiểu, lấy mức tối thiểu; không cộng
+                        thêm hai khoản. Ví dụ phí keo 30.000 đ, giá khách tối thiểu 100.000 đ thì
+                        báo khách phí keo 100.000 đ. Nhập 0 để không áp mức tối thiểu.
+                    </p>
+                </Section>
+                <Section title="Giá bế — giá vốn và giá khách từ In KTS khổ nhỏ">
+                    <p className="text-sm text-gray-300">
+                        Bế có khuôn dùng giá khuôn bao thư và bảng công bế; bế kỹ thuật số dùng bảng
+                        bế kỹ thuật số. Công bế có giá vốn và giá khách riêng; tiền khuôn dùng chung
+                        cho cả hai. Sửa các mức giá tại Cài Đặt của In KTS khổ nhỏ.
+                    </p>
+                </Section>
+                <Section title="Ép nhũ — dùng chung mức phí KTS cho giá vốn và giá khách">
+                    <p className="text-sm text-gray-300">
+                        Phí ép nhũ hiện lấy từ Cài Đặt của In KTS khổ nhỏ và cộng cùng một số tiền
+                        vào giá vốn và giá khách.
+                    </p>
+                </Section>
+                <Section title="Phí cố định mỗi đơn — giá vốn và giá khách">
                     <p className="text-sm text-gray-400">
                         Áp một lần cho cả đơn bao thư. Không áp riêng cho phần mặt sau; mặt sau
                         không in vẫn có tiền in bằng 0.
                     </p>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {number(['orderMin', 'fixedCost'], 'Vốn cố định mỗi đơn (đ)')}
-                        {number(['orderMin', 'fixedSale'], 'Phí cố định báo khách (đ)')}
+                    <div className="grid sm:grid-cols-2 gap-4">
+                        {number(['orderMin', 'fixedCost'], 'Phí cố định — chỉ tính giá vốn (đ)')}
+                        {number(['orderMin', 'fixedSale'], 'Phí cố định — giá khách (đ)')}
+                    </div>
+                </Section>
+                <Section title="Giá tối thiểu mỗi đơn — chỉ áp dụng giá khách">
+                    <p className="text-sm text-gray-400">
+                        Nâng tổng báo khách lên mức này nếu thấp hơn. Không cộng vào giá vốn. Giá
+                        vốn là chi phí sản xuất, được tính riêng với mức báo khách tối thiểu.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
                         {number(['orderMin', 'minSale'], 'Tổng báo khách tối thiểu (đ)')}
                     </div>
                 </Section>
-                <Section title="Giấy mặt sau không in">
+                <Section title="Giấy mặt sau không in — hệ số tính giá khách từ giá vốn">
                     <p className="text-sm text-gray-300">
-                        Mặt sau rời không in chỉ tính giấy ram: số tờ nguyên × giá vốn/tờ từ KTS.
-                        Giá báo khách = vốn giấy × hệ số bên dưới; tiền in bằng 0, không áp giá sàn
-                        in.
+                        Giá vốn mặt sau rời không in = số tờ nguyên × giá vốn/tờ (giấy ram từ KTS
+                        hoặc giấy mỹ thuật đã nhập ở trên). Giá báo khách = vốn giấy × hệ số bên
+                        dưới; tiền in bằng 0, không áp giá sàn in.
                     </p>
                     <div className="grid md:grid-cols-2 gap-4">
-                        {number(['backPaperFactor'], 'Hệ số giá bán giấy mặt sau trên vốn')}
+                        {number(['backPaperFactor'], 'Hệ số giá khách / giá vốn giấy mặt sau')}
                     </div>
                     <p className="text-sm text-cyan-300">
                         Ví dụ vốn giấy mặt sau 10.000 đ → báo khách{' '}
@@ -377,7 +559,9 @@ export default function EnvelopeSettings({
                                 })
                             }
                         />
-                        <span>Tôi đã kiểm tra giá bế, dán và dùng bảng giá này để báo khách.</span>
+                        <span>
+                            Tôi đã kiểm tra giá dán, giấy và dùng bảng giá này để báo khách.
+                        </span>
                     </label>
                     <p className="text-sm text-gray-400">
                         Các bậc phí ban đầu chỉ là số mẫu. Giá giấy, in và ép nhũ được đọc từ cài

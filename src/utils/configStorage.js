@@ -680,6 +680,7 @@ const REPLACE_WHOLE_ARRAY_KEYS = new Set([
     'PAPER_STOCK_DATA',
     'DIE_CUTTING_CUSTOM_MOLDS',
     'CUSTOM_FINISHING_TYPES',
+    'GLUING_TYPES',
     'printSheetSizes',
     'machines',
 ]);

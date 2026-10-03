@@ -6,6 +6,8 @@
 
 - `calculateCalendar(input, calendarConfig, printConfig)` là engine thuần; nhận cấu hình KTS hiện tại, không đọc storage/network.
 - `smallPrintAdapter.js` gọi trực tiếp engine small-print cho tờ lịch, vùng in áo, giá sàn và ép kim. Không sửa hoặc ghi lại bảng giá KTS.
+- Áo bồi chọn trực tiếp C150, mỹ thuật hoặc decal nhựa. Mỹ thuật phải nhập định lượng dưới 150 gsm và không cán màng; C150/decal cán ít nhất một mặt. C200 trở lên không dùng bồi áo. Giấy lót chọn độc lập. Decal có in dùng bộ tính m² KTS; decal không in tính đủ tờ theo khổ đã chọn và giá m², cán được cộng riêng một lần.
+- `config/normalize.js` nâng hình dạng bảng giá cũ ngay khi đọc (điền `materials.carton[i].w/h` từ `geometry.stockW/stockH`, fallback 60 × 100) và đồng bộ bản sao `geometry.stockW/stockH` theo loại carton đầu tiên ở mọi đường ghi. Việc nâng cấp này không đổi giá một đồng và không bắt admin xác nhận lại. Hai field `geometry.stockW/stockH` nay chỉ là **bản sao**: engine không đọc, Cài Đặt không cho sửa, giữ để bundle cũ và đường rollback vẫn báo giá đúng.
 - `config/storage.js` chỉ ghi cache/nháp lịch (`calendarConfig`, `calendarConfigDraft`, đọc tương thích `calendarConfigPending`). Đọc lịch và KTS cùng một lượt từ máy chủ; chỉ ghi module cloud `calendar` qua RPC riêng có kiểm tra phiên bản. Không sửa storage/module cũ.
 - Cài đặt dùng AdminGate hiện có; RPC cloud vẫn kiểm tra admin phía server. Local cache không phải ranh giới bảo mật.
 - Giao diện chỉ hiện tổng/cột giá vốn, vốn đế và ô nhập vốn giấy mỹ thuật khi đã xác nhận tài khoản admin; ẩn khi chưa đăng nhập, đang xác thực hoặc lỗi quyền. Đây là phân quyền hiển thị, không thay đổi việc tính giá trên client.
@@ -19,13 +21,15 @@
 - Mục **Cài Đặt → Giá giấy lót trong** cho sửa hệ số bán và số lót/đế, giải thích nguồn vốn giấy ram KTS và dẫn đến danh mục giấy mỹ thuật.
 - Giấy áo/lót độc lập: giấy ram KTS hoặc mỹ thuật theo khổ chuẩn/tùy chọn và giá 1 tờ nhập riêng.
 - Vốn carton tra bậc theo số tấm nguyên; báo khách carton tra theo số cuốn và diện tích thành phẩm. Các nhóm lò xo/công/cán tra theo số cuốn. Bậc cuối không có giới hạn trên.
+- **Khổ tấm carton khai riêng cho từng loại** (`materials.carton[i].w/h`, cm), không còn là thông số chung. `w` là cạnh nạp vào máy cắt và phải ≤ khổ ngang máy; engine không tự xoay tấm nguyên. Loại carton đang chọn ở màn tính giá quyết định sơ đồ cắt và số tấm.
+- Bảng giá carton có hai cột **chỉ đọc** để admin đối chiếu: `Vốn / cm² tấm nguyên` = vốn một tấm ÷ (ngang × dài), và `Khách / Vốn` = giá khách mỗi cm² ÷ vốn mỗi cm². Con số này tính trên cm² tấm **nguyên**, chưa trừ hao cắt và chưa tính phần bù mỗi chiều, nên vốn thật mỗi cm² **thành phẩm** luôn cao hơn. Dòng kết quả báo giá ghi cả hai con số (`result.carton.costPerRawCm2` và `costPerFinishedCm2`).
 - Giá áo in cho phép toàn bộ báo giá KTS theo vùng in hoặc tiền in KTS cộng giấy theo hệ số vốn. Áo trắng cho phép vốn×hệ số hoặc gộp trong giá đế. Mặc định chưa thiết lập vì người dùng chưa chốt hai quy tắc này.
 - Bảng giá mới ban đầu là giá mẫu. Chỉ xuất tổng/sao chép báo khách khi admin xác nhận bảng giá và chọn quy tắc áo tương ứng.
 - Ép kim dùng tổng KTS cho cả cột vốn và khách; KTS chưa cung cấp giá vốn ép kim độc lập.
 
 ## Cắt carton
 
-Tấm 60×100 cm nạp cạnh 60 vào máy 76. Sinh các dải cắt ngang rồi cắt cột trong từng dải đã tách; dải đem xoay phải lọt ngang máy. Tìm tổ hợp tối đa hai mẫu cắt, chọn ít tấm nhất trong tập ứng viên và ít phôi thừa nhất khi bằng số tấm. Kiểm tra từng phôi không chồng/vượt biên. Lưới tính nội bộ 0,1 mm: phôi làm tròn lên, khổ nguyên làm tròn xuống.
+Khổ tấm nguyên lấy theo **loại carton đang chọn** (khai trong Cài Đặt → Bảng giá carton lạnh; mặc định 60 × 100 cm), cạnh Ngang là cạnh nạp vào máy 76 cm. Sinh các dải cắt ngang rồi cắt cột trong từng dải đã tách; dải đem xoay phải lọt ngang máy. Tìm tổ hợp tối đa hai mẫu cắt, chọn ít tấm nhất trong tập ứng viên và ít phôi thừa nhất khi bằng số tấm. Kiểm tra từng phôi không chồng/vượt biên. Lưới tính nội bộ 0,1 mm: phôi làm tròn lên, khổ nguyên làm tròn xuống.
 
 Đây là thuật toán tìm phương án khả thi, không chứng minh tối ưu toàn cục. Cận dưới diện tích chỉ để đối chiếu. Số tấm, phôi cần/dư, hình SVG và hướng dẫn cắt đều dùng cùng kết quả. Giới hạn tìm kiếm: 500 phôi/dải, 1.200 phôi/mẫu; tối đa 2.000 lần thử số tấm mẫu thứ nhất trong mỗi cặp, mẫu còn lại được tính đủ nhu cầu. Các giới hạn không làm thiếu phôi; có thể làm phương án kém tối ưu với khổ rất nhỏ/đơn lớn. Nếu không tìm được mẫu thì báo lỗi, không báo giá theo diện tích thay thế.
 

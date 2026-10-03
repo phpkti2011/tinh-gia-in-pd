@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { buttonClass } from './Fields';
+import PaperCutDiagram from './PaperCutDiagram';
 
 function saveSvg(svg, name) {
     const data = new XMLSerializer().serializeToString(svg);
@@ -44,15 +45,41 @@ export default function CalendarDiagrams({ result: r, config }) {
                         onClick={() =>
                             saveSvg(
                                 svg.current,
-                                view === 'cut' ? 'so-do-cat-carton.svg' : 'cau-tao-de-lich.svg'
+                                view === 'cut'
+                                    ? 'so-do-cat-carton.svg'
+                                    : view === 'wrap'
+                                      ? 'so-do-cat-giay-ao.svg'
+                                      : view === 'liner'
+                                        ? 'so-do-cat-giay-lot.svg'
+                                        : 'cau-tao-de-lich.svg'
                             )
                         }
                     >
                         Tải hình SVG
                     </button>
+                    <button
+                        className={buttonClass}
+                        aria-pressed={view === 'wrap'}
+                        onClick={() => setView('wrap')}
+                    >
+                        Cắt giấy áo
+                    </button>
+                    <button
+                        className={buttonClass}
+                        aria-pressed={view === 'liner'}
+                        onClick={() => setView('liner')}
+                    >
+                        Cắt giấy lót
+                    </button>
                 </div>
             </div>
-            {view === 'stand' ? (
+            {view === 'wrap' || view === 'liner' ? (
+                <PaperCutDiagram
+                    paper={view === 'wrap' ? r.wrap : r.liner}
+                    title={view === 'wrap' ? 'Giấy áo' : 'Giấy lót'}
+                    svgRef={svg}
+                />
+            ) : view === 'stand' ? (
                 <>
                     <svg
                         ref={svg}
@@ -166,7 +193,7 @@ export default function CalendarDiagrams({ result: r, config }) {
                             fill="#111827"
                         />
                         <text x={l.sw / 2} y="-25" textAnchor="middle" fontSize="19" fill="#fbbf24">
-                            ↓ Cạnh nạp {c.stockW} cm ≤ máy {c.machine} cm ↓
+                            ↓ Cạnh nạp {l.sheetW} cm ≤ máy {c.machine} cm ↓
                         </text>
                         <rect
                             width={l.sw}
@@ -217,7 +244,7 @@ export default function CalendarDiagrams({ result: r, config }) {
                             textAnchor="middle"
                             fontSize="17"
                         >
-                            Tấm {c.stockW} × {c.stockH} cm · kích thước phôi: cm
+                            Tấm {l.sheetW} × {l.sheetH} cm · kích thước phôi: cm
                         </text>
                     </svg>
                     <div className="text-sm space-y-2">
@@ -229,9 +256,9 @@ export default function CalendarDiagrams({ result: r, config }) {
                             </span>
                         </p>
                         <p>
-                            Đưa cạnh {c.stockW} cm vào máy, cắt lần lượt thành{' '}
-                            {g.pattern.bands.length} dải theo chiều {c.stockH} cm. Chỉ xoay các dải
-                            đã tách, không xoay nguyên tấm để nạp cạnh {c.stockH} cm.
+                            Đưa cạnh {l.sheetW} cm vào máy, cắt lần lượt thành{' '}
+                            {g.pattern.bands.length} dải theo chiều {l.sheetH} cm. Chỉ xoay các dải
+                            đã tách, không xoay nguyên tấm để nạp cạnh {l.sheetH} cm.
                         </p>
                     </div>
                     <details className="text-sm">

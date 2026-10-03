@@ -14,7 +14,28 @@ const LEGEND = [
     ['Tay dán', FILL.tab],
 ];
 
+// Bo hai góc ngoài của nắp/tay dán; cạnh gắn mặt trước giữ thẳng để gấp.
+// Chỉ thay hình minh họa, không thay hộp bao dùng tính giấy/in.
+function panelOutline(p, front) {
+    const { x, y, w, h } = p;
+    const r = Math.min(6, w / 2, h / 2);
+    const rounded = p.id === 'flap' || p.id.startsWith('tab');
+    const left = rounded && x + w <= front.x + 1e-6;
+    const right = rounded && x >= front.x + front.w - 1e-6;
+    const top = rounded && y + h <= front.y + 1e-6;
+    const bottom = rounded && y >= front.y + front.h - 1e-6;
+    const tl = left || top ? r : 0;
+    const tr = right || top ? r : 0;
+    const br = right || bottom ? r : 0;
+    const bl = left || bottom ? r : 0;
+    return `M ${x + tl} ${y} H ${x + w - tr} Q ${x + w} ${y} ${x + w} ${y + tr}
+        V ${y + h - br} Q ${x + w} ${y + h} ${x + w - br} ${y + h}
+        H ${x + bl} Q ${x} ${y + h} ${x} ${y + h - bl}
+        V ${y + tl} Q ${x} ${y} ${x + tl} ${y} Z`;
+}
+
 function PartSvg({ part, unit, svgRef }) {
+    const front = part.panels.find((p) => p.id === 'front');
     const longest = Math.max(part.widthMm, part.heightMm);
     const pad = longest * 0.14,
         font = longest / 28;
@@ -37,11 +58,8 @@ function PartSvg({ part, unit, svgRef }) {
                 const short = !fits && p.w >= font * 3 && p.h >= font * 1.4;
                 return (
                     <g key={i}>
-                        <rect
-                            x={p.x}
-                            y={p.y}
-                            width={p.w}
-                            height={p.h}
+                        <path
+                            d={panelOutline(p, front)}
                             fill={fillFor(p.id)}
                             stroke="#111827"
                             strokeWidth={font / 12}

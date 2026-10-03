@@ -77,7 +77,7 @@ describe('Calendar cloud-authoritative persistence', () => {
             version: 2,
             config: next,
         });
-        expect(publishCalendarPrices).toHaveBeenLastCalledWith(next, '1.0.0', 1);
+        expect(publishCalendarPrices).toHaveBeenLastCalledWith(next, '2.0.0', 1);
         expect(loadCalendarDraft()).toBeNull();
     });
     it('không tự đẩy nháp bằng tài khoản khác, không ngừng đọc giá máy chủ', async () => {
@@ -98,10 +98,10 @@ describe('Calendar cloud-authoritative persistence', () => {
         localStorage.setItem('calendarConfigPending', 'true');
         publishCalendarPrices.mockRejectedValueOnce(new Error('calendar_version_conflict'));
         expect((await loadCalendarFromCloud({ ownerId: 'admin-a' })).ready).toBe(false);
-        expect(publishCalendarPrices).toHaveBeenCalledWith(config(), '1.0.0', 0);
+        expect(publishCalendarPrices).toHaveBeenCalledWith(config(), '2.0.0', 0);
         readCalendarPrices.mockResolvedValueOnce(rows(null)).mockResolvedValueOnce(rows());
         expect((await loadCalendarFromCloud({ ownerId: 'admin-a' })).ready).toBe(true);
-        expect(publishCalendarPrices).toHaveBeenCalledWith(config(), '1.0.0', 0);
+        expect(publishCalendarPrices).toHaveBeenCalledWith(config(), '2.0.0', 0);
     });
     it('xung đột phiên bản giữ nháp; vẫn đọc được bản máy chủ để admin đối chiếu', async () => {
         publishCalendarPrices.mockRejectedValue(new Error('calendar_version_conflict'));
@@ -151,5 +151,30 @@ describe('Calendar cloud-authoritative persistence', () => {
         finish(rows());
         await read;
         expect(loadCalendarConfig()).toEqual(newer);
+    });
+    it('bảng giá cũ chưa khai khổ tấm vẫn đọc được, w/h điền từ khổ chung, không bắt xác nhận lại', async () => {
+        const legacy = config();
+        for (const item of legacy.materials.carton) {
+            delete item.w;
+            delete item.h;
+        }
+        legacy.geometry.stockW = 70;
+        legacy.geometry.stockH = 100;
+        readCalendarPrices.mockResolvedValue(rows(legacy, 4));
+        const result = await loadCalendarFromCloud();
+        expect(result.ready).toBe(true);
+        expect(result.config.materials.carton[0]).toMatchObject({ w: 70, h: 100 });
+        expect(result.config.pricesConfirmed).toBe(legacy.pricesConfirmed);
+        expect(result.config.materials.carton[0].tiers).toEqual(
+            CALENDAR_DEFAULT_CONFIG.materials.carton[0].tiers
+        );
+    });
+    it('lưu bảng giá thì bản sao khổ chung chạy theo loại carton đầu tiên', async () => {
+        const next = config();
+        next.materials.carton[0].w = 70;
+        next.materials.carton[0].h = 90;
+        await saveCalendarConfig(next, options);
+        const [published] = publishCalendarPrices.mock.calls.at(-1);
+        expect([published.geometry.stockW, published.geometry.stockH]).toEqual([70, 90]);
     });
 });

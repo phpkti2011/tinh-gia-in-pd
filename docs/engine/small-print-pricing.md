@@ -109,6 +109,7 @@ Params admin nhập ở [InputPanel.jsx](../../src/components/smallprint/InputPa
 | 19 | `printColorMode` | Số màu | `'4color'` | `'1color'` (chỉ C6085) |
 | 20 | `foilStamping` | Có ép kim? | `'none'` | `'yes'` → cost ép kim |
 | 21 | `foilMolds` | Danh sách khuôn ép kim | `[{w:9,h:5.5,special:false,impressions:1}]` | Mỗi khuôn `{w,h,special,impressions}` — xem `calculateFoilStamping` |
+| 22 | `gluingLines` | Danh sách dòng dán thành phẩm | `[]` | Mỗi dòng `{typeId}` trỏ tới `GLUING_TYPES[].id`; nhiều dòng mỗi đơn — xem `calculateGluingCost` |
 
 `spacing` tự tính từ `dieCuttingType`, không phải input:
 
@@ -513,6 +514,24 @@ Bảng giá bán khách theo số **trang A4**. 14 bậc:
 
 Xen kẽ `per_page` (số trang × price) và `package` (trọn gói) — cấu trúc lịch sử của tiệm in. Không được tự đổi thứ tự / bỏ bậc, sẽ break quote.
 
+### 3.20 `GLUING_TYPES` (config 1.9.0, optional)
+
+Dán thành phẩm (keo phá màng, keo 2 mặt vàng…). Mảng các kiểu dán do admin thêm / đổi tên / xoá; mỗi kiểu có 2 bảng bậc **cùng cấu trúc với mục 3.8** (`package` / `per_piece`), tra theo **số thành phẩm**:
+
+```js
+[
+  {
+    id: 'glue-peel-seal',            // cố định, không đổi khi đổi tên
+    name: 'Dán keo phá màng',
+    cost_tiers:     [{ max_qty: 100, price: 30000, type: 'package' }, { max_qty: Infinity, price: 300, type: 'per_piece' }],
+    customer_tiers: [{ max_qty: 100, price: 60000, type: 'package' }, { max_qty: Infinity, price: 600, type: 'per_piece' }],
+  },
+  { id: 'glue-double-sided-yellow', name: 'Dán keo 2 mặt vàng', /* 40.000/80.000 · 400/800 */ },
+]
+```
+
+Khác các gia công ở 3.8: một đơn chọn được **nhiều dòng dán** (`params.gluingLines`). Key optional — thiếu key thì merge nông bù mặc định, `[]` thì ô chọn ẩn. Validate bằng `validateGluingTypes()` ([config/gluingTypes.js](../../src/modules/small-print/config/gluingTypes.js)). Quy tắc nghiệp vụ đầy đủ: [docs/pricing-rules/small-print.md](../pricing-rules/small-print.md), mục "Dán thành phẩm".
+
 ---
 
 ## 4. Engine functions
@@ -681,7 +700,7 @@ Vd 500 con, 3 nội dung khác nhau → tier 2-5 → +10% = 50k lên totalCost.
 
 #### `calculateFinishingCost(quantity, type, configData)`
 
-Generic tier lookup dùng cho hole punching, creasing, mounting, dieCut labor.
+Generic tier lookup dùng cho hole punching, creasing, mounting, dieCut labor, gia công tùy chỉnh và từng dòng dán thành phẩm (qua `calculateGluingCost`).
 
 ```js
 const costTier = configData.cost_tiers.find((t) => quantity <= t.max_qty);
@@ -691,6 +710,25 @@ return { cost, customerPrice };
 ```
 
 **⚠ TASK-0008.6:** Trước đây caller truyền OUTER `config.HOLE_PUNCHING_CONFIG` → function không đọc `cost_tiers` đúng → luôn trả 0. Fix bằng cách chuyển sang INNER: `config.HOLE_PUNCHING_CONFIG[params.holePunchingType]`.
+
+#### `calculateGluingCost(quantity, lines, gluingTypes)` (config 1.9.0)
+
+Dán thành phẩm — nhiều dòng mỗi đơn. Mỗi dòng `{ typeId }` tìm kiểu trong `GLUING_TYPES` rồi gọi `calculateFinishingCost(quantity, 'gluing', type)`; kết quả cộng dồn.
+
+```js
+return {
+  cost, customerPrice,                 // tổng mọi dòng
+  lines: [{ typeId, name, cost, customerPrice, missing, uncovered }],
+  missingCount,                        // dòng trỏ tới kiểu đã bị xoá → 0 đ
+  uncoveredCount,                      // số lượng vượt bậc cuối hữu hạn → 0 đ
+};
+```
+
+- Dòng trùng kiểu được tính mỗi dòng một lần (dán hai đường).
+- `missing` / `uncovered` trả 0 đ **kèm cờ** để ResultPanel cảnh báo; cố ý không lấy giá bậc cuối khi vượt bậc.
+- `lines` / `gluingTypes` không phải mảng hoặc `quantity ≤ 0` → 0 đ, không ném.
+
+App.jsx đưa `customerPrice` vào `finishingCustomerPrices.gluing`, và truyền nguyên kết quả cho ResultPanel qua prop `gluingResult` (giá vốn vào "Giá vốn × biên" và giá sàn).
 
 ### 4.3 Gia công — `finishing.js`
 
@@ -954,6 +992,7 @@ baseCustomerCost = totalPrintCost + totalLaminationCost
                  + finishingCustomerPrices.holePunching
                  + finishingCustomerPrices.creasing
                  + finishingCustomerPrices.mounting
+                 + (finishingCustomerPrices.gluing || 0)        // dán thành phẩm (1.9.0)
                  + dieCuttingCustomerPrice.moldCost
                  + dieCuttingCustomerPrice.laborCustomerPrice
                  + variableDataCost

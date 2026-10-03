@@ -7,7 +7,18 @@ import { getLaminationFilms } from '../../utils/laminationFilm';
 // "(CHƯA CHỌN mờ/bóng)" để xưởng hỏi lại — và GIÁ KHÔNG ĐỔI (hệ số nhân = 1).
 //
 // Chỉ render khi đã bật cán màng; caller tự lo điều kiện đó.
-export default function LaminationFilmSelect({ id, label = 'Loại màng', films, value, onChange }) {
+//
+// `showPercent=false` giấu hậu tố "(+400%)" sau tên màng — dùng cho ô chọn nằm
+// trong bảng KẾT QUẢ (khách nhìn thấy), nơi % phụ thu là thông tin nội bộ.
+// Các ô nằm trong bảng NHẬP LIỆU vẫn hiện % để nhân viên biết mình chọn gì.
+export default function LaminationFilmSelect({
+    id,
+    label = 'Loại màng',
+    films,
+    value,
+    onChange,
+    showPercent = true,
+}) {
     const list = getLaminationFilms(films);
     const unset = !value;
     return (
@@ -24,7 +35,7 @@ export default function LaminationFilmSelect({ id, label = 'Loại màng', films
                 {list.map((f) => (
                     <option key={f.id} value={f.id}>
                         {f.name}
-                        {f.percent ? ` (+${f.percent}%)` : ''}
+                        {showPercent && f.percent ? ` (+${f.percent}%)` : ''}
                     </option>
                 ))}
             </select>

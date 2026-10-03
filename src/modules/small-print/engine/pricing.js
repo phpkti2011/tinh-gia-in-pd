@@ -93,3 +93,50 @@ export function calculateCustomFinishingCost(quantity, selection, customFinishin
     const label = gc.subTypes.length > 1 ? `${gc.name} — ${sub.name}` : gc.name;
     return { cost, customerPrice, label };
 }
+
+// Dán thành phẩm (config 1.9.0) — một đơn có NHIỀU dòng dán (params.gluingLines =
+// [{ typeId }]), mỗi dòng là một kiểu trong GLUING_TYPES và tính cho TOÀN BỘ số thành phẩm
+// bằng calculateFinishingCost() sẵn có. Hai dòng cùng kiểu được tính hai lần (dán hai đường).
+//   missing   — kiểu đã bị admin xoá khỏi Cài Đặt: 0 đ, UI nhắc chọn lại.
+//   uncovered — số lượng vượt bậc cuối hữu hạn: 0 đ, UI cảnh báo. CỐ Ý không lấy giá bậc
+//               cuối: bậc trọn gói cho ≤ N cái mà áp cho đơn lớn hơn là báo thiếu trong im lặng.
+export function calculateGluingCost(quantity, lines, gluingTypes) {
+    const list = Array.isArray(lines) ? lines : [];
+    const types = Array.isArray(gluingTypes) ? gluingTypes : [];
+    const priced = quantity > 0;
+    const covers = (tiers) => Array.isArray(tiers) && tiers.some((t) => quantity <= t.max_qty);
+    const result = { cost: 0, customerPrice: 0, lines: [], missingCount: 0, uncoveredCount: 0 };
+    for (const line of list) {
+        const typeId = line?.typeId ?? '';
+        const type = types.find((t) => t?.id === typeId);
+        if (!type) {
+            result.missingCount += 1;
+            result.lines.push({
+                typeId,
+                name: '',
+                cost: 0,
+                customerPrice: 0,
+                missing: true,
+                uncovered: false,
+            });
+            continue;
+        }
+        const uncovered = priced && !(covers(type.cost_tiers) && covers(type.customer_tiers));
+        const { cost, customerPrice } =
+            priced && !uncovered
+                ? calculateFinishingCost(quantity, 'gluing', type)
+                : { cost: 0, customerPrice: 0 };
+        if (uncovered) result.uncoveredCount += 1;
+        result.cost += cost;
+        result.customerPrice += customerPrice;
+        result.lines.push({
+            typeId,
+            name: type.name || '',
+            cost,
+            customerPrice,
+            missing: false,
+            uncovered,
+        });
+    }
+    return result;
+}
