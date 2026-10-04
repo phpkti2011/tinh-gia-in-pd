@@ -57,8 +57,8 @@ begin
         raise exception 'forbidden: admin role required' using errcode = '42501';
     end if;
     if p_expected_version is null or p_expected_version < 0 or
-       p_data is null or jsonb_typeof(p_data) <> 'object' or p_schema_version <> '1.0.0' or
-       p_schema_version is null then
+       p_data is null or jsonb_typeof(p_data) <> 'object' or
+       p_schema_version is null or p_schema_version not in ('1.0.0') then
         raise exception 'invalid envelope price payload' using errcode = '22023';
     end if;
     -- Khóa cả lần lưu đầu tiên, khi chưa có hàng hiện tại.

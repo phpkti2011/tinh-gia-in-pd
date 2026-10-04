@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { materialAllowed, artAllowed, isPlasticDecal } from '../config/wrapperMaterials';
+import { materialAllowed, artAllowed, selectableMaterials } from '../config/wrapperMaterials';
 import { DEFAULT_CONFIG } from '../../small-print/config/defaultConfig';
 import { MATERIAL_LABELS, DEFAULT_CARTON_SHEET } from '../config/defaultConfig';
 import { validateCalendarConfig } from '../config/schema';
@@ -243,9 +243,10 @@ export default function CalendarSettings({
             <fieldset disabled={saving} className="space-y-5">
                 <Section title="Vật liệu được phép dùng cho áo và lót">
                     <p className="text-sm text-gray-300">
-                        Tích riêng cho từng phần. Lót mặc định C150, F120. Giá giấy lấy từ danh mục
-                        hiện hành; muốn dùng giấy mới, khai báo giấy và giá trước. Giấy dày từ C200
-                        thường không phù hợp bồi đế.
+                        Tích riêng cho từng phần. Lót mặc định C150, F120; tích thêm decal nhựa hoặc
+                        decal giấy nếu xưởng có dùng (decal giấy chỉ dành cho lót). Giá giấy lấy từ
+                        danh mục hiện hành; muốn dùng giấy mới, khai báo giấy và giá trước. Giấy dày
+                        từ C200 thường không phù hợp bồi đế.
                     </p>
                     {['wrap', 'liner'].map((role) => (
                         <div key={role} className="space-y-3">
@@ -254,11 +255,7 @@ export default function CalendarSettings({
                             </h3>
                             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {[
-                                    ...printConfig.PAPER_STOCK_DATA.filter(
-                                        (p) =>
-                                            !p.hidden &&
-                                            (p.pricingModel === 'ream' || isPlasticDecal(p))
-                                    ).map((p) => p.name),
+                                    ...selectableMaterials(printConfig, role).map((p) => p.name),
                                     'art',
                                 ].map((name) => (
                                     <label key={name} className="flex gap-2 items-center">

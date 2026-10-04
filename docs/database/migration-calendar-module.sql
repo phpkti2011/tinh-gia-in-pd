@@ -56,9 +56,18 @@ begin
     if not public.is_admin() then
         raise exception 'forbidden: admin role required' using errcode = '42501';
     end if;
+    -- Danh sach hinh dang bang gia ma may chu chap nhan.
+    -- !! BAY DA TUNG LAM GAY SAN XUAT: truoc day dong nay chot cung = '1.0.0'. Khi client
+    --    nang CALENDAR_SCHEMA_VERSION len phien ban moi ma chua chay lai file nay, MOI lan luu bi tu choi
+    --    (errcode 22023 -> HTTP 400), ban nhap ket lai trong trinh duyet va vong tu gui
+    --    lai khoa luon viec bao gia.
+    -- => Moi lan nang CALENDAR_SCHEMA_VERSION phai them so moi vao danh sach nay VA chay lai save_calendar_price_config
+    --    TRUOC khi deploy ban web.
+    -- Giu dang danh sach (khong cho qua moi chuoi) de bundle cu va duong rollback van
+    --    luu duoc, nhung hinh dang la de khong lot vao.
     if p_expected_version is null or p_expected_version < 0 or
-       p_data is null or jsonb_typeof(p_data) <> 'object' or p_schema_version <> '1.0.0' or
-       p_schema_version is null then
+       p_data is null or jsonb_typeof(p_data) <> 'object' or
+       p_schema_version is null or p_schema_version not in ('1.0.0','2.0.0') then
         raise exception 'invalid calendar price payload' using errcode = '22023';
     end if;
     -- Serialize the first publication too, when no current row exists yet.

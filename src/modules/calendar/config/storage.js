@@ -54,6 +54,12 @@ export function calendarSyncError(error) {
     const message = error?.message || String(error || '');
     if (/save_calendar_price_config|invalid module|module_check|PGRST202/i.test(message))
         return 'Máy chủ chưa bật đồng bộ lịch. Cần cập nhật cơ sở dữ liệu cho module lịch.';
+    // RPC save_calendar_price_config chốt cứng danh sách phiên bản được nhận. Nâng
+    // CALENDAR_SCHEMA_VERSION mà chưa chạy SQL cập nhật danh sách đó thì MỌI lần lưu bị
+    // từ chối (errcode 22023 → HTTP 400), bản nháp kẹt lại và vòng tự gửi lại khoá luôn
+    // việc báo giá. Nói thẳng nguyên nhân, đừng để nó đội lốt lỗi mất mạng.
+    if (/invalid calendar price payload/i.test(message))
+        return `Máy chủ chưa chấp nhận bảng giá phiên bản ${CALENDAR_SCHEMA_VERSION}. Admin cần chạy SQL cập nhật hàm save_calendar_price_config trên Supabase rồi thử lại.`;
     if (/calendar_version_conflict/i.test(message))
         return 'Admin khác đã cập nhật bảng giá. Bản nháp được giữ lại; hãy đối chiếu bảng giá mới trước khi lưu.';
     if (/forbidden|42501|JWT|permission/i.test(message))

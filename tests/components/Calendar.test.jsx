@@ -325,6 +325,94 @@ describe('Calendar user flows', () => {
         expect(screen.getByLabelText('Ngang tấm carton 1 (cm)').value).toBe('70');
         expect(screen.getByLabelText('Dài tấm carton 1 (cm)').value).toBe('100');
     });
+    it('decal giấy tích được cho lót, không chào cho áo', () => {
+        render(
+            <CalendarSettings
+                config={CALENDAR_DEFAULT_CONFIG}
+                onSave={vi.fn()}
+                onCancel={() => {}}
+            />
+        );
+        expect(screen.getByLabelText('Lót: Decal giấy đế mỏng (VHM)').checked).toBe(false);
+        expect(screen.getByLabelText('Lót: Decal giấy đế dày (LH)')).toBeTruthy();
+        expect(screen.getByLabelText('Lót: Decal nhựa mờ (LH)')).toBeTruthy();
+        expect(screen.queryByLabelText('Áo: Decal giấy đế mỏng (VHM)')).toBeNull();
+        expect(screen.getByLabelText('Áo: Decal nhựa mờ (LH)')).toBeTruthy();
+    });
+    it('chọn decal giấy làm lót thì ô khổ chuyển sang khổ decal', () => {
+        const paper = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex(
+            (p) => p.name === 'Decal giấy đế mỏng (VHM)'
+        );
+        function Liner() {
+            const [input, setInput] = useState(() => structuredClone(CALENDAR_DEFAULT_INPUT));
+            return (
+                <CalendarInput
+                    input={input}
+                    config={{
+                        ...CALENDAR_DEFAULT_CONFIG,
+                        allowedMaterials: {
+                            wrap: ['C150'],
+                            liner: ['C150', 'Decal giấy đế mỏng (VHM)'],
+                        },
+                    }}
+                    printConfig={DEFAULT_CONFIG}
+                    onChange={setInput}
+                />
+            );
+        }
+        render(<Liner />);
+        const picker = screen.getByLabelText('Vật liệu giấy lót');
+        expect([...picker.options].some((o) => o.text === 'Decal giấy đế mỏng (VHM)')).toBe(true);
+        expect([...screen.getByLabelText('Khổ giấy lót').options][0].text).toMatch(/65|79/);
+        fireEvent.change(picker, { target: { value: String(paper) } });
+        const stocks = screen.getByLabelText('Khổ giấy lót');
+        expect([...stocks.options].map((o) => o.text)).toEqual([
+            '32.2 × 33 cm',
+            '32.2 × 35 cm',
+            '33 × 48 cm',
+        ]);
+        expect(stocks.options[stocks.selectedIndex].text).toBe('33 × 48 cm');
+        fireEvent.click(screen.getByLabelText('Cán màng giấy lót (1 mặt)'));
+        expect(screen.getByLabelText('Loại màng giấy lót')).toBeTruthy();
+    });
+    it('lót decal có in thì ẩn ô khổ vô tác dụng, lót giấy ram có in vẫn giữ ô', () => {
+        const decal = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex(
+            (p) => p.name === 'Decal giấy đế mỏng (VHM)'
+        );
+        const ream = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex((p) => p.name === 'C150');
+        function Liner() {
+            const [input, setInput] = useState(() => structuredClone(CALENDAR_DEFAULT_INPUT));
+            return (
+                <CalendarInput
+                    input={input}
+                    config={{
+                        ...CALENDAR_DEFAULT_CONFIG,
+                        allowedMaterials: {
+                            wrap: ['C150'],
+                            liner: ['C150', 'Decal giấy đế mỏng (VHM)'],
+                        },
+                    }}
+                    printConfig={DEFAULT_CONFIG}
+                    onChange={setInput}
+                />
+            );
+        }
+        render(<Liner />);
+        const picker = screen.getByLabelText('Vật liệu giấy lót');
+        // Decal chưa in: ô khổ vẫn phải hiện vì nó quyết định số tờ.
+        fireEvent.change(picker, { target: { value: String(decal) } });
+        expect(screen.getByLabelText('Khổ giấy lót')).toBeTruthy();
+        // Decal + in: engine tự chọn khổ rẻ nhất, ô không còn tác dụng nên phải ẩn.
+        fireEvent.click(screen.getByLabelText('In giấy lót (1 mặt)'));
+        expect(screen.queryByLabelText('Khổ giấy lót')).toBeNull();
+        expect(screen.getByText(/Khổ decal có in được chọn tự động/).textContent).toContain(
+            'Cắt giấy lót'
+        );
+        // Giấy ram + in: đổi khổ VẪN đổi giá nên tuyệt đối không được ẩn.
+        fireEvent.change(picker, { target: { value: String(ream) } });
+        expect(screen.getByLabelText('Khổ giấy lót')).toBeTruthy();
+        expect(screen.queryByText(/Khổ decal có in được chọn tự động/)).toBeNull();
+    });
     it('bậc trùng bị chặn trước lưu; lỗi đồng bộ được hiển thị', async () => {
         const save = vi
             .fn()

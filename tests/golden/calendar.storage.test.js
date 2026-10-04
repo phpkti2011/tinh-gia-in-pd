@@ -10,7 +10,9 @@ import {
     loadCalendarFromCloud,
     saveCalendarConfig,
     loadCalendarDraft,
+    calendarSyncError,
 } from '../../src/modules/calendar/config/storage';
+import { CALENDAR_SCHEMA_VERSION } from '../../src/modules/calendar/config/version';
 import { CALENDAR_DEFAULT_CONFIG } from '../../src/modules/calendar/config/defaultConfig';
 import { DEFAULT_CONFIG } from '../../src/modules/small-print/config/defaultConfig';
 const config = () => structuredClone(CALENDAR_DEFAULT_CONFIG);
@@ -151,6 +153,27 @@ describe('Calendar cloud-authoritative persistence', () => {
         finish(rows());
         await read;
         expect(loadCalendarConfig()).toEqual(newer);
+    });
+    it('máy chủ từ chối phiên bản bảng giá thì nói đúng nguyên nhân, không đổ cho mất mạng', () => {
+        // RPC save_calendar_price_config chốt cứng danh sách phiên bản. Nâng
+        // CALENDAR_SCHEMA_VERSION mà quên chạy SQL ⇒ errcode 22023 ⇒ HTTP 400. Trước đây
+        // lỗi này rơi vào nhánh chung và hiện ra như lỗi mạng, khiến truy sai hướng.
+        const message = calendarSyncError(new Error('invalid calendar price payload'));
+        expect(message).toContain(CALENDAR_SCHEMA_VERSION);
+        expect(message).toContain('save_calendar_price_config');
+        expect(message).not.toContain('tự thử lại khi có kết nối');
+    });
+    it('các lỗi đồng bộ khác vẫn giữ nguyên thông báo cũ', () => {
+        expect(calendarSyncError(new Error('calendar_version_conflict'))).toMatch(
+            /Admin khác đã cập nhật/
+        );
+        expect(calendarSyncError(new Error('PGRST202'))).toMatch(/chưa bật đồng bộ lịch/);
+        expect(calendarSyncError(new Error('forbidden: admin role required'))).toMatch(
+            /đăng nhập lại/
+        );
+        expect(calendarSyncError(new Error('Failed to fetch'))).toMatch(
+            /tự thử lại khi có kết nối/
+        );
     });
     it('bảng giá cũ chưa khai khổ tấm vẫn đọc được, w/h điền từ khổ chung, không bắt xác nhận lại', async () => {
         const legacy = config();

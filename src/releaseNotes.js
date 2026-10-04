@@ -16,6 +16,19 @@
 
 export const RELEASE_NOTES = [
     {
+        id: '2026-10-03-decal-lam-lot-lich',
+        date: '2026-10-03',
+        title: 'Giấy lót lịch bàn dùng được decal giấy',
+        items: [
+            'Cài Đặt lịch bàn, mục "Vật liệu được phép dùng cho áo và lót": phần Giấy lót có thêm "Decal giấy đế mỏng (VHM)" và "Decal giấy đế dày (LH)". Tích vào rồi lưu thì màn Tính Giá chọn được.',
+            'Decal nhựa vẫn tích được cho cả áo và lót như trước. Decal giấy chỉ dành cho lót.',
+            'Lót bằng decal: chọn xong thì ô "Khổ giấy lót" tự chuyển sang khổ decal và lấy sẵn khổ 33 × 48 cm. Vẫn in 1 mặt và cán màng 1 mặt được như giấy thường; tiền cán tính riêng theo mét vuông.',
+            'Khi tích "In giấy lót" mà đang dùng decal, ô "Khổ giấy lót" được thay bằng dòng ghi chú: khổ do phần mềm tự chọn theo phương án in, xem khổ thật ở sơ đồ "Cắt giấy lót". Trước đây ô này vẫn hiện nhưng đổi khổ không làm đổi giá. Giấy thường thì ô khổ vẫn dùng bình thường.',
+            'Mặc định giấy lót vẫn là C150 và F120 — không tích thì không có gì thay đổi.',
+            'Sửa lỗi lịch bàn báo đỏ "Chưa xác nhận được bảng giá từ máy chủ" và không cho báo giá: máy chủ chưa nhận bảng giá phiên bản mới nên lần lưu nào cũng hỏng. Nay phần mềm nói đúng nguyên nhân thay vì báo như mất mạng.',
+        ],
+    },
+    {
         id: '2026-10-02-kho-tam-carton',
         date: '2026-10-02',
         title: 'Khổ tấm carton khai riêng cho từng loại (lịch bàn)',

@@ -48,6 +48,10 @@ export function envelopeSyncError(error) {
     const message = error?.message || String(error || '');
     if (/save_envelope_price_config|invalid module|module_check|PGRST202/i.test(message))
         return 'Máy chủ chưa bật đồng bộ bao thư. Cần cập nhật cơ sở dữ liệu cho module bao thư.';
+    // Xem ghi chú cùng loại ở modules/calendar/config/storage.js: RPC chốt cứng danh
+    // sách phiên bản, nâng ENVELOPE_SCHEMA_VERSION mà quên chạy SQL là khoá báo giá.
+    if (/invalid envelope price payload/i.test(message))
+        return `Máy chủ chưa chấp nhận bảng giá phiên bản ${ENVELOPE_SCHEMA_VERSION}. Admin cần chạy SQL cập nhật hàm save_envelope_price_config trên Supabase rồi thử lại.`;
     if (/envelope_version_conflict/i.test(message))
         return 'Admin khác đã cập nhật bảng giá. Bản nháp được giữ lại; hãy đối chiếu bảng giá mới trước khi lưu.';
     if (/forbidden|42501|JWT|permission/i.test(message))

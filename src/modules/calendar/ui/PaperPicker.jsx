@@ -1,7 +1,7 @@
 import {
     materialAllowed,
     artAllowed,
-    isPlasticDecal,
+    usesDecalStock,
     decalStocks,
 } from '../config/wrapperMaterials';
 import { artInput } from '../engine/pricing';
@@ -16,11 +16,12 @@ export default function PaperPicker({
     canViewCost = false,
 }) {
     const label = role === 'wrap' ? 'áo' : 'lót';
+    const printing = Boolean(role === 'wrap' ? input.wrapperPrint : input.linerPrint);
     const set = (key, value) => onChange({ ...input, [role + key]: value });
     const art = artInput(input, config, printConfig, role);
     const updateArt = (key, value) => set('ArtInput', { ...art, [key]: value });
     const stockPaper = printConfig.PAPER_STOCK_DATA[input[role + 'Paper']];
-    const stocks = isPlasticDecal(stockPaper)
+    const stocks = usesDecalStock(stockPaper)
         ? decalStocks(printConfig)
         : printConfig.STANDARD_LARGE_SHEET_SIZES;
     return (
@@ -36,7 +37,7 @@ export default function PaperPicker({
                             ? {}
                             : {
                                   [role + 'Paper']: Number(v),
-                                  [role + 'Stock']: isPlasticDecal(
+                                  [role + 'Stock']: usesDecalStock(
                                       printConfig.PAPER_STOCK_DATA[Number(v)]
                                   )
                                       ? Math.max(
@@ -59,10 +60,10 @@ export default function PaperPicker({
             </SelectField>
             {input[role + 'Source'] === 'ream' ? (
                 <div className="grid grid-cols-2 gap-3">
-                    {role === 'wrap' && input.wrapperPrint && isPlasticDecal(stockPaper) ? (
+                    {printing && usesDecalStock(stockPaper) ? (
                         <p className="text-sm text-gray-400 col-span-2">
-                            Khổ decal có in được chọn tự động theo phương án in; xem khổ thực tế
-                            trong sơ đồ cắt giấy áo.
+                            Khổ decal có in được chọn tự động theo phương án in; xem khổ thực tế ở
+                            sơ đồ “Cắt giấy {label}”.
                         </p>
                     ) : (
                         <SelectField

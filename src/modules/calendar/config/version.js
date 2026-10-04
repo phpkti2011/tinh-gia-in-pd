@@ -9,6 +9,13 @@
 // Khi nào MAJOR thay đổi: phải có migration cho config cũ trên Supabase.
 
 export const CALENDAR_MODULE_NAME = 'calendar';
+//
+// ⛔ TRƯỚC KHI NÂNG SỐ NÀY: hàm `save_calendar_price_config` trên Supabase có một danh sách
+//    phiên bản được chấp nhận, chốt cứng trong SQL. Nâng hằng số này mà chưa chạy lại
+//    `docs/database/migration-calendar-module.sql` thì MỌI lần admin lưu bảng giá đều bị từ chối
+//    (errcode 22023 → HTTP 400), bản nháp kẹt trong trình duyệt, và vòng tự gửi lại
+//    khoá luôn việc báo giá cho toàn bộ nhân viên — đã xảy ra thật ngày 03/10/2026.
+//    Thứ tự bắt buộc: thêm số mới vào SQL → chạy SQL trên Supabase → rồi mới deploy.
 
 // 2.0.0 — MAJOR. Khổ tấm carton chuyển vào TỪNG loại: materials.carton[i].{w,h} (cm).
 //   Loại carton đang chọn ở màn tính giá quyết định sơ đồ cắt — engine/layout.js nhận

@@ -7,6 +7,10 @@ import { validateCalendarConfig, pickTier } from '../../src/modules/calendar/con
 import { calculateCalendar, artInput, artPaper } from '../../src/modules/calendar/engine/pricing';
 import { layout, validatePattern } from '../../src/modules/calendar/engine/layout';
 import { kts, paperQuote } from '../../src/modules/calendar/engine/smallPrintAdapter';
+import {
+    selectableMaterials,
+    decalStocks,
+} from '../../src/modules/calendar/config/wrapperMaterials';
 import { DEFAULT_CONFIG } from '../../src/modules/small-print/config/defaultConfig';
 import {
     calculateFoilStamping,
@@ -326,6 +330,63 @@ describe('Calendar contracts', () => {
         const c2 = config();
         c2.geometry.linerReduceW = 300;
         expect(() => run(input(), c2)).toThrow(/Khổ lót/);
+    });
+    it('decal giấy chỉ hiện ở danh sách lót, decal nhựa hiện ở cả áo và lót', () => {
+        const names = (role) => selectableMaterials(DEFAULT_CONFIG, role).map((p) => p.name);
+        expect(names('wrap').some((n) => /decal nhựa/i.test(n))).toBe(true);
+        expect(names('wrap').some((n) => /decal giấy/i.test(n))).toBe(false);
+        expect(names('liner').some((n) => /decal nhựa/i.test(n))).toBe(true);
+        expect(names('liner').filter((n) => /decal giấy/i.test(n)).length).toBe(2);
+        // Decal tính theo tờ (xi bạc/vàng) engine chưa dựng được khổ nên không được chào.
+        expect(names('liner').some((n) => /decal xi/i.test(n))).toBe(false);
+    });
+    it('decal giấy dùng làm lót, cán màng tính riêng theo m²', () => {
+        const c = config();
+        const name = 'Decal giấy đế mỏng (VHM)';
+        c.allowedMaterials = { wrap: ['C150'], liner: ['C150', 'F120', name] };
+        const paper = DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex((p) => p.name === name);
+        const stock = decalStocks(DEFAULT_CONFIG).findIndex((p) => p.h === 48);
+        const s = { ...input(), linerPaper: paper, linerStock: stock };
+        const plain = run(s, c);
+        expect(row(plain, 'liner').detail).toContain(name);
+        expect(row(plain, 'liner').detail).toContain('100 tờ 33×48');
+        // 9.000 đ/m² × (0,33 × 0,48 m²) = 1.425,6 đ/tờ.
+        expect(row(plain, 'liner').cost).toBe(Math.round(100 * 9000 * 0.33 * 0.48));
+        expect(row(plain, 'liner').sale).toBe(
+            row(plain, 'liner').cost * c.geometry.linerSaleFactor
+        );
+        expect(row(plain, 'liner-lam')).toBeUndefined();
+        const lam = run({ ...s, linerLam: true }, c);
+        expect(row(lam, 'liner').cost).toBe(row(plain, 'liner').cost);
+        expect(row(lam, 'liner-lam').cost).toBeGreaterThan(0);
+        expect(lam.cost).toBe(plain.cost + row(lam, 'liner-lam').cost);
+    });
+    it('có in: khổ lót chỉ vô tác dụng với decal, giấy ram vẫn đổi giá theo khổ', () => {
+        const c = config();
+        c.allowedMaterials = {
+            wrap: ['C150'],
+            liner: ['C150', 'Decal giấy đế mỏng (VHM)'],
+        };
+        const costs = (paperName, linerPrint) =>
+            [0, 1].map((linerStock) => {
+                const s = {
+                    ...input(),
+                    linerPaper: DEFAULT_CONFIG.PAPER_STOCK_DATA.findIndex(
+                        (p) => p.name === paperName
+                    ),
+                    linerStock,
+                    linerPrint,
+                };
+                try {
+                    return row(run(s, c), 'liner').cost;
+                } catch {
+                    return null;
+                }
+            });
+        const decal = costs('Decal giấy đế mỏng (VHM)', true);
+        expect(decal[0]).toBe(decal[1]);
+        const ream = costs('C150', true);
+        expect(ream[0]).not.toBe(ream[1]);
     });
     it('dòng carton xuất vốn/cm² tấm nguyên và vốn/cm² thành phẩm thật của đơn', () => {
         const r = run();
