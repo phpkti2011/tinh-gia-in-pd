@@ -16,6 +16,18 @@
 
 export const RELEASE_NOTES = [
     {
+        id: '2026-10-16-so-lo-xo-bia-kinh',
+        date: '2026-10-16',
+        title: 'Sổ lò xo: nhập số trang bìa, bìa kính tính theo khổ',
+        items: [
+            'Sổ Lò Xo có thêm ô "Số trang bìa" (mặc định 4 trang = 2 tờ in 2 mặt, trước + sau). Muốn bìa dày hơn thì nhập 8, 12... Chọn in bìa 1 mặt thì ô tự về 2 trang (2 tờ).',
+            'Mục "Bìa lót ngoài" đổi tên thành "Bìa kính bao ngoài trước sau (mỗi cuốn 2 tờ)".',
+            'Giá bìa kính trong Cài Đặt là giá khổ A4. Chọn khổ A5 thì phần mềm tự chia 1.5, khổ A6 chia 2.5; hệ số này sửa được ở Cài Đặt. Khổ không chuẩn tính theo khổ nhỏ nhất mà thành phẩm lọt vào.',
+            'Thành phẩm lớn hơn A4 mà chọn bìa kính thì phần mềm báo "báo giá riêng, liên hệ admin" thay vì ra giá. Không chọn bìa kính thì tính bình thường.',
+            'Bìa kính chưa điền giá thì vẫn ra 0 đ như trước — nhớ điền giá A4 trong Cài Đặt.',
+        ],
+    },
+    {
         id: '2026-10-03-decal-lam-lot-lich',
         date: '2026-10-03',
         title: 'Giấy lót lịch bàn dùng được decal giấy',

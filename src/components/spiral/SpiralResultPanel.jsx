@@ -101,6 +101,8 @@ export default function SpiralResultPanel({ result, params, config: _config, isC
         linerName,
         linerCustomer,
         linerUnitText,
+        linerSizeLabel,
+        linerDivisor,
         extraPaperCustomer,
         giaVon,
         totalCustomerCost,
@@ -131,7 +133,7 @@ export default function SpiralResultPanel({ result, params, config: _config, isC
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                <SectionCard title="Bìa (2 tờ)" section={cover} />
+                <SectionCard title={`Bìa (${cover.leaves} tờ)`} section={cover} />
                 {inner ? (
                     <SectionCard title="Ruột" section={inner} />
                 ) : (
@@ -202,7 +204,7 @@ export default function SpiralResultPanel({ result, params, config: _config, isC
                     )}
                     {linerCustomer > 0 && (
                         <Row
-                            label={`Bìa lót (${linerName}${linerUnitText ? ` · ${linerUnitText}` : ''})`}
+                            label={`Bìa kính (${linerName}${linerUnitText ? ` · ${linerUnitText}` : ''}${linerSizeLabel ? ` · khổ ${linerSizeLabel}${linerDivisor > 1 ? ` ÷${linerDivisor}` : ''}` : ''})`}
                             value={fmt(linerCustomer)}
                         />
                     )}

@@ -177,27 +177,116 @@ describe('Spiral: calculateSpiral', () => {
         expect(r.linerCustomer).toBe(0);
     });
 
-    it('bìa lót theo bậc số cuốn, KHÔNG tính vào độ dày', () => {
-        // config: loại '2 zem' có bậc 80–100 = 3.000/cuốn
-        const cfg = {
-            ...config,
-            SPIRAL_CONFIG: {
-                ...config.SPIRAL_CONFIG,
-                linerTypes: [
-                    {
-                        name: '2 zem',
-                        costPerBook: 0,
-                        tiers: [{ min: 1, max: Infinity, price: 3000, type: 'per_book' }],
-                    },
-                ],
-            },
-        };
-        const base = calculateSpiral(baseParams, cfg); // không lót
-        const r = calculateSpiral({ ...baseParams, linerType: '0' }, cfg);
+    // Giá bìa kính nhập theo A4 = 3.000/cuốn, giá vốn 600/cuốn.
+    const linerCfg = (extra = {}) => ({
+        ...config,
+        SPIRAL_CONFIG: {
+            ...config.SPIRAL_CONFIG,
+            linerTypes: [
+                {
+                    name: '2 zem',
+                    costPerBook: 600,
+                    tiers: [{ min: 1, max: Infinity, price: 3000, type: 'per_book' }],
+                },
+            ],
+            ...extra,
+        },
+    });
+    const A4 = { finishedW: 210, finishedH: 297 };
+    const A6 = { finishedW: 105, finishedH: 148 };
+
+    it('bìa kính theo bậc số cuốn (A5 chia 1.5), KHÔNG tính vào độ dày', () => {
+        const cfg = linerCfg();
+        const base = calculateSpiral(baseParams, cfg); // không bìa kính
+        const r = calculateSpiral({ ...baseParams, linerType: '0' }, cfg); // A5
         expect(r.linerName).toBe('2 zem');
-        expect(r.linerCustomer).toBe(3000 * 100);
+        expect(r.linerSizeLabel).toBe('A5');
+        expect(r.linerDivisor).toBe(1.5);
+        expect(r.linerCustomer).toBeCloseTo((3000 / 1.5) * 100, 6);
+        expect(r.linerUnitText).toBe('2.000đ/cuốn');
         expect(r.totalLeaves).toBe(base.totalLeaves); // không đổi độ dày
-        expect(r.totalCustomerCost).toBe(base.totalCustomerCost + 3000 * 100);
+        expect(r.totalCustomerCost).toBeCloseTo(base.totalCustomerCost + 2000 * 100, 6);
+        expect(r.giaVon).toBeCloseTo(base.giaVon + (600 * 100) / 1.5, 6);
+    });
+
+    it('bìa kính: A4 chia 1, A6 chia 2.5', () => {
+        const cfg = linerCfg();
+        const a4 = calculateSpiral({ ...baseParams, ...A4, linerType: '0' }, cfg);
+        const a6 = calculateSpiral({ ...baseParams, ...A6, linerType: '0' }, cfg);
+        expect(a4.linerSizeLabel).toBe('A4');
+        expect(a4.linerCustomer).toBe(3000 * 100);
+        expect(a6.linerSizeLabel).toBe('A6');
+        expect(a6.linerCustomer).toBeCloseTo((3000 / 2.5) * 100, 6);
+    });
+
+    it('bìa kính: khổ không chuẩn xếp theo ngưỡng khổ nhỏ nhất mà thành phẩm lọt vào', () => {
+        const cfg = linerCfg();
+        const at = (w, h) =>
+            calculateSpiral({ ...baseParams, finishedW: w, finishedH: h, linerType: '0' }, cfg);
+        expect(at(147, 209).linerSizeLabel).toBe('A5'); // nhỏ hơn danh nghĩa 1mm
+        expect(at(210, 148).linerSizeLabel).toBe('A5'); // xoay ngang
+        expect(at(160, 220).linerSizeLabel).toBe('A4'); // vượt A5 → A4
+        expect(at(100, 140).linerSizeLabel).toBe('A6');
+    });
+
+    it('bìa kính loại trọn gói cũng chia theo khổ', () => {
+        const cfg = linerCfg({
+            linerTypes: [
+                {
+                    name: 'Gói',
+                    costPerBook: 0,
+                    tiers: [{ min: 1, max: Infinity, price: 5000, type: 'package' }],
+                },
+            ],
+        });
+        const r = calculateSpiral({ ...baseParams, linerType: '0' }, cfg);
+        expect(r.linerCustomer).toBeCloseTo(5000 / 1.5, 6);
+        expect(r.linerUnitText).toBe('Trọn gói');
+    });
+
+    it('config cũ chưa có linerSizeFactors → dùng bảng mặc định', () => {
+        const cfg = linerCfg({ linerSizeFactors: undefined });
+        const r = calculateSpiral({ ...baseParams, linerType: '0' }, cfg);
+        expect(r.linerDivisor).toBe(1.5);
+    });
+
+    it('bìa kính lớn hơn A4 → báo giá riêng (lỗi); không chọn bìa kính thì tính bình thường', () => {
+        const big = { finishedW: 250, finishedH: 350 };
+        const withLiner = calculateSpiral({ ...baseParams, ...big, linerType: '0' }, linerCfg());
+        expect(withLiner.error).toMatch(/liên hệ admin/);
+        const noLiner = calculateSpiral({ ...baseParams, ...big }, linerCfg());
+        expect(noLiner.error).toBeNull();
+    });
+
+    it('số trang bìa: bỏ trống = 4 trang (2 tờ), giá y như cũ', () => {
+        const r = calculateSpiral(baseParams, config);
+        const blank = calculateSpiral({ ...baseParams, coverPages: '' }, config);
+        const four = calculateSpiral({ ...baseParams, coverPages: 4 }, config);
+        expect(r.cover.leaves).toBe(2);
+        expect(four.cover.leaves).toBe(2);
+        expect(blank.totalCustomerCost).toBe(r.totalCustomerCost);
+        expect(four.totalCustomerCost).toBe(r.totalCustomerCost);
+    });
+
+    it('số trang bìa: 8 trang in 2 mặt = 4 tờ, tăng độ dày + giá', () => {
+        const r = calculateSpiral(baseParams, config);
+        const eight = calculateSpiral({ ...baseParams, coverPages: 8 }, config);
+        expect(eight.cover.leaves).toBe(4);
+        expect(eight.totalLeaves).toBe(r.totalLeaves + 2);
+        expect(eight.totalCustomerCost).toBeGreaterThan(r.totalCustomerCost);
+    });
+
+    it('số trang bìa: in 1 mặt mỗi tờ 1 trang (2 trang = 2 tờ)', () => {
+        const two = calculateSpiral({ ...baseParams, coverSides: '1', coverPages: 2 }, config);
+        const four = calculateSpiral({ ...baseParams, coverSides: '1', coverPages: 4 }, config);
+        expect(two.cover.leaves).toBe(2);
+        expect(two.cover.sides).toBe(1);
+        expect(four.cover.leaves).toBe(4);
+    });
+
+    it('số trang bìa < 1 → lỗi', () => {
+        const r = calculateSpiral({ ...baseParams, coverPages: 0 }, config);
+        expect(r.error).toMatch(/Số trang bìa/);
     });
 
     it('khổ quá lớn → lỗi vượt khổ máy', () => {

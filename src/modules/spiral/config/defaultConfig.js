@@ -19,6 +19,15 @@ const COIL_RANGES = [
 ];
 const zeroTiers = () => COIL_RANGES.map(([min, max]) => ({ min, max, price: 0, type: 'per_book' }));
 
+// Bìa kính bao ngoài: giá trong Cài Đặt là giá khổ A4; khổ nhỏ hơn chia theo hệ số.
+// Xếp từ nhỏ đến lớn; khổ lớn nhất (A4) là trần — lớn hơn thì báo giá riêng.
+// Engine dùng bảng này làm fallback khi config đã lưu chưa có (merge chỉ 1 cấp).
+export const DEFAULT_LINER_SIZE_FACTORS = [
+    { label: 'A6', maxShort: 105, maxLong: 148, divisor: 2.5 },
+    { label: 'A5', maxShort: 148, maxLong: 210, divisor: 1.5 },
+    { label: 'A4', maxShort: 210, maxLong: 297, divisor: 1 },
+];
+
 export const SPIRAL_DEFAULT_CONFIG = {
     // Loại màng cán — admin sửa được, chọn RIÊNG cho bìa và ruột.
     // Mờ/Bóng 0% ⇒ không đổi giá. Đặt TOP-LEVEL để merge backward-compat
@@ -59,5 +68,7 @@ export const SPIRAL_DEFAULT_CONFIG = {
             { name: '2 zem', costPerBook: 0, tiers: zeroTiers() },
             { name: 'Mờ sần', costPerBook: 0, tiers: zeroTiers() },
         ],
+        // Hệ số chia giá bìa kính theo khổ thành phẩm (giá nhập là giá A4).
+        linerSizeFactors: DEFAULT_LINER_SIZE_FACTORS.map((f) => ({ ...f })),
     },
 };

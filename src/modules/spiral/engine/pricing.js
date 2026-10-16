@@ -1,7 +1,7 @@
 // Sổ đóng lò xo (spiral / coil binding) — engine tính giá.
 //
 // Clone từ catalogue nhưng: in TỪNG TỜ ĐƠN tại khổ thành phẩm (không gấp đôi);
-// nhập số trang RUỘT, bìa = 2 tờ; in 1/2 mặt riêng cho bìa & ruột; đóng lò xo
+// nhập số trang RUỘT và số trang BÌA (mặc định 4 = 2 tờ); in 1/2 mặt riêng cho bìa & ruột; đóng lò xo
 // (bậc số cuốn + phụ giá độ dày = tổng số tờ). Dùng chung printConfig (In KTS).
 
 import {
@@ -11,8 +11,31 @@ import {
     calculateCustomerQuote,
 } from '../../small-print/engine/index.js';
 import { filmMultiplier, filmName } from '../../../utils/laminationFilm.js';
+import { DEFAULT_LINER_SIZE_FACTORS } from '../config/defaultConfig.js';
 
 const err = (message) => ({ error: message });
+
+// Số trang bìa mặc định khi in 2 mặt = bìa trước + sau (2 tờ). Thiếu ⇒ giữ giá cũ.
+const DEFAULT_COVER_PAGES = 4;
+// Khổ thực tế thường nhỏ hơn danh nghĩa 1–2mm ⇒ cho lọt nếu vượt không quá 1mm.
+const LINER_SIZE_TOLERANCE_MM = 1;
+
+// Khổ bìa kính của thành phẩm: khổ nhỏ nhất (trong bảng) mà thành phẩm lọt vào.
+// Trả null khi lớn hơn khổ lớn nhất (A4) ⇒ báo giá riêng.
+function linerSizeFactor(finishedW, finishedH, factors) {
+    const short = Math.min(finishedW, finishedH);
+    const long = Math.max(finishedW, finishedH);
+    const list = (Array.isArray(factors) && factors.length ? factors : DEFAULT_LINER_SIZE_FACTORS)
+        .slice()
+        .sort((a, b) => a.maxLong * a.maxShort - b.maxLong * b.maxShort);
+    return (
+        list.find(
+            (f) =>
+                short <= f.maxShort + LINER_SIZE_TOLERANCE_MM &&
+                long <= f.maxLong + LINER_SIZE_TOLERANCE_MM
+        ) || null
+    );
+}
 
 // Chạy 1 "section" (bìa hoặc ruột): `leaves` tờ/cuốn, in `printSides` mặt, `colorMode` màu.
 function sectionQuote(
@@ -146,6 +169,18 @@ export function calculateSpiral(params, config) {
     if (!Number.isFinite(quantity) || quantity < 1) {
         return err('Số lượng cuốn không hợp lệ.');
     }
+    // Số trang BÌA: bỏ trống ⇒ mặc định bìa trước+sau = 2 tờ (4 trang nếu in 2 mặt, 2 trang
+    // nếu in 1 mặt) = giá cũ; đã nhập thì phải ≥ 1.
+    const coverPagesRaw = params.coverPages;
+    const coverPages =
+        coverPagesRaw == null || coverPagesRaw === ''
+            ? coverSides === '1'
+                ? DEFAULT_COVER_PAGES / 2
+                : DEFAULT_COVER_PAGES
+            : parseInt(coverPagesRaw, 10);
+    if (!Number.isFinite(coverPages) || coverPages < 1) {
+        return err('Số trang bìa không hợp lệ (≥ 1).');
+    }
     const paperData = config.PAPER_STOCK_DATA || [];
     if (!paperData[parseInt(params.coverPaperType, 10)]) return err('Giấy bìa không hợp lệ.');
     if (!paperData[parseInt(params.innerPaperType, 10)]) return err('Giấy ruột không hợp lệ.');
@@ -169,7 +204,7 @@ export function calculateSpiral(params, config) {
 
     // 3. Số tờ (leaves) từng section.
     const base = { pieceW_cm, pieceH_cm, artPaperPrice: params.artPaperPrice };
-    const coverLeaves = 2; // bìa trước + sau
+    const coverLeaves = coverSides === '2' ? Math.ceil(coverPages / 2) : coverPages;
     const innerLeaves = innerSides === '2' ? Math.ceil(numPages / 2) : numPages;
 
     const cover = sectionQuote(
@@ -293,22 +328,35 @@ export function calculateSpiral(params, config) {
     const coilCustomer = coilBase + thicknessAdd;
     const coilCost = (spiral.costPerBook || 0) * quantity;
 
-    // 7b. Bìa lót ngoài (theo bậc số cuốn). KHÔNG tính vào độ dày.
+    // 7b. Bìa kính bao ngoài trước+sau (mỗi cuốn 2 tờ), theo bậc số cuốn. KHÔNG tính vào
+    // độ dày. Giá nhập trong Cài Đặt là giá khổ A4 ⇒ chia theo khổ thành phẩm (A5 ÷1.5,
+    // A6 ÷2.5); lớn hơn A4 thì không báo giá được (báo giá riêng).
     let linerCustomer = 0;
     let linerCost = 0;
     let linerName = '';
     let linerUnitText = '';
+    let linerSizeLabel = '';
+    let linerDivisor = 1;
     const li = parseInt(params.linerType, 10);
     const linerT = Number.isInteger(li) && li >= 0 ? (spiral.linerTypes || [])[li] : null;
     if (linerT) {
+        const sizeF = linerSizeFactor(finishedW, finishedH, spiral.linerSizeFactors);
+        if (!sizeF) {
+            return err('Bìa kính lớn hơn khổ A4 — báo giá riêng, vui lòng liên hệ admin.');
+        }
+        linerSizeLabel = sizeF.label;
+        linerDivisor = sizeF.divisor;
         linerName = linerT.name;
         const t = (linerT.tiers || []).find((x) => quantity >= x.min && quantity <= x.max);
         if (t) {
-            linerCustomer = t.type === 'package' ? t.price : t.price * quantity;
+            const price = t.price / linerDivisor;
+            linerCustomer = t.type === 'package' ? price : price * quantity;
             linerUnitText =
-                t.type === 'package' ? 'Trọn gói' : `${t.price.toLocaleString('vi-VN')}đ/cuốn`;
+                t.type === 'package'
+                    ? 'Trọn gói'
+                    : `${Math.round(price).toLocaleString('vi-VN')}đ/cuốn`;
         }
-        linerCost = (linerT.costPerBook || 0) * quantity;
+        linerCost = ((linerT.costPerBook || 0) * quantity) / linerDivisor;
     }
 
     // 8. Tổng + đơn giá/cuốn + giá vốn.
@@ -376,6 +424,8 @@ export function calculateSpiral(params, config) {
         linerName,
         linerCustomer,
         linerUnitText,
+        linerSizeLabel,
+        linerDivisor,
         extraPaperCustomer,
         giaVon,
         totalCustomerCost,

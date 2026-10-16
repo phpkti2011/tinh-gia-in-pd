@@ -40,6 +40,18 @@ function validateLinerType(lt, index, errors) {
     }
 }
 
+function validateLinerSizeFactor(f, index, errors) {
+    const p = `SPIRAL_CONFIG.linerSizeFactors[${index}]`;
+    if (!f || typeof f !== 'object' || Array.isArray(f)) {
+        errors.push(`${p}: phải là object`);
+        return;
+    }
+    if (typeof f.label !== 'string') errors.push(`${p}.label: phải là string`);
+    for (const k of ['maxShort', 'maxLong', 'divisor']) {
+        if (typeof f[k] !== 'number' || !(f[k] > 0)) errors.push(`${p}.${k}: phải là number > 0`);
+    }
+}
+
 // Optional — loại màng cán (thêm ở phiên bản này). Config cũ chưa có vẫn hợp lệ.
 // Xem src/utils/laminationFilm.js. Thiếu ⇒ mặc định Mờ/Bóng 0% ⇒ giá không đổi.
 function validateLaminationFilms(list, prefix, errors) {
@@ -91,6 +103,14 @@ export function validateSpiralConfig(config) {
                 errors.push('SPIRAL_CONFIG.linerTypes: phải là array');
             } else {
                 s.linerTypes.forEach((lt, i) => validateLinerType(lt, i, errors));
+            }
+        }
+        // linerSizeFactors optional — thiếu ⇒ engine dùng DEFAULT_LINER_SIZE_FACTORS.
+        if (s.linerSizeFactors != null) {
+            if (!Array.isArray(s.linerSizeFactors) || s.linerSizeFactors.length === 0) {
+                errors.push('SPIRAL_CONFIG.linerSizeFactors: phải là array không rỗng');
+            } else {
+                s.linerSizeFactors.forEach((f, i) => validateLinerSizeFactor(f, i, errors));
             }
         }
     }

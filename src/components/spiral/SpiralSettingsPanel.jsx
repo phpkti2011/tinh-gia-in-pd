@@ -4,6 +4,7 @@ import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveSpiralConfig } from '../../utils/configStorage';
 import { restoreInfinity } from '../../utils/restoreInfinity';
 import LaminationFilmSettings from '../common/LaminationFilmSettings';
+import { DEFAULT_LINER_SIZE_FACTORS } from '../../modules/spiral/config';
 
 function NumInput({ configValue, onCommit, className, step }) {
     const [localStr, setLocalStr] = useState(String(configValue));
@@ -136,6 +137,20 @@ export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel 
         );
     const delLinerTier = (li, ti) =>
         updateConfig((c) => c.SPIRAL_CONFIG.linerTypes[li].tiers.splice(ti, 1));
+
+    // Config đã lưu trước bản 1.2.0 chưa có linerSizeFactors ⇒ hiển thị/ghi từ bảng mặc định.
+    const linerSizeFactors = s.linerSizeFactors?.length
+        ? s.linerSizeFactors
+        : DEFAULT_LINER_SIZE_FACTORS;
+    const updLinerSize = (i, f, v) =>
+        updateConfig((c) => {
+            if (!c.SPIRAL_CONFIG.linerSizeFactors?.length) {
+                c.SPIRAL_CONFIG.linerSizeFactors = DEFAULT_LINER_SIZE_FACTORS.map((x) => ({
+                    ...x,
+                }));
+            }
+            c.SPIRAL_CONFIG.linerSizeFactors[i][f] = v;
+        });
 
     return (
         <div className="bg-gray-800 rounded-lg p-6 lg:p-8">
@@ -332,7 +347,8 @@ export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel 
                 <section>
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-cyan-400 font-bold">
-                            Bìa lót ngoài — giá theo SỐ CUỐN
+                            Bìa kính bao ngoài (trước + sau, mỗi cuốn 2 tờ) — giá theo SỐ CUỐN, áp
+                            cho khổ A4
                         </h3>
                         <button
                             onClick={addLinerType}
@@ -460,9 +476,61 @@ export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel 
                         ))}
                         {linerTypes.length === 0 && (
                             <p className="text-xs text-gray-500">
-                                Chưa có loại bìa lót. Bấm “+ Thêm loại”.
+                                Chưa có loại bìa kính. Bấm “+ Thêm loại”.
                             </p>
                         )}
+                    </div>
+
+                    <div className="mt-4 rounded-lg border border-gray-700 bg-gray-900/40 p-3">
+                        <h4 className="text-gray-300 font-semibold mb-1">
+                            Hệ số chia giá bìa kính theo khổ
+                        </h4>
+                        <p className="text-xs text-gray-500 mb-2">
+                            Giá nhập ở trên là giá khổ A4. Thành phẩm lọt vào khổ nào (nhỏ nhất) thì
+                            chia cho hệ số khổ đó. Lớn hơn khổ lớn nhất (A4): báo giá riêng, liên hệ
+                            admin.
+                        </p>
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-gray-700">
+                                    <th className={thCls}>Khổ</th>
+                                    <th className={thCls}>Cạnh ngắn tối đa (mm)</th>
+                                    <th className={thCls}>Cạnh dài tối đa (mm)</th>
+                                    <th className={thCls}>Chia cho</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {linerSizeFactors.map((f, i) => (
+                                    <tr key={i} className="border-b border-gray-700/50">
+                                        <td className={tdCls + ' text-white'}>{f.label}</td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={f.maxShort}
+                                                step={1}
+                                                className={numCls}
+                                                onCommit={(v) => updLinerSize(i, 'maxShort', v)}
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={f.maxLong}
+                                                step={1}
+                                                className={numCls}
+                                                onCommit={(v) => updLinerSize(i, 'maxLong', v)}
+                                            />
+                                        </td>
+                                        <td className={tdCls}>
+                                            <NumInput
+                                                configValue={f.divisor}
+                                                step={0.1}
+                                                className={numCls}
+                                                onCommit={(v) => updLinerSize(i, 'divisor', v)}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </section>
             </div>

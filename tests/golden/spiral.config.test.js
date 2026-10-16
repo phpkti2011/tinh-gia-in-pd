@@ -30,6 +30,26 @@ describe('Spiral config', () => {
         expect(SPIRAL_DEFAULT_CONFIG.SPIRAL_CONFIG.linerTypes.length).toBe(2);
     });
 
+    it('linerSizeFactors: mặc định A6 ÷2.5, A5 ÷1.5, A4 ÷1; thiếu field vẫn hợp lệ', () => {
+        const f = SPIRAL_DEFAULT_CONFIG.SPIRAL_CONFIG.linerSizeFactors;
+        expect(f.map((x) => [x.label, x.divisor])).toEqual([
+            ['A6', 2.5],
+            ['A5', 1.5],
+            ['A4', 1],
+        ]);
+        const { linerSizeFactors, ...withoutFactors } = SPIRAL_DEFAULT_CONFIG.SPIRAL_CONFIG;
+        expect(linerSizeFactors).toBeDefined();
+        expect(validateSpiralConfig({ SPIRAL_CONFIG: withoutFactors }).isValid).toBe(true);
+    });
+
+    it('linerSizeFactors sai (divisor ≤ 0 / rỗng) → invalid', () => {
+        const base = SPIRAL_DEFAULT_CONFIG.SPIRAL_CONFIG;
+        const bad = (linerSizeFactors) =>
+            validateSpiralConfig({ SPIRAL_CONFIG: { ...base, linerSizeFactors } }).isValid;
+        expect(bad([{ label: 'A5', maxShort: 148, maxLong: 210, divisor: 0 }])).toBe(false);
+        expect(bad([])).toBe(false);
+    });
+
     it('linerType thiếu tiers → invalid', () => {
         const v = validateSpiralConfig({
             SPIRAL_CONFIG: {

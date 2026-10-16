@@ -1,6 +1,6 @@
 // Spiral config module — barrel export.
 
-export { SPIRAL_DEFAULT_CONFIG } from './defaultConfig.js';
+export { SPIRAL_DEFAULT_CONFIG, DEFAULT_LINER_SIZE_FACTORS } from './defaultConfig.js';
 
 export { validateSpiralConfig } from './schema.js';
 

@@ -43,7 +43,25 @@ export default function SpiralInputPanel({ config, params, onChange }) {
                         <span className="unit">trang</span>
                     </div>
                     <p className="mt-1 text-xs text-gray-400">
-                        Mỗi tờ in 2 mặt = 2 trang. Bìa (2 tờ trước+sau) tính riêng.
+                        Mỗi tờ in 2 mặt = 2 trang. Bìa tính riêng ở ô bên dưới.
+                    </p>
+                </div>
+
+                <div className="mb-4">
+                    <label htmlFor="coverPages">Số trang bìa</label>
+                    <div className="relative">
+                        <NumberField
+                            id="coverPages"
+                            value={params.coverPages}
+                            onCommit={(v) => onChange('coverPages', v)}
+                            step={2}
+                            min={1}
+                        />
+                        <span className="unit">trang</span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                        Bìa trước+sau in 2 mặt = 4 trang (2 tờ). In 1 mặt: mỗi tờ 1 trang (2 trang =
+                        2 tờ).
                     </p>
                 </div>
 
@@ -123,7 +141,7 @@ export default function SpiralInputPanel({ config, params, onChange }) {
                 </h2>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label htmlFor="coverPaperType">Giấy bìa (2 tờ)</label>
+                        <label htmlFor="coverPaperType">Giấy bìa</label>
                         <select
                             id="coverPaperType"
                             name="coverPaperType"
@@ -246,7 +264,7 @@ export default function SpiralInputPanel({ config, params, onChange }) {
                     )}
                 </div>
                 <div className="mb-4">
-                    <label htmlFor="linerType">Bìa lót ngoài (trước bìa)</label>
+                    <label htmlFor="linerType">Bìa kính bao ngoài trước sau (mỗi cuốn 2 tờ)</label>
                     <select
                         id="linerType"
                         name="linerType"
@@ -260,6 +278,10 @@ export default function SpiralInputPanel({ config, params, onChange }) {
                             </option>
                         ))}
                     </select>
+                    <p className="mt-1 text-xs text-gray-400">
+                        Giá cài đặt theo A4; A5 chia 1.5, A6 chia 2.5. Lớn hơn A4: báo giá riêng,
+                        liên hệ admin.
+                    </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>

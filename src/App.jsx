@@ -1307,6 +1307,7 @@ function SpiralModule({ onBack, heading }) {
     const [activeTab, setActiveTab] = useState('main');
     const [params, setParams] = useState({
         numPages: 96,
+        coverPages: 4,
         finishedW: 148,
         finishedH: 210,
         quantity: 100,
@@ -1347,7 +1348,18 @@ function SpiralModule({ onBack, heading }) {
     );
 
     const handleChange = useCallback((name, value) => {
-        setParams((prev) => ({ ...prev, [name]: value }));
+        setParams((prev) => {
+            const next = { ...prev, [name]: value };
+            // Bìa in 1 mặt: trước+sau = 2 trang (2 tờ); 2 mặt = 4 trang. Chỉ tự đổi khi
+            // đang là số chuẩn của mặt cũ — số người dùng đã nhập (vd 8) thì giữ nguyên.
+            if (name === 'coverSides' && value !== prev.coverSides) {
+                const std = (s) => (s === '1' ? 2 : 4);
+                if (Number(prev.coverPages) === std(prev.coverSides)) {
+                    next.coverPages = std(value);
+                }
+            }
+            return next;
+        });
     }, []);
 
     const engineConfig =
