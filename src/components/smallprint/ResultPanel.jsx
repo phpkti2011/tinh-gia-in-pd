@@ -153,6 +153,7 @@ export default function ResultPanel({
     // Giá vốn THÀNH PHẨM: mọi thứ không phải tiền in và tiền giấy.
     const finishingTotalCost =
         productQuantity * (displayResult.laminationCostPerProduct || 0) +
+        productQuantity * (displayResult.tapeMountingCostPerProduct || 0) +
         (variableDataCost || 0) +
         (holePunchingCost || 0) +
         (creasingCost || 0) +
@@ -608,6 +609,13 @@ export default function ResultPanel({
                                                 : 'Công bồi 2 lớp'
                                         }
                                         value={displayQuote.mountingCustomerPrice}
+                                        color="text-white"
+                                    />
+                                )}
+                                {displayQuote.totalTapeMountingCost > 0 && (
+                                    <QuoteRow
+                                        label={`Bồi keo 2 mặt (${displayQuote.tapeSheetsPerSet} tấm keo/bộ)`}
+                                        value={displayQuote.totalTapeMountingCost}
                                         color="text-white"
                                     />
                                 )}

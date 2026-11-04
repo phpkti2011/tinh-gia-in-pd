@@ -18,6 +18,15 @@ export const DECAL_MODULE_NAME = 'decal';
 //           singleContentPercent (moi noi dung chi in 1 cai) + bang bac
 //           {min, max, percent}. Thieu field = phu thu 0% => gia khong doi.
 
-export const DECAL_CONFIG_SCHEMA_VERSION = '1.8.0';
+// 1.9.0 — LAMINATION_FILMS[i] thêm `extra` (tiền chênh báo khách) và `extraCost`
+//   (tiền chênh giá vốn, chỉ In KTS: đ/m dài màng), optional. Có `extra` ⇒ giá màng =
+//   giá Mờ/Bóng + chênh mỗi đơn vị, bỏ qua `percent`. Thiếu ⇒ % cũ ⇒ giá không đổi.
+//   Xem src/utils/laminationFilm.js filmRate().
 
-export const DECAL_CONFIG_LAST_UPDATED = '2026-09-19';
+// 1.10.0 — printSheetSizes[i] thêm `a4Factor` (optional): số trang A4 quy đổi của tờ in khổ đó
+//   (giống bảng khổ decal của In KTS: 33x33 và 33x35 = 1.5, 33x48 = 2.4, 32x43 = 2). Tiền chênh
+//   màng đặc biệt (đ/trang A4) nhân với hệ số này ở CẢ tem lẻ lẫn bế demi. Thiếu field ⇒ engine
+//   tra bảng theo cạnh dài (resolveA4Factor) ⇒ Mờ/Bóng và màng % cũ không đổi giá.
+export const DECAL_CONFIG_SCHEMA_VERSION = '1.10.0';
+
+export const DECAL_CONFIG_LAST_UPDATED = '2026-11-02';

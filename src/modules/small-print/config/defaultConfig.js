@@ -230,6 +230,13 @@ export const DEFAULT_CONFIG = {
             blankPaperMarkup: 2,
         },
     },
+    // Bồi bằng KEO 2 MẶT (config 1.11.0) — dùng chung cho 'keo_2_lop' (1 tấm keo) và
+    // 'keo_3_lop' (2 tấm keo). Mỗi tấm keo tính như cán màng 1 mặt trên tờ in:
+    //   extra            = tiền chênh báo khách, đ/trang A4, cộng vào giá cán màng của bậc
+    //   extraCost        = tiền chênh giá vốn, đ/m dài, cộng vào LAMINATION_CONFIG.PRICE_PER_METER
+    //   blankPaperMarkup = như MOUNTING_CONFIG (giá khách tờ giấy trắng = vốn × hệ số)
+    // Không có bảng công bồi riêng. Xem engine/mounting.js.
+    TAPE_MOUNTING_CONFIG: { extra: 0, extraCost: 0, blankPaperMarkup: 2 },
     // Danh mục "gia công" tùy chỉnh (admin tự thêm ngoài Đục lỗ/Cấn/Bồi có sẵn).
     // Mỗi gia công có 1+ sub-loại (giống Đục lỗ có '1_vi_tri'/'2_vi_tri'), mỗi
     // sub-loại có khung giá riêng (cost_tiers/customer_tiers — CÙNG cấu trúc

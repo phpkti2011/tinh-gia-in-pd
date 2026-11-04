@@ -871,6 +871,12 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
         { key: '3_lop', title: 'Bồi 3 lớp (có tờ giấy ở giữa)' },
     ];
 
+    const updateTapeMounting = (field, val) =>
+        setLocalConfig((prev) => ({
+            ...prev,
+            TAPE_MOUNTING_CONFIG: { ...prev.TAPE_MOUNTING_CONFIG, [field]: val },
+        }));
+
     // --- MOUNTING_CONFIG: bảng CÔNG BỒI theo bậc số TỜ IN, thêm/xoá được ---
     // cost_tiers và customer_tiers PHẢI luôn cùng độ dài: JSX tra customer_tiers[idx] theo
     // index của cost_tiers. Mọi thao tác thêm/xoá đi qua đây để 2 mảng không bao giờ lệch.
@@ -1008,6 +1014,9 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
 
                 <LaminationFilmSettings
                     films={localConfig.LAMINATION_FILMS}
+                    extraLabel="đ/trang A4, mỗi mặt cán"
+                    extraCostLabel="đ/m dài màng, mỗi mặt"
+                    extraHint="Catalogue và Sổ lò xo có danh sách màng riêng — nhập tiền chênh ở Cài Đặt của từng module."
                     onChange={(next) =>
                         setLocalConfig((prev) => ({ ...prev, LAMINATION_FILMS: next }))
                     }
@@ -2060,6 +2069,49 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                             </div>
                         );
                     })}
+                    <div className="mb-2" data-testid="mounting-tape">
+                        <h4 className="text-sm font-semibold text-yellow-400 mb-1">
+                            Bồi keo 2 mặt (2 lớp = 1 tấm keo, 3 lớp = 2 tấm keo)
+                        </h4>
+                        <p className="text-gray-500 text-xs mb-2">
+                            Mỗi tấm keo tính như cán màng 1 mặt trên tờ in: giá báo khách = giá cán
+                            màng của bậc (theo trang A4) + tiền chênh; giá vốn = giá màng đ/m dài +
+                            chênh vốn. Không dùng bảng công bồi ở trên.
+                        </p>
+                        <div className="flex flex-wrap items-end gap-4">
+                            <div>
+                                <label className={labelCls}>
+                                    Chênh báo khách (đ/trang A4, mỗi tấm keo)
+                                </label>
+                                <NumInput
+                                    configValue={localConfig.TAPE_MOUNTING_CONFIG?.extra ?? 0}
+                                    step="100"
+                                    onCommit={(val) => updateTapeMounting('extra', val)}
+                                    className={inputClsSm}
+                                />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Chênh vốn (đ/m dài, mỗi tấm keo)</label>
+                                <NumInput
+                                    configValue={localConfig.TAPE_MOUNTING_CONFIG?.extraCost ?? 0}
+                                    step="100"
+                                    onCommit={(val) => updateTapeMounting('extraCost', val)}
+                                    className={inputClsSm}
+                                />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Hệ số giá KH của giấy trắng</label>
+                                <NumInput
+                                    configValue={
+                                        localConfig.TAPE_MOUNTING_CONFIG?.blankPaperMarkup ?? 2
+                                    }
+                                    step="0.1"
+                                    onCommit={(val) => updateTapeMounting('blankPaperMarkup', val)}
+                                    className={inputClsSm}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 {digitalError && (

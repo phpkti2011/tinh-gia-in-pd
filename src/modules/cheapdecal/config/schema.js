@@ -20,6 +20,11 @@ function validateLaminationFilms(list, prefix, errors) {
         if (typeof f.name !== 'string') errors.push(`${p}.name: phải là string`);
         if (f.percent != null && typeof f.percent !== 'number')
             errors.push(`${p}.percent: phải là number`);
+        // Tiền chênh (thay %): optional, số hữu hạn. Xem src/utils/laminationFilm.js filmRate().
+        for (const k of ['extra', 'extraCost']) {
+            if (f[k] != null && (typeof f[k] !== 'number' || !Number.isFinite(f[k])))
+                errors.push(`${p}.${k}: phải là number`);
+        }
     });
 }
 

@@ -343,6 +343,8 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
                         <option value="none">Không bồi</option>
                         <option value="yes">Bồi 2 lớp</option>
                         <option value="3_lop">Bồi 3 lớp (có tờ giấy ở giữa)</option>
+                        <option value="keo_2_lop">Bồi keo 2 mặt – 2 lớp (1 tấm keo)</option>
+                        <option value="keo_3_lop">Bồi keo 2 mặt – 3 lớp (2 tấm keo)</option>
                     </select>
                     {params.mountingType !== 'none' && (
                         <p className="mt-1 text-xs text-yellow-400">

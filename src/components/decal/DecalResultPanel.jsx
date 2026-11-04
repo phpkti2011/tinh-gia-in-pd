@@ -727,7 +727,6 @@ export default function DecalResultPanel({ result, params, config, isCalculating
                         films={config?.laminationFilms}
                         value={params?.laminationFilm}
                         onChange={onChange}
-                        showPercent={false}
                     />
                 </div>
                 <ComparisonPriceTable

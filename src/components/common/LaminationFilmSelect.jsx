@@ -8,17 +8,10 @@ import { getLaminationFilms } from '../../utils/laminationFilm';
 //
 // Chỉ render khi đã bật cán màng; caller tự lo điều kiện đó.
 //
-// `showPercent=false` giấu hậu tố "(+400%)" sau tên màng — dùng cho ô chọn nằm
-// trong bảng KẾT QUẢ (khách nhìn thấy), nơi % phụ thu là thông tin nội bộ.
-// Các ô nằm trong bảng NHẬP LIỆU vẫn hiện % để nhân viên biết mình chọn gì.
-export default function LaminationFilmSelect({
-    id,
-    label = 'Loại màng',
-    films,
-    value,
-    onChange,
-    showPercent = true,
-}) {
+// Chỉ hiện TÊN màng, không kèm phụ thu: phụ thu đã chuyển sang tiền chênh (đơn vị khác
+// nhau theo module) và màng cũ còn % chỉ là trạng thái chờ admin nhập tiền — hiện "(+300%)"
+// sau tên vừa gây hiểu lầm vừa lộ thông tin nội bộ.
+export default function LaminationFilmSelect({ id, label = 'Loại màng', films, value, onChange }) {
     const list = getLaminationFilms(films);
     const unset = !value;
     return (
@@ -35,7 +28,6 @@ export default function LaminationFilmSelect({
                 {list.map((f) => (
                     <option key={f.id} value={f.id}>
                         {f.name}
-                        {showPercent && f.percent ? ` (+${f.percent}%)` : ''}
                     </option>
                 ))}
             </select>

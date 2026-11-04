@@ -196,7 +196,9 @@ export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel 
                 </div>
 
                 <LaminationFilmSettings
+                    ktsSync
                     films={localConfig.LAMINATION_FILMS}
+                    extraLabel="đ/trang A4, mỗi mặt cán"
                     onChange={(next) =>
                         updateConfig((c) => {
                             c.LAMINATION_FILMS = next;

@@ -7,8 +7,23 @@
 // KHÔNG đổi behavior.
 
 import { calculateFinishingCost } from './pricing.js';
-import { filmMultiplier } from '../../../utils/laminationFilm.js';
+import {
+    filmMultiplier,
+    filmRate,
+    filmUsesExtra,
+    findLaminationFilm,
+} from '../../../utils/laminationFilm.js';
 import { resolvePlastic, plasticLabel } from '../../../utils/plasticLamination.js';
+import { tapeSheetsPerSet, tapeMountingConfig } from './mounting.js';
+
+// Bồi keo 2 mặt — GIÁ VỐN mỗi bộ (1 tờ in): mỗi tấm keo tính như cán màng 1 mặt
+// (đ/m dài theo chiều cao tờ in) + tiền chênh vốn đ/m dài. Giá báo khách ở quote.js.
+export function calculateTapeMountingCostPerSheet(pressH, mountingType, config) {
+    const tapes = tapeSheetsPerSet(mountingType);
+    if (tapes === 0) return 0;
+    const perMeter = config.LAMINATION_CONFIG.PRICE_PER_METER;
+    return (pressH / 100) * (perMeter + tapeMountingConfig(config).extraCost) * tapes;
+}
 
 // Cán màng (lamination)
 export function calculateLamination(
@@ -27,12 +42,14 @@ export function calculateLamination(
             warning = `KHÔNG THỂ CÁN MÀNG (Vùng in ${actualPrintW.toFixed(1)}cm > rộng màng ${config.LAMINATION_CONFIG.WIDTH}cm)`;
             cost = 0;
         } else {
-            // Loại màng nhân vào GIÁ VỐN cán màng (giá báo khách nhân ở quote.js).
-            cost =
-                (pressH / 100) *
-                config.LAMINATION_CONFIG.PRICE_PER_METER *
-                sides *
-                filmMultiplier(config.LAMINATION_FILMS, laminationFilm);
+            // Loại màng điều chỉnh GIÁ VỐN cán màng (giá báo khách ở quote.js).
+            // Màng có tiền chênh: + `extraCost` đ/m dài màng mỗi mặt. Màng còn % cũ:
+            // nhân hệ số, giữ nguyên thứ tự phép nhân cũ.
+            const films = config.LAMINATION_FILMS;
+            const perMeter = config.LAMINATION_CONFIG.PRICE_PER_METER;
+            cost = filmUsesExtra(findLaminationFilm(films, laminationFilm))
+                ? (pressH / 100) * filmRate(films, laminationFilm, perMeter, 'extraCost') * sides
+                : (pressH / 100) * perMeter * sides * filmMultiplier(films, laminationFilm);
             if (Math.abs(actualPrintW - config.LAMINATION_CONFIG.WIDTH) < 0.01) {
                 warning = `Lưu ý: Vùng in ${actualPrintW.toFixed(1)}cm bằng rộng màng, dễ bị hụt.`;
             }

@@ -16,6 +16,63 @@
 
 export const RELEASE_NOTES = [
     {
+        id: '2026-11-03-kts-boi-keo-2-mat',
+        date: '2026-11-03',
+        title: 'In KTS khổ nhỏ: thêm kiểu bồi keo 2 mặt',
+        items: [
+            'Ô "Bồi thành phẩm" có thêm 2 kiểu: "Bồi keo 2 mặt – 2 lớp" (dán 1 tấm keo) và "Bồi keo 2 mặt – 3 lớp" (dán 2 tấm keo).',
+            'Mỗi tấm keo tính như cán màng 1 mặt theo trang A4 của tờ in, cộng thêm tiền chênh do admin nhập. Ví dụ 50 tờ in khổ A4, giá cán 1.000đ/trang, chênh 500đ/trang thì bồi keo 2 lớp là 75.000đ, 3 lớp là 150.000đ.',
+            'Bồi keo không tính bảng công bồi 2 lớp / 3 lớp. Số tờ in và tờ giấy trắng vẫn đếm như bồi thường.',
+            'Admin nhập tiền chênh báo khách (đ/trang A4) và chênh giá vốn (đ/m dài) trong Cài Đặt → Giá Bồi Thành Phẩm → Bồi keo 2 mặt. Chưa nhập thì chênh = 0, tức là bằng đúng giá cán màng.',
+        ],
+    },
+    {
+        id: '2026-11-03-kts-in-nguyen-to',
+        date: '2026-11-03',
+        title: 'In KTS khổ nhỏ: tự thử in nguyên tờ giấy lớn',
+        items: [
+            'Trước đây khổ giấy "Tùy chọn" hơi hẹp (ví dụ giấy 32 × 44 cm, thành phẩm 30 × 42 cm) báo không tính được, vì không có khổ tờ in cố định nào cắt ra từ giấy đó mà chứa vừa thành phẩm.',
+            'Nay nếu tờ giấy lớn vừa khổ máy in thì phần mềm thử luôn phương án in nguyên tờ (không cắt), lề in tính như tờ in thường.',
+            'Giấy khổ chuẩn 65 × 86, 79 × 109… quá rộng so với máy nên không đổi gì.',
+        ],
+    },
+    {
+        id: '2026-11-02-mang-can-tien-chenh',
+        date: '2026-11-02',
+        title: 'Loại màng cán: phụ thu bằng tiền chênh thay vì %',
+        items: [
+            'Màng đặc biệt (7 màu, kim tuyến, nhung…) giờ tính = giá cán Mờ/Bóng + một khoản chênh cố định. Ví dụ 100 trang A4 cán Mờ 100.000đ, màng 7 màu chênh 1.000đ/trang thì ra 200.000đ.',
+            'Trước đây tính theo %, nên đơn ít trang bị đội giá rất cao còn đơn nhiều trang gần như không thu thêm. Nay đơn ít hay nhiều đều chênh đúng một khoản như nhau trên mỗi trang (hoặc mỗi tờ / mỗi cái, tuỳ module).',
+            'Áp cho In KTS khổ nhỏ, Catalogue, Sổ lò xo và Decal. Tờ rơi và Decal nhãn giá rẻ chỉ dùng màng Mờ/Bóng.',
+            'Loại màng nào CHƯA nhập tiền chênh thì vẫn tính theo % cũ, giá không đổi. Admin vào Cài Đặt của từng module, nhập tiền chênh cho từng loại màng. Ở In KTS có thêm ô chênh giá vốn (đ/m dài màng).',
+            'Catalogue, Sổ lò xo và Decal lấy bảng màng và tiền chênh theo In KTS khổ nhỏ: Cài Đặt của 3 module này có nút "Lấy giá màng theo In KTS" để thêm màng còn thiếu và điền tiền chênh, bấm Lưu để áp dụng. Catalogue chưa lưu bảng giá riêng nên tự có sẵn bảng này.',
+            'Decal (cả tem lẻ lẫn bế demi): tiền chênh màng đặc biệt nhập cho 1 trang A4, hệ thống tự nhân với số A4 của khổ tờ in theo bảng giống In KTS (tờ 33 x 35 = 1,5 A4; 33 x 48 = 2,4 A4). Mờ/Bóng không đổi.',
+            'Tờ rơi và Decal nhãn giá rẻ chỉ có màng Mờ/Bóng, không có màng đặc biệt.',
+        ],
+    },
+    {
+        id: '2026-11-02-lich-kho-chuan',
+        date: '2026-11-02',
+        title: 'Mới: Tính Giá Lịch Khổ Chuẩn',
+        items: [
+            'Trang chủ có thêm ô "Tính Giá Lịch Khổ Chuẩn" cho lịch để bàn 2026 khổ có sẵn: 17×15, 15×17, 20×15, 25×15 và 25×15 loại 2 phần.',
+            'Chọn quy cách bằng hình, nhập số lượng là ra giá trọn gói theo bảng giá (từ 1 đến 3.000 cuốn). Trên 3.000 cuốn phần mềm báo "cần báo giá riêng".',
+            'Số lượng nằm giữa hai bậc giá: dưới 70% khoảng giữa thì tính đơn giá bậc dưới, từ 70% trở lên tính đơn giá bậc trên.',
+            'Có nút Sao chép báo giá, xem được cả bảng giá theo số lượng. Nếu đặt nhiều hơn lại rẻ hơn (ví dụ 90 cuốn đắt hơn 100 cuốn) thì có dòng nhắc để gợi ý khách.',
+            'Bảng giá này cố định trong phần mềm, chưa sửa được ở Cài Đặt. Muốn đổi giá hãy báo admin.',
+        ],
+    },
+    {
+        id: '2026-10-20-kho-lon-gia-toi-thieu-ca-don',
+        date: '2026-10-20',
+        title: 'In Khổ Lớn: đơn nhiều tấm nhỏ không còn bị tính giá tối thiểu từng tấm',
+        items: [
+            'Trước đây "Giá in tối thiểu" và "Giá cán màng tối thiểu" bị áp cho TỪNG tấm rồi nhân số lượng, nên đơn nhiều tấm nhỏ (ví dụ 80 tấm 2×80 cm) ra giá cao gấp nhiều lần so với diện tích thật.',
+            'Nay khổ lớn tính theo tổng mét vuông của cả đơn (mét dùng + mét dư không in vẫn tính). Giá tối thiểu chỉ áp MỘT lần cho cả đơn; nếu tổng chưa tới mức tối thiểu thì có thêm dòng "Bù cho đủ giá tối thiểu".',
+            'Đơn lớn không đổi giá. Chỉ đơn có nhiều tấm nhỏ là rẻ đi. Bảng giá trong Cài Đặt không phải nhập lại.',
+        ],
+    },
+    {
         id: '2026-10-16-so-lo-xo-bia-kinh',
         date: '2026-10-16',
         title: 'Sổ lò xo: nhập số trang bìa, bìa kính tính theo khổ',

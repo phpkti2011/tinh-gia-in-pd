@@ -10,7 +10,44 @@
 // Pure functions: chỉ phụ thuộc input + config object.
 
 import { findPrintSheet } from './layout.js';
-import { filmMultiplier } from '../../../utils/laminationFilm.js';
+import {
+    filmExtra,
+    filmPerUnit,
+    filmUsesExtra,
+    findLaminationFilm,
+} from '../../../utils/laminationFilm.js';
+
+// Quy đổi khổ tờ in ra TRANG A4 — giống In KTS khổ nhỏ (bảng nhập tay, KHÔNG tính theo diện tích).
+// Tiền chênh màng đặc biệt nhập theo 1 trang A4 nên tem lẻ và bế demi đều nhân với số A4 này.
+//   1. Khổ in khớp trong printSheetSizes có `a4Factor` > 0 (admin nhập ở Cài Đặt) ⇒ dùng.
+//   2. Không có ⇒ bảng theo cạnh dài (cm) sao từ A4_CONVERSION_RATES của In KTS;
+//      ngoài bảng mà > 21,2 cm ⇒ cạnh dài / 21 (như computeA4Factor của In KTS); còn lại ⇒ 1.
+// Ví dụ khổ 33 x 35 cm = 1,5 A4.
+const A4_BY_LONG_SIDE_CM = { 33: 1.5, 35: 1.5, 43: 2, 48: 2.4 };
+export function resolveA4Factor(config, sheetW, sheetH) {
+    const f = Number(findPrintSheet(config, sheetW, sheetH)?.a4Factor);
+    if (Number.isFinite(f) && f > 0) return f;
+    const longCm = Math.max(Number(sheetW) || 0, Number(sheetH) || 0) / 10;
+    if (!(longCm > 0)) return 1;
+    const fixed = A4_BY_LONG_SIDE_CM[Number(longCm.toFixed(1))];
+    if (fixed) return fixed;
+    return longCm > 21.2 ? longCm / 21 : 1;
+}
+
+// Tiền cán màng của `sheets` tờ in (dùng cho CẢ tem lẻ và bế demi), tách 2 phần:
+//   base  = phần nhân % khổ giấy như cũ (giá cán gốc; hoặc cả khoản nếu màng còn tính % cũ)
+//   extra = tiền chênh × số A4 của khổ tờ in — quy đổi A4 đã gồm khổ lớn nên KHÔNG nhân thêm
+//           % khổ giấy (Mờ/Bóng chênh 0 và màng còn tính % cũ không bị ảnh hưởng)
+function laminationParts(config, filmId, sheets, sheetW, sheetH) {
+    const films = config.laminationFilms;
+    if (!filmUsesExtra(findLaminationFilm(films, filmId))) {
+        return { base: filmPerUnit(films, filmId, sheets, config.laminationCost), extra: 0 };
+    }
+    return {
+        base: sheets * config.laminationCost,
+        extra: sheets * filmExtra(films, filmId) * resolveA4Factor(config, sheetW, sheetH),
+    };
+}
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -108,14 +145,18 @@ export function calculateSingleStickerPrice(
 
     const printCost = calculateProgressivePrice(sheets, config);
     const materialCost = (config.decalCosts[decalType] || 0) * sheets;
-    // Loại màng nhân vào tiền cán. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
-    const lamCost = isLaminated
-        ? config.laminationCost * sheets * filmMultiplier(config.laminationFilms, filmId)
-        : 0;
+    // Loại màng điều chỉnh tiền cán: tiền chênh (đ/trang A4) × số A4 của khổ tờ in, cộng sau
+    // % khổ giấy; màng % cũ nhân hệ số. Chưa chọn ⇒ giá y như trước.
+    const lam = isLaminated
+        ? laminationParts(config, filmId, sheets, sheetW, sheetH)
+        : { base: 0, extra: 0 };
 
     const percent = getSizePercent(config, sheetW, sheetH);
     const contentPercent = getContentSurchargePercent(quantity, contentCount, config);
-    return (printCost + materialCost + lamCost) * (1 + percent / 100) * (1 + contentPercent / 100);
+    return (
+        ((printCost + materialCost + lam.base) * (1 + percent / 100) + lam.extra) *
+        (1 + contentPercent / 100)
+    );
 }
 
 // Calculate price for sticker sheet mode — NGUYÊN TỜ + % khổ + phụ phí bế demi
@@ -138,12 +179,12 @@ export function calculateSheetPrice(
 
     const printCost = calculateProgressivePrice(numPrintSheets, config);
     const materialCost = (config.decalCosts[decalType] || 0) * numPrintSheets;
-    const lamCost = isLaminated
-        ? config.laminationCost * numPrintSheets * filmMultiplier(config.laminationFilms, filmId)
-        : 0;
+    const lam = isLaminated
+        ? laminationParts(config, filmId, numPrintSheets, sheetW, sheetH)
+        : { base: 0, extra: 0 };
 
     const percent = getSizePercent(config, sheetW, sheetH);
-    const sheetPrice = (printCost + materialCost + lamCost) * (1 + percent / 100);
+    const sheetPrice = (printCost + materialCost + lam.base) * (1 + percent / 100) + lam.extra;
 
     const surchargePercent = getDemiCutSurchargePercent(stickersOnSheet, config);
     const contentPercent = getContentSurchargePercent(quantity, contentCount, config);

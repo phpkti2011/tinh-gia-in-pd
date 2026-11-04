@@ -1,4 +1,4 @@
-import { filmMultiplier } from '../../../utils/laminationFilm.js';
+import { filmPerUnit } from '../../../utils/laminationFilm.js';
 
 // Decal nhãn GIÁ RẺ — engine (dựng từ bảng giá Google Sheets).
 //
@@ -37,12 +37,16 @@ export function calculateCheapDecal(params, config) {
 
     const materialFee =
         material === 'plastic' ? ((c.materialSurcharge?.[size.id] ?? 0) || 0) * quantity : 0;
-    // Loại màng nhân vào tiền cán màng. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    // Loại màng điều chỉnh tiền cán màng: tiền chênh cộng đ/cái, màng % cũ nhân hệ số.
+    // Chưa chọn ⇒ giá y như trước.
     const laminationFilm = params.laminationFilm || '';
     const laminationFee = lamination
-        ? ((c.laminationSurcharge?.[size.id] ?? 0) || 0) *
-          quantity *
-          filmMultiplier(c.laminationFilms, laminationFilm)
+        ? filmPerUnit(
+              c.laminationFilms,
+              laminationFilm,
+              quantity,
+              (c.laminationSurcharge?.[size.id] ?? 0) || 0
+          )
         : 0;
     const rushFee = rush ? c.rushFee?.[quantity] || 0 : 0;
 

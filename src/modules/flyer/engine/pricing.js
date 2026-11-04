@@ -1,4 +1,4 @@
-import { filmMultiplier } from '../../../utils/laminationFilm.js';
+import { filmPerUnit } from '../../../utils/laminationFilm.js';
 
 // Tính giá TỜ RƠI — engine (port từ module-tinh-gia-to-roi-pd-tone-web.html).
 //
@@ -103,13 +103,17 @@ export function calculateFlyer(params, config) {
 
     const contentFee =
         contents === '3-5' ? printSubtotal * ((c.contentSurchargePct || 0) / 100) : 0;
-    // Loại màng (mờ/bóng/soft-touch…) nhân vào tiền cán màng. Chưa chọn hoặc
-    // config cũ chưa có danh sách ⇒ hệ số 1 ⇒ giá y như trước.
+    // Loại màng (mờ/bóng/7 màu…) điều chỉnh tiền cán màng: tiền chênh cộng đ/tờ (mọi khổ),
+    // màng % cũ nhân hệ số. Chưa chọn / config cũ ⇒ giá y như trước.
     const laminationFilm = params.laminationFilm || '';
-    const filmMult = filmMultiplier(c.laminationFilms, laminationFilm);
     const laminationFee =
         lamination === 'yes'
-            ? ((c.laminationSurcharge?.[size.id] ?? 0) || 0) * quantity * filmMult
+            ? filmPerUnit(
+                  c.laminationFilms,
+                  laminationFilm,
+                  quantity,
+                  (c.laminationSurcharge?.[size.id] ?? 0) || 0
+              )
             : 0;
 
     const creasing = calculateCreasingFee(quantity, creasingType, c.creasing || {});

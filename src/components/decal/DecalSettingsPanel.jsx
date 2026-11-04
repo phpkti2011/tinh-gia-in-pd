@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import LaminationFilmSettings from '../common/LaminationFilmSettings';
+import { resolveA4Factor } from '../../modules/decal/engine/pricing';
 import { useCloudSave } from '../common/useCloudSave';
 import SaveStatusBanner from '../common/SaveStatusBanner';
 import { saveDecalConfig } from '../../utils/configStorage';
@@ -81,7 +82,14 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
             ...prev,
             printSheetSizes: [
                 ...(prev.printSheetSizes || []),
-                { label: 'Kho moi', w: 330, h: 330, percent: 0, minPriceByMaterial: {} },
+                {
+                    label: 'Kho moi',
+                    w: 330,
+                    h: 330,
+                    percent: 0,
+                    a4Factor: 1.5,
+                    minPriceByMaterial: {},
+                },
             ],
         }));
     const delPrintSheet = (idx) =>
@@ -232,6 +240,9 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
                 <LaminationFilmSettings
                     title="Loai mang can"
                     films={localConfig.laminationFilms}
+                    ktsSync
+                    extraLabel="đ/trang A4"
+                    extraHint="Chênh nhập cho 1 trang A4; tự nhân với cột Quy doi A4 của khổ tờ in (33 x 35 = 1,5 A4) ở cả tem lẻ lẫn bế demi, và không nhân thêm % khổ giấy."
                     onChange={(next) =>
                         setLocalConfig((prev) => ({ ...prev, laminationFilms: next }))
                     }
@@ -334,7 +345,7 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
                     <div className="space-y-2">
                         {(localConfig.printSheetSizes || []).map((s, idx) => (
                             <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                                <div className="col-span-4">
+                                <div className="col-span-3">
                                     <label className={labelCls}>Ten kho</label>
                                     <input
                                         type="text"
@@ -366,10 +377,19 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
                                         inputCls
                                     )}
                                 </div>
-                                <div className="col-span-2">
+                                <div className="col-span-2 relative">
+                                    <label className={labelCls}>Quy doi A4</label>
+                                    {fi(
+                                        `printSheetSizes.${idx}.a4Factor`,
+                                        s.a4Factor ?? resolveA4Factor(localConfig, s.w, s.h),
+                                        '0.1',
+                                        inputCls
+                                    )}
+                                </div>
+                                <div className="col-span-1">
                                     <button
                                         onClick={() => delPrintSheet(idx)}
-                                        className="w-full px-2 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
+                                        className="w-full px-1 py-2 rounded text-sm font-medium bg-red-600 hover:bg-red-700 text-white"
                                     >
                                         Xoa
                                     </button>

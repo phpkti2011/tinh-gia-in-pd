@@ -73,10 +73,12 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
             // 1.8.0: thêm PAPER_REFERENCE_CONFIG.minPrintOnlyPricePerPage (mức giá sàn
             // thứ hai, cho giấy không tính theo ram).
             // 1.9.0: thêm GLUING_TYPES (dán thành phẩm, nhiều dòng dán mỗi đơn).
+            // 1.10.0: LAMINATION_FILMS[*].extra/extraCost (tiền chênh loại màng).
+            // 1.11.0: TAPE_MOUNTING_CONFIG (bồi keo 2 mặt).
             expect(mockSaveSupabase).toHaveBeenCalledWith(
                 'small-print',
                 VALID_PRINT,
-                '1.9.0',
+                '1.11.0',
                 null
             );
         });
@@ -84,7 +86,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('decalConfig → decal + DECAL_CONFIG_SCHEMA_VERSION', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 3 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.8.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.10.0', null);
         });
 
         it('largePrintConfig → large-print + LARGE_PRINT_CONFIG_SCHEMA_VERSION', async () => {
@@ -162,7 +164,7 @@ describe('P2-05.4: saveConfigToCloud — Supabase save path', () => {
         it('Save thành công gọi Supabase với đúng 4 RPC args', async () => {
             mockSaveSupabase.mockResolvedValue({ ok: true, error: null, newVersion: 1 });
             await saveConfigToCloud('decalConfig', VALID_DECAL);
-            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.8.0', null);
+            expect(mockSaveSupabase).toHaveBeenCalledWith('decal', VALID_DECAL, '1.10.0', null);
         });
     });
 

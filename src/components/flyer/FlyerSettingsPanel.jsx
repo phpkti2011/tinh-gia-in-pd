@@ -226,6 +226,8 @@ export default function FlyerSettingsPanel({ config, onSave, onSaved, onCancel }
 
                 <LaminationFilmSettings
                     films={c.laminationFilms}
+                    extraLabel="đ/tờ"
+                    extraHint="Một mức chênh dùng chung cho mọi khổ (A5, A4…)."
                     onChange={(next) =>
                         updateConfig((cfg) => {
                             cfg.FLYER_CONFIG.laminationFilms = next;

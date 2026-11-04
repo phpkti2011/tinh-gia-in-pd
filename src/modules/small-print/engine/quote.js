@@ -8,9 +8,20 @@
 // plasticLamination?, gluing? } — key thiếu coi như 0 (test cũ truyền object 3 key).
 
 import { calculateVariableDataCost, calculatePrintContentSurcharge } from './pricing.js';
-import { filmMultiplier } from '../../../utils/laminationFilm.js';
+import {
+    filmExtra,
+    filmMultiplier,
+    filmUsesExtra,
+    findLaminationFilm,
+} from '../../../utils/laminationFilm.js';
 import { computeA4Factor } from './a4.js';
-import { printedSheetsPerSet, blankSheetsPerSet } from './mounting.js';
+import {
+    printedSheetsPerSet,
+    blankSheetsPerSet,
+    isTapeMounting,
+    tapeSheetsPerSet,
+    tapeMountingConfig,
+} from './mounting.js';
 import { blankSheetCostPerCutSheet } from './paper.js';
 
 export function calculateCustomerQuote(
@@ -31,9 +42,30 @@ export function calculateCustomerQuote(
         printColorMode,
     } = params;
 
-    // Loại màng (mờ/bóng/soft-touch…) nhân vào GIÁ BÁO KHÁCH của cán màng.
-    // Giá vốn nhân ở engine/finishing.js. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
-    const lamFilmMult = filmMultiplier(config.LAMINATION_FILMS, laminationFilm);
+    // Loại màng (mờ/bóng/7 màu…) điều chỉnh GIÁ BÁO KHÁCH của cán màng; giá vốn ở
+    // engine/finishing.js. Chưa chọn ⇒ giá y như trước.
+    //   - Màng có tiền chênh (`extra`, đ/trang A4/mặt): cộng chênh × trang × mặt, ở cả bậc
+    //     per_page lẫn trọn gói — chênh không đổi theo bậc.
+    //   - Màng còn % cũ: nhân hệ số, GIỮ NGUYÊN thứ tự phép nhân cũ để số không lệch 1 ULP.
+    const films = config.LAMINATION_FILMS;
+    const filmExtraMode = filmUsesExtra(findLaminationFilm(films, laminationFilm));
+    const lamFilmMult = filmMultiplier(films, laminationFilm);
+    const lamExtra = filmExtra(films, laminationFilm);
+    const lamPerPage = (pages, rate, sides) =>
+        filmExtraMode ? pages * (rate + lamExtra) * sides : pages * rate * sides * lamFilmMult;
+    const lamPackage = (pages, lump, sides) =>
+        filmExtraMode ? (lump + lamExtra * pages) * sides : lump * sides * lamFilmMult;
+
+    // Bồi keo 2 mặt: mỗi tấm keo = cán màng 1 mặt trên tờ in (cùng bậc giá với cán màng)
+    // + tiền chênh đ/trang A4. Không phụ thuộc loại màng / có cán màng hay không.
+    const tapeSheets = tapeSheetsPerSet(params.mountingType);
+    const tapeCfg = tapeMountingConfig(config);
+    // Guard tapeSheets > 0: bậc giá của module khác có thể thiếu `laminate` ⇒ 0 × NaN.
+    const tapePerPage = (pages, rate) =>
+        tapeSheets > 0 ? pages * (rate + tapeCfg.extra) * tapeSheets : 0;
+    const tapePackage = (pages, lump) =>
+        tapeSheets > 0 ? (lump + tapeCfg.extra * pages) * tapeSheets : 0;
+    let totalTapeMountingCost = 0;
 
     // Giá in 1 màu ĐEN = giá 4 màu × (1 − %), sàn theo đ/trang (chỉ per_page).
     const oneColorDisc = (config.ONE_COLOR_DISCOUNT_PERCENT ?? 0) / 100;
@@ -94,12 +126,16 @@ export function calculateCustomerQuote(
                 const rate = printRateFor(tier.print, true);
                 totalPrintCost = totalA4Pages * rate;
                 totalLaminationCost = hasLam
-                    ? physicalA4Pages * tier.laminate * lamSides * lamFilmMult
+                    ? lamPerPage(physicalA4Pages, tier.laminate, lamSides)
                     : 0;
+                totalTapeMountingCost = tapePerPage(physicalA4Pages, tier.laminate);
                 unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             } else {
                 totalPrintCost = printRateFor(tier.print, false);
-                totalLaminationCost = hasLam ? tier.laminate * lamSides * lamFilmMult : 0;
+                totalLaminationCost = hasLam
+                    ? lamPackage(physicalA4Pages, tier.laminate, lamSides)
+                    : 0;
+                totalTapeMountingCost = tapePackage(physicalA4Pages, tier.laminate);
                 unitPriceText = `Trọn gói${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
             }
         } else {
@@ -129,12 +165,16 @@ export function calculateCustomerQuote(
             const rate = printRateFor(tier.print, true);
             totalPrintCost = totalA4Pages * rate;
             totalLaminationCost = hasLam2
-                ? physicalA4Pages * tier.laminate * lamSides2 * lamFilmMult
+                ? lamPerPage(physicalA4Pages, tier.laminate, lamSides2)
                 : 0;
+            totalTapeMountingCost = tapePerPage(physicalA4Pages, tier.laminate);
             unitPriceText = `${rate.toLocaleString('vi-VN')}đ/trang${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         } else {
             totalPrintCost = printRateFor(tier.print, false);
-            totalLaminationCost = hasLam2 ? tier.laminate * lamSides2 * lamFilmMult : 0;
+            totalLaminationCost = hasLam2
+                ? lamPackage(physicalA4Pages, tier.laminate, lamSides2)
+                : 0;
+            totalTapeMountingCost = tapePackage(physicalA4Pages, tier.laminate);
             unitPriceText = `Trọn gói${printColorMode === '1color' ? ' (1 màu đen)' : ''}`;
         }
     }
@@ -155,7 +195,9 @@ export function calculateCustomerQuote(
     // không đi qua bảng giá theo trang in như giấy in.
     let totalBlankPaperCost = 0;
     if (blanksPerSet > 0) {
-        const mountCfg = config.MOUNTING_CONFIG?.[params.mountingType] || {};
+        const mountCfg = isTapeMounting(params.mountingType)
+            ? tapeCfg
+            : config.MOUNTING_CONFIG?.[params.mountingType] || {};
         const blankPaper = (config.PAPER_STOCK_DATA || [])[params.blankPaperType];
         const perCutSheet = blankSheetCostPerCutSheet(
             blankPaper,
@@ -232,6 +274,7 @@ export function calculateCustomerQuote(
         finishingCustomerPrices.holePunching +
         finishingCustomerPrices.creasing +
         (finishingCustomerPrices.mounting || 0) +
+        totalTapeMountingCost +
         (finishingCustomerPrices.customFinishing || 0) +
         (finishingCustomerPrices.plasticLamination || 0) +
         // Dán thành phẩm (1.9.0) — tổng mọi dòng dán. Luôn `|| 0`: catalogue, lò xo, lịch,
@@ -264,6 +307,8 @@ export function calculateCustomerQuote(
         holePunchingCustomerPrice: finishingCustomerPrices.holePunching || 0,
         creasingCustomerPrice: finishingCustomerPrices.creasing || 0,
         mountingCustomerPrice: finishingCustomerPrices.mounting || 0,
+        totalTapeMountingCost,
+        tapeSheetsPerSet: tapeSheets,
         totalBlankPaperCost,
         blanksPerSet,
         sheetsPerSet,

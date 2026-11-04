@@ -14,7 +14,7 @@ import {
     calculateImposition,
     calculateMaxCuttableSheetsLayout,
 } from './layout.js';
-import { calculateLamination } from './finishing.js';
+import { calculateLamination, calculateTapeMountingCostPerSheet } from './finishing.js';
 import { largeSheetPrice as calcLargeSheetPrice, blankSheetCostPerCutSheet } from './paper.js';
 import { printedSheetsPerSet, blankSheetsPerSet } from './mounting.js';
 import { perSheetVariants } from '../config/paperStock.js';
@@ -96,8 +96,13 @@ export function processSheet(
         config,
         params.laminationFilm
     );
+    const tapeCostPerSheet = calculateTapeMountingCostPerSheet(pressH, params.mountingType, config);
     const totalCostPerSheet =
-        paperCostPerSheet + blankPaperCostPerSheet + printCostPerSheet + lamination.costPerSheet;
+        paperCostPerSheet +
+        blankPaperCostPerSheet +
+        printCostPerSheet +
+        lamination.costPerSheet +
+        tapeCostPerSheet;
 
     const costPerProduct = productsPerSheet > 0 ? totalCostPerSheet / productsPerSheet : Infinity;
     // paperCostPerProduct CỐ Ý chỉ gồm giấy IN (đã nhân theo số mặt): panel dùng nó cho
@@ -128,6 +133,7 @@ export function processSheet(
         printCostPerProduct,
         laminationCostPerProduct: lamination.costPerProduct,
         laminationWarning: lamination.warning,
+        tapeMountingCostPerProduct: productsPerSheet > 0 ? tapeCostPerSheet / productsPerSheet : 0,
         costPerProduct,
         debug: {
             paperCostPerSheet,
@@ -136,6 +142,7 @@ export function processSheet(
             blanksPerSet,
             printCostPerSheet,
             laminationCostPerSheet: lamination.costPerSheet,
+            tapeCostPerSheet,
             totalCostPerSheet,
             costPerProduct,
         },
@@ -443,6 +450,23 @@ export function calculatePaperOptions(
         config.COMMON_SHEET_SIZES.forEach((sheet) => {
             sheetsToProcess.push({ w: sheet.w, h: sheet.h, isCustom: false });
         });
+        // In NGUYÊN TỜ giấy lớn: danh sách khổ tờ in cố định có thể không có khổ nào cắt
+        // được từ giấy lớn mà vẫn chứa thành phẩm (vd giấy 32×44 hẹp hơn tờ 32,2×42,8 đúng
+        // 2 mm ⇒ trước đây 0 phương án). Thử luôn chính tờ giấy lớn làm tờ in; processSheet
+        // tự loại nếu vượt khổ máy (thử cả 2 hướng ở vòng dưới) và tính lề như tờ in thường.
+        // Trùng một khổ đã có trong danh sách thì bỏ qua để không nhân đôi phương án.
+        const lw = Number(largeSheet.w);
+        const lh = Number(largeSheet.h);
+        const same = (a, b) => Math.abs(a - b) < 0.01;
+        if (
+            lw > 0 &&
+            lh > 0 &&
+            !sheetsToProcess.some(
+                (s) => (same(s.w, lw) && same(s.h, lh)) || (same(s.w, lh) && same(s.h, lw))
+            )
+        ) {
+            sheetsToProcess.push({ w: lw, h: lh, isCustom: false });
+        }
     }
 
     for (const printerKey in config.PRINTER_CONFIG) {

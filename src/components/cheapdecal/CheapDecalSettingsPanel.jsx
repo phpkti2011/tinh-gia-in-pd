@@ -236,6 +236,7 @@ export default function CheapDecalSettingsPanel({ config, onSave, onSaved, onCan
 
                 <LaminationFilmSettings
                     films={c.laminationFilms}
+                    extraLabel="đ/cái nhãn"
                     onChange={(next) =>
                         updateConfig((cfg) => {
                             cfg.CHEAP_DECAL_CONFIG.laminationFilms = next;

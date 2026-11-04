@@ -136,7 +136,9 @@ export default function CatalogueSettingsPanel({ config, onSave, onSaved, onCanc
                 </div>
 
                 <LaminationFilmSettings
+                    ktsSync
                     films={localConfig.LAMINATION_FILMS}
+                    extraLabel="đ/trang A4"
                     onChange={(next) =>
                         updateConfig((c) => {
                             c.LAMINATION_FILMS = next;

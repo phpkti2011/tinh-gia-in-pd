@@ -47,6 +47,10 @@ function validatePrintSheet(size, index, errors) {
             errors.push(`${prefix}.${f}: phải là number`);
         }
     }
+    // a4Factor (optional): số trang A4 quy đổi cho 1 tờ in khổ này — nhân vào tiền chênh màng.
+    if (size.a4Factor != null && (typeof size.a4Factor !== 'number' || !(size.a4Factor > 0))) {
+        errors.push(`${prefix}.a4Factor: phải là number > 0`);
+    }
     // minPriceByMaterial (optional): object {<tên decal>: number}.
     if (size.minPriceByMaterial != null) {
         if (typeof size.minPriceByMaterial !== 'object' || Array.isArray(size.minPriceByMaterial)) {
@@ -153,6 +157,11 @@ function validateLaminationFilms(list, prefix, errors) {
         if (typeof f.name !== 'string') errors.push(`${p}.name: phải là string`);
         if (f.percent != null && typeof f.percent !== 'number')
             errors.push(`${p}.percent: phải là number`);
+        // Tiền chênh (thay %): optional, số hữu hạn. Xem src/utils/laminationFilm.js filmRate().
+        for (const k of ['extra', 'extraCost']) {
+            if (f[k] != null && (typeof f[k] !== 'number' || !Number.isFinite(f[k])))
+                errors.push(`${p}.${k}: phải là number`);
+        }
     });
 }
 

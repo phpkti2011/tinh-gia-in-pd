@@ -4,6 +4,8 @@
 // nạp printConfig lúc chạy và gộp SPIRAL_CONFIG vào cho engine.
 
 // Dải bậc theo SỐ CUỐN dùng chung (bìa lót seed theo dải này, price 0 để admin điền).
+import { ktsLaminationFilms } from '../../../utils/laminationFilm.js';
+
 const COIL_RANGES = [
     [1, 5],
     [6, 10],
@@ -32,10 +34,7 @@ export const SPIRAL_DEFAULT_CONFIG = {
     // Loại màng cán — admin sửa được, chọn RIÊNG cho bìa và ruột.
     // Mờ/Bóng 0% ⇒ không đổi giá. Đặt TOP-LEVEL để merge backward-compat
     // (merge chỉ 1 cấp) không nuốt mất; App.jsx phải forward vào engineConfig.
-    LAMINATION_FILMS: [
-        { id: 'mo', name: 'Mờ', percent: 0 },
-        { id: 'bong', name: 'Bóng', percent: 0 },
-    ],
+    LAMINATION_FILMS: ktsLaminationFilms(),
     // Đóng lò xo (coil binding).
     SPIRAL_CONFIG: {
         costPerBook: 800, // giá vốn lò xo / cuốn (phẳng)

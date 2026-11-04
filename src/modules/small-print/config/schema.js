@@ -263,6 +263,11 @@ function validateLaminationFilms(list, prefix, errors) {
         if (typeof f.name !== 'string') errors.push(`${p}.name: phải là string`);
         if (f.percent != null && typeof f.percent !== 'number')
             errors.push(`${p}.percent: phải là number`);
+        // Tiền chênh (thay %): optional, số hữu hạn. Xem src/utils/laminationFilm.js filmRate().
+        for (const k of ['extra', 'extraCost']) {
+            if (f[k] != null && (typeof f[k] !== 'number' || !Number.isFinite(f[k])))
+                errors.push(`${p}.${k}: phải là number`);
+        }
     });
 }
 
@@ -488,6 +493,18 @@ export function validateSmallPrintConfig(config) {
     if (config.GLUING_TYPES != null) {
         for (const message of validateGluingTypes(config.GLUING_TYPES))
             errors.push(`GLUING_TYPES: ${message}`);
+    }
+    // Bồi keo 2 mặt (1.11.0) — OPTIONAL, cùng lý do như GLUING_TYPES.
+    if (config.TAPE_MOUNTING_CONFIG != null) {
+        const t = config.TAPE_MOUNTING_CONFIG;
+        if (typeof t !== 'object' || Array.isArray(t)) {
+            errors.push('TAPE_MOUNTING_CONFIG: phải là object');
+        } else {
+            for (const f of ['extra', 'extraCost', 'blankPaperMarkup']) {
+                if (t[f] != null && !(typeof t[f] === 'number' && Number.isFinite(t[f])))
+                    errors.push(`TAPE_MOUNTING_CONFIG.${f}: phải là number`);
+            }
+        }
     }
 
     return { isValid: errors.length === 0, errors };

@@ -61,12 +61,14 @@ const optionTexts = (select) => Array.from(select.options).map((o) => o.textCont
 afterEach(() => cleanup());
 
 describe('Lựa chọn kiểu bồi', () => {
-    it('có đủ 3 dòng: không bồi / 2 lớp / 3 lớp', () => {
+    it('có đủ 5 dòng: không bồi / 2 lớp / 3 lớp / keo 2 mặt 2 lớp / keo 2 mặt 3 lớp', () => {
         renderPanel();
         const sel = screen.getByLabelText('Bồi thành phẩm');
-        expect(optionValues(sel)).toEqual(['none', 'yes', '3_lop']);
+        expect(optionValues(sel)).toEqual(['none', 'yes', '3_lop', 'keo_2_lop', 'keo_3_lop']);
         expect(optionTexts(sel)[1]).toMatch(/2 lớp/);
         expect(optionTexts(sel)[2]).toMatch(/3 lớp/);
+        expect(optionTexts(sel)[3]).toMatch(/keo 2 mặt.*2 lớp/);
+        expect(optionTexts(sel)[4]).toMatch(/keo 2 mặt.*3 lớp/);
     });
 });
 

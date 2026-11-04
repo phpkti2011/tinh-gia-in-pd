@@ -407,3 +407,27 @@ Khoá bởi `tests/golden/small-print.gluing.test.js`,
 `tests/components/ResultPanel.gluing.test.jsx`,
 `tests/components/SettingsPanel.gluing.test.jsx` và ca dán trong
 `tests/golden/job-spec.test.js`.
+
+## Loại màng cán — tiền chênh thay cho % (config v1.10.0)
+
+Mỗi phần tử `LAMINATION_FILMS` thêm hai field tuỳ chọn: `extra` (chênh báo khách, đ/trang A4
+vật lý mỗi mặt cán) và `extraCost` (chênh giá vốn, đ/m dài màng mỗi mặt). Có `extra` thì
+giá màng = giá Mờ/Bóng của bậc + chênh, `percent` bị bỏ qua. Thiếu `extra` thì vẫn nhân
+`1 + percent/100` như cũ — giá đang chạy không đổi lúc deploy.
+
+Lý do: `CUSTOMER_PRICE_TIERS[].laminate` đi từ 8.000đ/trang (1–5 trang) xuống 250đ/trang
+(1.001+). % nhân theo bậc nên màng đặc biệt đội giá rất cao ở đơn nhỏ và gần như không
+thu thêm ở đơn lớn. Chênh thật giữa hai loại màng gần như cố định theo diện tích.
+
+- Bậc per_page: `trang × (laminate + extra) × số mặt cán`.
+- Bậc trọn gói: `(laminate + extra × trang) × số mặt cán` — chênh vẫn theo số trang thật.
+- Giá vốn (`finishing.js`): `(cao tờ/100) × (PRICE_PER_METER + extraCost) × số mặt`.
+  Chế độ tiền chênh mà thiếu `extraCost` ⇒ chênh vốn 0.
+- Nhánh % cũ giữ nguyên thứ tự phép nhân cũ để golden test khoá giá không lệch 1 ULP.
+
+Catalogue, Sổ lò xo, Tờ rơi (đ/tờ), Decal nhãn giá rẻ (đ/cái), Decal (đ/tờ in, trước % khổ)
+dùng cùng cơ chế qua `filmRate` / `filmPerUnit` / `filmLumpSum` trong
+`src/utils/laminationFilm.js`; mỗi module giữ danh sách màng riêng.
+
+Khoá bởi `tests/golden/lamination-film.extra.test.js` (chênh không đổi theo bậc ở cả 6
+module) và `tests/components/LaminationFilmSettings.test.jsx`.

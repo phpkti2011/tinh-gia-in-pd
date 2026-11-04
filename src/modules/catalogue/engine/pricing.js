@@ -16,7 +16,7 @@ import {
     calculateDecalOptions,
     calculateCustomerQuote,
 } from '../../small-print/engine/index.js';
-import { filmMultiplier, filmName } from '../../../utils/laminationFilm.js';
+import { filmLumpSum, filmName, filmPerUnit } from '../../../utils/laminationFilm.js';
 
 const err = (message) => ({ error: message });
 
@@ -214,17 +214,20 @@ export function calculateCatalogue(params, config) {
 
     // 5. Cán màng (cán 1 mặt/tờ), dùng đơn giá cán của bậc giá gộp.
     const lamRate = tier.laminate || 0;
-    // Loại màng chọn riêng bìa/ruột. Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    // Loại màng chọn riêng bìa/ruột. Chưa chọn ⇒ giá y như trước. Màng có tiền chênh
+    // cộng chênh × số trang A4 của phần đó (cả bậc trọn gói); màng % cũ nhân hệ số.
     const films = config.LAMINATION_FILMS;
-    const coverMult = filmMultiplier(films, params.coverLamFilm);
-    const innerMult = filmMultiplier(films, params.innerLamFilm);
+    const coverId = params.coverLamFilm;
+    const innerId = params.innerLamFilm;
     const coverFilm = filmName(films, params.coverLamFilm);
     const innerFilm = filmName(films, params.innerLamFilm);
     const lamOf = (film) => (film ? ` ${film.toLowerCase()}` : '');
     let lamCost = 0;
     let lamLabel = 'Không cán';
     if (laminationMode === 'cover1') {
-        lamCost = (isPerPage ? coverA4 * lamRate : lamRate) * coverMult;
+        lamCost = isPerPage
+            ? filmPerUnit(films, coverId, coverA4, lamRate)
+            : filmLumpSum(films, coverId, lamRate, coverA4);
         lamLabel = `Bìa cán${lamOf(coverFilm)} 1 mặt`;
     } else if (laminationMode === 'all') {
         // Chế độ 'all' trước đây gộp totalA4Pages — tách bìa/ruột để áp được 2
@@ -232,8 +235,10 @@ export function calculateCatalogue(params, config) {
         // Nhánh trọn gói (không per_page) chia đôi phí phẳng theo đúng cách
         // spiral đang làm: mỗi phần một nửa, nhân hệ số màng của phần đó.
         lamCost = isPerPage
-            ? coverA4 * lamRate * coverMult + innerA4 * lamRate * innerMult
-            : (lamRate / 2) * coverMult + (lamRate / 2) * innerMult;
+            ? filmPerUnit(films, coverId, coverA4, lamRate) +
+              filmPerUnit(films, innerId, innerA4, lamRate)
+            : filmLumpSum(films, coverId, lamRate / 2, coverA4) +
+              filmLumpSum(films, innerId, lamRate / 2, innerA4);
         lamLabel = `Cán toàn bộ (bìa${lamOf(coverFilm) || ' —'}, ruột${lamOf(innerFilm) || ' —'})`;
     }
 

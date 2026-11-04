@@ -10,7 +10,13 @@ import {
     calculateDecalOptions,
     calculateCustomerQuote,
 } from '../../small-print/engine/index.js';
-import { filmMultiplier, filmName } from '../../../utils/laminationFilm.js';
+import {
+    filmExtra,
+    filmMultiplier,
+    filmName,
+    filmUsesExtra,
+    findLaminationFilm,
+} from '../../../utils/laminationFilm.js';
 import { DEFAULT_LINER_SIZE_FACTORS } from '../config/defaultConfig.js';
 
 const err = (message) => ({ error: message });
@@ -272,12 +278,18 @@ export function calculateSpiral(params, config) {
     const lamRate = tier.laminate || 0;
     // per_page: theo trang A4 × số mặt cán. package: phí phẳng × số mặt cán.
     // Loại màng chọn riêng bìa/ruột, nhân vào phần tiền cán tương ứng.
-    // Chưa chọn ⇒ hệ số 1 ⇒ giá y như trước.
+    // Chưa chọn ⇒ giá y như trước. Màng có tiền chênh: + chênh × trang A4 × số mặt của
+    // phần đó, ở cả bậc trọn gói. Màng % cũ: nhân hệ số (giữ thứ tự nhân cũ).
     const films = config.LAMINATION_FILMS;
-    const coverMult = filmMultiplier(films, params.coverLamFilm);
-    const innerMult = filmMultiplier(films, params.innerLamFilm);
-    const coverLamCost = (isPerPage ? coverA4 * coverLam : coverLam) * lamRate * coverMult;
-    const innerLamCost = (isPerPage ? innerA4 * innerLam : innerLam) * lamRate * innerMult;
+    const partLam = (filmId, a4, sides) => {
+        if (filmUsesExtra(findLaminationFilm(films, filmId))) {
+            const extra = filmExtra(films, filmId);
+            return isPerPage ? a4 * sides * (lamRate + extra) : sides * (lamRate + extra * a4);
+        }
+        return (isPerPage ? a4 * sides : sides) * lamRate * filmMultiplier(films, filmId);
+    };
+    const coverLamCost = partLam(params.coverLamFilm, coverA4, coverLam);
+    const innerLamCost = partLam(params.innerLamFilm, innerA4, innerLam);
     const lamCost = coverLamCost + innerLamCost;
     const coverFilm = filmName(films, params.coverLamFilm);
     const innerFilm = filmName(films, params.innerLamFilm);

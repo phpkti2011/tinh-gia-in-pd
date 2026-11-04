@@ -7,6 +7,8 @@
 // Schema validation: xem src/modules/decal/config/schema.js
 // Version metadata:  xem src/modules/decal/config/version.js
 
+import { ktsLaminationFilms } from '../../../utils/laminationFilm.js';
+
 export const DECAL_DEFAULT_CONFIG = {
     basePrintWidth: 330,
     basePrintHeight: 330,
@@ -17,10 +19,7 @@ export const DECAL_DEFAULT_CONFIG = {
     stickerGap: 2,
     laminationCost: 500,
     // Loại màng cán — admin thêm/sửa được. Mờ/Bóng 0% ⇒ không đổi giá.
-    laminationFilms: [
-        { id: 'mo', name: 'Mờ', percent: 0 },
-        { id: 'bong', name: 'Bóng', percent: 0 },
-    ],
+    laminationFilms: ktsLaminationFilms(),
     // Máy bế — mỗi máy có vùng bế (lề) riêng 4 cạnh (trên/dưới/trái/phải, mm) → số tem/tờ khác →
     // số tờ & giá khác. Avitech vùng bế rộng hơn Graptech → lề NHỎ hơn → nhiều tem/tờ hơn.
     // Số mẫu (tách đôi tổng lề cũ) — admin chỉnh số thật từng cạnh trong Cài đặt.
@@ -38,6 +37,7 @@ export const DECAL_DEFAULT_CONFIG = {
             w: 330,
             h: 330,
             percent: 0,
+            a4Factor: 1.5,
             minPriceByMaterial: {},
             unavailableMaterials: [],
         },
@@ -46,6 +46,7 @@ export const DECAL_DEFAULT_CONFIG = {
             w: 330,
             h: 480,
             percent: 0,
+            a4Factor: 2.4,
             minPriceByMaterial: {},
             unavailableMaterials: [],
         },
