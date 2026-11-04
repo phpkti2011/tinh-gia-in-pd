@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 const CalendarModule = React.lazy(() => import('./modules/calendar/ui/CalendarModule'));
 const EnvelopeModule = React.lazy(() => import('./modules/envelope/ui/EnvelopeModule'));
+const StandardCalendarModule = React.lazy(
+    () => import('./modules/standard-calendar/ui/StandardCalendarModule')
+);
 import InputPanel from './components/smallprint/InputPanel';
 import ResultPanel from './components/smallprint/ResultPanel';
 import SettingsPanel from './components/smallprint/SettingsPanel';
@@ -178,6 +181,13 @@ const MODULES = [
         border: 'hover:border-lime-500',
         titleHover: 'group-hover:text-lime-400',
         link: 'text-lime-400',
+    },
+    {
+        id: 'standardcalendar',
+        icon: '🗓️',
+        border: 'hover:border-emerald-500',
+        titleHover: 'group-hover:text-emerald-400',
+        link: 'text-emerald-400',
     },
 ];
 
@@ -2101,6 +2111,14 @@ function App() {
                     fallback={<p className="p-8 text-gray-300">Đang mở module bao thư…</p>}
                 >
                     <EnvelopeModule onBack={home} heading={heading('envelope')} />
+                </React.Suspense>
+            );
+        if (currentModule === 'standardcalendar')
+            return (
+                <React.Suspense
+                    fallback={<p className="p-8 text-gray-300">Đang mở module lịch khổ chuẩn…</p>}
+                >
+                    <StandardCalendarModule onBack={home} heading={heading('standardcalendar')} />
                 </React.Suspense>
             );
         return (

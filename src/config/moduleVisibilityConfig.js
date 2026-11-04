@@ -69,6 +69,10 @@ export const MODULE_VISIBILITY_DEFAULT_LABELS = {
         title: 'Tính Giá Bao Thư',
         desc: 'Nhập kích thước, nắp, tay dán và kiểu khuôn → khổ trải. Giấy + in KTS khổ nhỏ, bế, dán, ép nhũ; xem hình khổ trải.',
     },
+    standardcalendar: {
+        title: 'Tính Giá Lịch Khổ Chuẩn',
+        desc: 'Lịch để bàn 2026 khổ chuẩn (17×15, 20×15, 25×15, 2 phần). Chọn quy cách bằng hình, nhập số lượng → giá trọn gói theo bảng giá.',
+    },
 };
 
 // Các field nhãn được phép sửa + giới hạn độ dài (dùng cho maxLength của input và validator).
@@ -90,6 +94,7 @@ export const MODULE_VISIBILITY_DEFAULT_CONFIG = {
         cheapdecal: true,
         calendar: true,
         envelope: true,
+        standardcalendar: true,
     },
     MODULE_LABELS: MODULE_VISIBILITY_DEFAULT_LABELS,
 };
