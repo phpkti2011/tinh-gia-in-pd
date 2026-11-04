@@ -532,7 +532,7 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
                     <h3 className={sectionTitle}>Giá Tối Thiểu</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="relative">
-                            <label className={labelCls}>Giá in tối thiểu</label>
+                            <label className={labelCls}>Giá in tối thiểu (cả đơn)</label>
                             <NumInput
                                 configValue={localConfig.MIN_PRINT_PRICE || 0}
                                 step={1000}
@@ -546,7 +546,7 @@ export default function LPSettingsPanel({ config, onSave, onSaved, onCancel }) {
                             <span className="absolute right-3 top-[32px] text-gray-500">đ</span>
                         </div>
                         <div className="relative">
-                            <label className={labelCls}>Giá cán màng tối thiểu</label>
+                            <label className={labelCls}>Giá cán màng tối thiểu (cả đơn)</label>
                             <NumInput
                                 configValue={localConfig.MIN_LAMINATION_PRICE || 0}
                                 step={1000}

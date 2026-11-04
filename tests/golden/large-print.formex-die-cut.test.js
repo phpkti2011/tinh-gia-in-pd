@@ -5,7 +5,7 @@
 //   - CHỈ tính khi đơn CÓ bồi Formex (formexTypeKey !== 'none' sau deny-list).
 //   - Có 1 giá sàn chung MIN_FORMEX_DIE_CUT_PRICE cho mọi hình dạng.
 //   - Tiền gộp vào finishingCost/finishingDesc (KHÔNG thêm field return mới —
-//     object vẫn 14 key, xem large-print.finishing-rules.test.js).
+//     object vẫn 15 key (14 + minChargeTopUp), xem large-print.finishing-rules.test.js).
 //
 // Bảng giá mặc định (limits 5/20 m² cho mọi hình):
 //   tron      60.000 / 40.000 / 25.000
@@ -195,8 +195,8 @@ describe('Không ảnh hưởng phần còn lại của engine', () => {
         expect(on.rollWidth).toBe(off.rollWidth);
     });
 
-    it('object trả về vẫn đúng 14 key (cố ý gộp vào finishingCost)', () => {
-        expect(Object.keys(calculateLargePrint(cut({ quantity: 8 }), config)).length).toBe(14);
+    it('object trả về vẫn đúng 15 key (cố ý gộp vào finishingCost)', () => {
+        expect(Object.keys(calculateLargePrint(cut({ quantity: 8 }), config)).length).toBe(15);
     });
 
     it('Bế demi giữ nguyên công thức cũ sau khi tách progressiveSqmCost', () => {

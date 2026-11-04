@@ -8,6 +8,10 @@
 
 // Tính giá 1 tấm trên 1 khổ cuộn cụ thể, trả về chi tiết.
 // printDiscount (0–1): giảm % ĐƠN GIÁ IN theo bậc tổng diện tích (không giảm vật liệu/cán).
+//
+// Giá THEO M² thuần (m² in × đơn giá + m² dư × giá vật liệu + m² cán × giá cán), KHÔNG chặn
+// sàn ở đây. MIN_PRINT_PRICE / MIN_LAMINATION_PRICE là sàn của CẢ ĐƠN — pricing.js áp 1 lần
+// trên tổng (printCostRaw / lamCostRaw), nếu không thì 80 tấm nhỏ bị nhân 80 lần sàn.
 export function calcItemOnRoll(
     printW,
     printH,
@@ -19,9 +23,9 @@ export function calcItemOnRoll(
     const printedArea = printW * printH;
     const unprintedArea = (rollOption.width - printW) * printH;
     const rate = rollOption.printPrice * (1 - (printDiscount || 0));
-    const printCost = Math.max(printedArea * rate, config.MIN_PRINT_PRICE || 0);
+    const printCostRaw = printedArea * rate;
     const materialWasteCost = unprintedArea * rollOption.materialPrice;
-    let totalCost = printCost + materialWasteCost;
+    let lamCostRaw = 0;
     let laminationChoice = null;
     if (laminationTypeKey && laminationTypeKey !== 'none') {
         const lamType = config.LAMINATION_TYPES[laminationTypeKey];
@@ -31,12 +35,21 @@ export function calcItemOnRoll(
                 .sort((a, b) => a.price - b.price);
             if (validLam.length > 0) {
                 const lo = validLam[0];
-                totalCost += Math.max(printedArea * lo.price, config.MIN_LAMINATION_PRICE || 0);
+                lamCostRaw = printedArea * lo.price;
                 laminationChoice = { width: lo.width, price: lo.price };
             }
         }
     }
-    return { totalCost, printedArea, unprintedArea, laminationChoice };
+    const totalCost = printCostRaw + materialWasteCost + lamCostRaw;
+    return {
+        totalCost,
+        printCostRaw,
+        materialWasteCost,
+        lamCostRaw,
+        printedArea,
+        unprintedArea,
+        laminationChoice,
+    };
 }
 
 // Tối ưu 1 item (W, H) trên 1 khổ cuộn: thử cả 2 hướng xoay.

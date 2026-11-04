@@ -21,11 +21,14 @@
 //      - Cộng tất cả items → rollTotalCost
 //      - Cộng formex/finishing/standee → totalWithExtras
 //      - Pick roll có totalWithExtras NHỎ NHẤT
-//   7. Cost per item:
-//      - printCost = max(printedArea × printPrice, MIN_PRINT_PRICE 30k)
+//   7. Cost per item (THEO M² thuần, không sàn từng tấm):
+//      - printCost = printedArea × printPrice
 //      - materialWasteCost = (rollWidth − printW) × printH × materialPrice
-//      - lamCost = max(printedArea × lamPrice, MIN_LAMINATION_PRICE 15k)
+//      - lamCost = printedArea × lamPrice
 //        (lam dùng khổ lam hẹp nhất ≥ printW)
+//   8. Sàn MIN_PRINT_PRICE 30k / MIN_LAMINATION_PRICE 15k là sàn của CẢ ĐƠN: pricing.js bù
+//      phần thiếu 1 lần trên tổng (minChargeTopUp). Các case dưới đều đủ lớn nên không bù;
+//      luật sàn có test riêng ở large-print.min-price.test.js.
 
 import { describe, it, expect } from 'vitest';
 import { calculateLargePrint } from '../../src/utils/largePrintCalculator.js';
@@ -209,7 +212,7 @@ describe('Case C: PP có keo 150×400cm + formex 5mm (tier discount 10%)', () =>
 //   wM=2.0, hM=1.0, area=2m²
 //   Hiflex rolls: 1.0, 1.2, 1.5, 1.8
 //   Roll 1.0: upright fail (2.0>1.0); rotated OK (1.0<=1.0):
-//     calcItemOnRoll(1.0, 2.0): printArea=2, unprint=0, printCost=max(2×120k,30k)=240k, waste=0
+//     calcItemOnRoll(1.0, 2.0): printArea=2, unprint=0, printCost=2×120k=240k (> sàn 30k), waste=0
 //     total = 240.000 (no waste!)
 //   Các roll lớn hơn: có waste → đắt hơn → 1.0 thắng
 //   Finishing:
@@ -305,7 +308,7 @@ describe('Case E: Hiflex 60×160cm + standee cuộn 60×160', () => {
 //   grandTotalArea = 0.5×1×2 + 1×2×1 = 3m²
 //   Hiflex roll 1.0:
 //     item1: rotated OK (1.0<=1.0) → calcItemOnRoll(1.0, 0.5): printArea=0.5,
-//       unprint=0, printCost=max(60k,30k)=60k, waste=0 → 60.000 × 2 = 120.000
+//       unprint=0, printCost=0.5×120k=60k, waste=0 → 60.000 × 2 = 120.000
 //     item2: upright OK → calcItemOnRoll(1.0, 2.0): printArea=2, unprint=0,
 //       printCost=240k, waste=0 → 240.000
 //     rollTotalCost = 360.000
@@ -405,7 +408,7 @@ describe('Case G: input invalid → return null', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // CASE H — Structural check: output có đủ các trường quan trọng
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Case H: structural — output có đủ 14 trường public', () => {
+describe('Case H: structural — output có đủ 15 trường public', () => {
     const params = {
         width: 100,
         height: 100,
@@ -421,7 +424,7 @@ describe('Case H: structural — output có đủ 14 trường public', () => {
     };
     const r = calculateLargePrint(params, config);
 
-    it('có đủ 14 trường public top-level', () => {
+    it('có đủ 15 trường public top-level', () => {
         const expectedKeys = [
             'totalCost',
             'rollWidth',
@@ -429,6 +432,7 @@ describe('Case H: structural — output có đủ 14 trường public', () => {
             'totalPanels',
             'formexCost',
             'printDiscount',
+            'minChargeTopUp',
             'standeeCost',
             'standeeName',
             'finishingCost',
@@ -441,7 +445,7 @@ describe('Case H: structural — output có đủ 14 trường public', () => {
         for (const key of expectedKeys) {
             expect(r).toHaveProperty(key);
         }
-        expect(Object.keys(r).length).toBe(14);
+        expect(Object.keys(r).length).toBe(15);
     });
 
     it('itemDetails entry có đủ 11 trường', () => {

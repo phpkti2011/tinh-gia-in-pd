@@ -86,6 +86,7 @@ export default function LPResultPanel({
         printedArea,
         unprintedArea,
         laminationChoice,
+        minChargeTopUp = 0,
     } = result;
 
     const cm = (m) => (m * 100).toFixed(1);
@@ -245,6 +246,16 @@ export default function LPResultPanel({
                         </tbody>
                     </table>
                 </div>
+                {minChargeTopUp > 0 && (
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                        <span className="text-gray-400">
+                            Bù cho đủ giá tối thiểu (in / cán tối thiểu tính 1 lần cho cả đơn)
+                        </span>
+                        <span className="font-semibold">
+                            {minChargeTopUp.toLocaleString('vi-VN', { maximumFractionDigits: 0 })}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Sơ đồ trên cuộn */}

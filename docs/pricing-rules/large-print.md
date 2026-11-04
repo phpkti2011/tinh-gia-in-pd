@@ -12,6 +12,22 @@ Các nhóm logic cần tách:
 7. Tổng tiền và đơn giá.
 ```
 
+## Giá in / cán tối thiểu — tính 1 lần cho CẢ ĐƠN
+
+Khổ lớn tính theo **m²**: m² in × đơn giá in + m² dư không in (vẫn phải mua trọn khổ cuộn)
+× giá vật liệu + m² in × giá cán. `calcItemOnRoll` chỉ trả giá **theo m² thuần**, không
+chặn sàn.
+
+`MIN_PRINT_PRICE` / `MIN_LAMINATION_PRICE` là sàn của **cả đơn**: `pricing.js` cộng tổng
+tiền in và tổng tiền cán của mọi tấm (đã nhân số lượng), rồi chỉ bù phần thiếu **đúng 1 lần**
+(`printTopUp`, `lamTopUp`, gộp `minChargeTopUp`; UI hiện dòng "Bù cho đủ giá tối thiểu").
+Cán màng chỉ bị sàn khi đơn có cán. Chặn sàn từng tấm là sai vì sẽ nhân sàn theo số tấm.
+
+Ví dụ: 80 tấm 2×80 cm, Decal Sữa, Màng Mờ, bế demi (sàn 30k/15k mặc định): in
+1,28 m² × 150.000 = 192.000 · vật liệu dư 0,432 m² × 35.000 = 15.120 · cán 1,28 × 20.000
+= 25.600 · bế demi 102.400 ⇒ ≈ 335.120 đ, không bù. Trước đây mỗi tấm bị nâng lên sàn nên
+ra ≈ 3,7 triệu (sàn mặc định) hoặc 6,1 triệu (sàn 50k/25k trên Supabase).
+
 ## Thành phẩm theo vật liệu (config v1.2.0)
 
 Không phải vật liệu nào cũng làm được mọi kiểu thành phẩm (ví dụ có xưởng không cán

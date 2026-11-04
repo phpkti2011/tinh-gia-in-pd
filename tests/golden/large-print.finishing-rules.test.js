@@ -11,7 +11,7 @@
 //   4. Chặn cả 4 op còn lại → formexCost/finishingCost về 0
 //   5. Backward-compat: xoá hẳn field → hành vi cũ (vẫn tính tiền)
 //   6. Id lạ → không throw, giá không đổi
-//   7. Object trả về vẫn đúng 14 key
+//   7. Object trả về vẫn đúng 15 key (14 cũ + minChargeTopUp)
 //
 // structuredClone (KHÔNG dùng JSON round-trip) để giữ Infinity ở
 // FORMEX_DISCOUNT_TIERS[last].maxArea.
@@ -148,8 +148,8 @@ describe('Admin bỏ tick "Cán màng" cho Bạt Hiflex', () => {
         expect(r.finishingDesc).toMatch(/8 khoen/);
     });
 
-    it('object trả về vẫn đúng 14 key', () => {
-        expect(Object.keys(calculateLargePrint(params, blocked)).length).toBe(14);
+    it('object trả về vẫn đúng 15 key', () => {
+        expect(Object.keys(calculateLargePrint(params, blocked)).length).toBe(15);
     });
 
     it('CHƯA tick thì vẫn tính tiền cán màng như thường', () => {

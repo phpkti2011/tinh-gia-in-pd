@@ -14,7 +14,9 @@
 //   6. standeeCost = lookup từ STANDEE_OPTIONS bằng standeeKey
 //   7. Loop MATERIAL_TYPES[materialTypeKey].options (các khổ cuộn):
 //      - Tối ưu từng item (thử 2 hướng xoay, chọn rẻ hơn)
-//      - Cộng tất cả items → rollTotalCost
+//      - Cộng tất cả items → rollTotalCost (theo m², chưa sàn)
+//      - Sàn in / cán (MIN_PRINT_PRICE, MIN_LAMINATION_PRICE) là sàn của CẢ ĐƠN: bù 1 lần
+//        trên tổng, không nhân theo số tấm
 //      - Cộng formex/finishing/standee → totalWithExtras
 //      - Pick roll có totalWithExtras NHỎ NHẤT
 //   8. Trả về object 14 fields hoặc null
@@ -121,10 +123,17 @@ export function calculateLargePrint(params, config) {
     // Thử từng khổ cuộn, tối ưu tất cả items
     let bestRollResult = null;
 
+    const minPrint = config.MIN_PRINT_PRICE || 0;
+    const minLam = config.MIN_LAMINATION_PRICE || 0;
+
     for (const rollOption of materialType.options) {
         let rollTotalCost = 0;
         let rollItemDetails = [];
         let allFit = true;
+        // Tổng THEO M² của cả đơn — sàn in/cán áp 1 lần trên các tổng này (xem layout.js).
+        let printRawSum = 0;
+        let lamRawSum = 0;
+        let hasLam = false;
 
         for (const item of items) {
             const wM = item.width / 100,
@@ -146,6 +155,9 @@ export function calculateLargePrint(params, config) {
 
             const itemTotal = optimized.totalCost * qty;
             rollTotalCost += itemTotal;
+            printRawSum += optimized.printCostRaw * qty;
+            lamRawSum += optimized.lamCostRaw * qty;
+            if (optimized.laminationChoice) hasLam = true;
             rollItemDetails.push({
                 originalW: item.width,
                 originalH: item.height,
@@ -163,11 +175,18 @@ export function calculateLargePrint(params, config) {
 
         if (!allFit) continue;
 
+        // Sàn của CẢ ĐƠN: nếu tổng tiền in / cán theo m² chưa tới sàn thì bù cho đủ, đúng 1 lần.
+        const printTopUp = Math.max(0, minPrint - printRawSum);
+        const lamTopUp = hasLam ? Math.max(0, minLam - lamRawSum) : 0;
+        rollTotalCost += printTopUp + lamTopUp;
+
         // Cộng formex, finishing, standee
         const totalWithExtras = rollTotalCost + formexCost + finishing.cost + standeeCost;
 
         if (!bestRollResult || totalWithExtras < bestRollResult.totalCost) {
             bestRollResult = {
+                printTopUp,
+                lamTopUp,
                 totalCost: totalWithExtras,
                 rollWidth: rollOption.width,
                 rollPrintPrice: rollOption.printPrice,
@@ -196,6 +215,8 @@ export function calculateLargePrint(params, config) {
         totalPanels,
         formexCost,
         printDiscount,
+        // Phần bù cho đủ giá tối thiểu của cả đơn (0 nếu tổng m² đã vượt sàn).
+        minChargeTopUp: bestRollResult.printTopUp + bestRollResult.lamTopUp,
         standeeCost,
         standeeName,
         finishingCost: finishing.cost,
