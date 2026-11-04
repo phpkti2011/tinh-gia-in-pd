@@ -5,10 +5,11 @@
 // Ràng buộc chốt ở đây:
 //   - Lần đầu mở trên một máy (chưa có dấu đã-xem) thì KHÔNG hiện bảng changelog.
 //   - Đóng bảng rồi thì ghi nhớ, mở lại không hiện nữa.
+//   - Không đóng thì bảng tự tắt sau 24 giờ kể từ lúc máy này thấy nó lần đầu.
 //   - localStorage ném (chế độ riêng tư) cũng KHÔNG được làm vỡ app.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 
 const mockUpdate = { newRelease: null, hasUpdate: false };
 
@@ -129,6 +130,73 @@ describe('WhatsNewNotice — bảng "Đã cập nhật"', () => {
         cleanup();
         render(<WhatsNewNotice />);
         expect(screen.queryByTestId('whats-new')).toBeNull();
+    });
+
+    describe('tự tắt sau 24 giờ', () => {
+        const SHOWN_AT_KEY = 'whatsNewShownAt';
+        const OLD = () => RELEASE_NOTES[RELEASE_NOTES.length - 1].id;
+        const H = 60 * 60 * 1000;
+        const NOW = new Date('2026-10-06T08:00:00Z').getTime();
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            vi.setSystemTime(NOW);
+        });
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        const markShown = (hoursAgo, id = CURRENT_RELEASE.id) =>
+            localStorage.setItem(SHOWN_AT_KEY, JSON.stringify({ id, at: NOW - hoursAgo * H }));
+
+        it('lần đầu thấy → ghi lại mốc thời gian và hiện', () => {
+            localStorage.setItem(SEEN_KEY, OLD());
+            render(<WhatsNewNotice />);
+
+            expect(screen.getByTestId('whats-new')).toBeTruthy();
+            expect(JSON.parse(localStorage.getItem(SHOWN_AT_KEY))).toEqual({
+                id: CURRENT_RELEASE.id,
+                at: NOW,
+            });
+        });
+
+        it('mới thấy 23 giờ trước → vẫn hiện', () => {
+            localStorage.setItem(SEEN_KEY, OLD());
+            markShown(23);
+            render(<WhatsNewNotice />);
+            expect(screen.getByTestId('whats-new')).toBeTruthy();
+        });
+
+        it('đã thấy 25 giờ trước → không hiện, ghi nhận đã xem', () => {
+            localStorage.setItem(SEEN_KEY, OLD());
+            markShown(25);
+            render(<WhatsNewNotice />);
+
+            expect(screen.queryByTestId('whats-new')).toBeNull();
+            expect(localStorage.getItem(SEEN_KEY)).toBe(CURRENT_RELEASE.id);
+        });
+
+        it('đang hiện, tab mở qua mốc 24 giờ → tự biến mất', () => {
+            localStorage.setItem(SEEN_KEY, OLD());
+            markShown(23);
+            render(<WhatsNewNotice />);
+            expect(screen.getByTestId('whats-new')).toBeTruthy();
+
+            act(() => {
+                vi.advanceTimersByTime(1 * H + 1);
+            });
+            expect(screen.queryByTestId('whats-new')).toBeNull();
+            expect(localStorage.getItem(SEEN_KEY)).toBe(CURRENT_RELEASE.id);
+        });
+
+        it('mốc của bản khác → đồng hồ tính lại từ đầu', () => {
+            localStorage.setItem(SEEN_KEY, OLD());
+            markShown(30, 'ban-cu-khac');
+            render(<WhatsNewNotice />);
+
+            expect(screen.getByTestId('whats-new')).toBeTruthy();
+            expect(JSON.parse(localStorage.getItem(SHOWN_AT_KEY)).at).toBe(NOW);
+        });
     });
 
     it('localStorage ném → KHÔNG làm vỡ app', () => {

@@ -1,7 +1,8 @@
 // Hai chỗ báo cho người dùng biết về bản mới:
 //
 //   UpdateBanner    — băng dưới ĐÁY màn hình khi phát hiện bản mới trên tab đang mở.
-//   WhatsNewNotice  — bảng "Đã cập nhật" hiện MỘT LẦN sau khi đã tải lại.
+//   WhatsNewNotice  — bảng "Đã cập nhật" hiện sau khi đã tải lại, tối đa 24 giờ hoặc tới
+//                     khi bấm ✕ (cái nào tới trước).
 //
 // ⚠ VÌ SAO NEO Ở ĐÁY: In KTS khổ nhỏ và In Khổ Lớn đều đã có thanh dính
 // `fixed top-0 … z-50` (ResultPanel.jsx, LPResultPanel.jsx). Đặt băng này trên đỉnh là
@@ -15,6 +16,12 @@ import { CURRENT_RELEASE, RELEASE_NOTES } from '../../releaseNotes';
 import { useAppUpdate } from './useAppUpdate';
 
 const SEEN_KEY = 'lastSeenReleaseId';
+const SHOWN_AT_KEY = 'whatsNewShownAt';
+
+// Bảng "Đã cập nhật" tự tắt sau chừng này kể từ lúc máy này thấy nó lần đầu — không bắt
+// nhân viên phải bấm ✕, và không để nó nằm dài ở đầu mọi module nhiều ngày.
+// Không tính từ `date` của bản phát hành: nó chỉ có ngày, không có giờ.
+export const WHATS_NEW_TTL_MS = 24 * 60 * 60 * 1000;
 
 // localStorage ném được (chế độ riêng tư, chặn site data). Hỏng chỗ này chỉ là mất thông
 // báo — tuyệt đối không được làm vỡ cả app.
@@ -28,6 +35,23 @@ function readSeen() {
 function writeSeen(id) {
     try {
         localStorage.setItem(SEEN_KEY, id);
+    } catch {
+        /* bỏ qua */
+    }
+}
+
+// Lần đầu máy này thấy bảng của bản `id`, dạng mili-giây. Chưa có / sai bản / hỏng → null.
+function readShownAt(id) {
+    try {
+        const v = JSON.parse(localStorage.getItem(SHOWN_AT_KEY));
+        return v && v.id === id && Number.isFinite(v.at) ? v.at : null;
+    } catch {
+        return null;
+    }
+}
+function writeShownAt(id, at) {
+    try {
+        localStorage.setItem(SHOWN_AT_KEY, JSON.stringify({ id, at }));
     } catch {
         /* bỏ qua */
     }
@@ -99,7 +123,27 @@ export function WhatsNewNotice() {
             writeSeen(CURRENT_RELEASE.id);
             return;
         }
+
+        const now = Date.now();
+        let shownAt = readShownAt(CURRENT_RELEASE.id);
+        if (shownAt === null) {
+            shownAt = now;
+            writeShownAt(CURRENT_RELEASE.id, now);
+        }
+        const conLai = shownAt + WHATS_NEW_TTL_MS - now;
+        // Quá hạn: coi như đã xem, các lần mở sau rơi vào nhánh `seen === CURRENT_RELEASE.id`.
+        if (conLai <= 0) {
+            writeSeen(CURRENT_RELEASE.id);
+            return;
+        }
+
         setShown(releasesSince(seen));
+        // Tab mở suốt cả ngày vẫn phải tự tắt đúng hạn.
+        const timer = setTimeout(() => {
+            writeSeen(CURRENT_RELEASE.id);
+            setShown(null);
+        }, conLai);
+        return () => clearTimeout(timer);
     }, []);
 
     if (!shown || shown.length === 0) return null;
