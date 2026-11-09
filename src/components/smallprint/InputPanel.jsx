@@ -13,6 +13,16 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
         const { name, value, type, checked } = e.target;
         const newValue = type === 'checkbox' ? checked : value;
         onChange(name, newValue);
+        // Giấy mỹ thuật và giấy thường dùng HAI danh sách khổ khác nhau, mà
+        // `largeSheetSelector` lưu index vào danh sách đang dùng. Đổi qua lại giữa hai nhóm
+        // phải về khổ đầu — giữ index cũ thì hoặc vượt phạm vi (không ra phương án nào, dù ô
+        // chọn trông vẫn hợp lệ) hoặc âm thầm trỏ sang một khổ khác. Cùng nhóm thì giữ.
+        if (name === 'paperType') {
+            const papers = config.PAPER_STOCK_DATA || [];
+            const wasArt = papers[params.paperType]?.pricingModel === 'custom';
+            const isArt = papers[newValue]?.pricingModel === 'custom';
+            if (wasArt !== isArt) onChange('largeSheetSelector', '0');
+        }
     };
 
     // Ép kim — danh sách khuôn (mỗi khuôn: w, h, special, impressions). Cập nhật mảng
@@ -100,6 +110,14 @@ export default function InputPanel({ config, params, onChange, isAutoCalculating
             onChange('printSides', '1');
         }
     }, [isSidesDisabled, params.printSides, onChange]);
+
+    // Lưới an toàn cho cùng lỗi đó: index khổ không còn nằm trong danh sách hiện hành (admin
+    // xoá bớt khổ, hoặc quay về giấy in từ decal đang ẩn ô khổ) → engine không tìm thấy khổ
+    // và im lặng không ra phương án. Về khổ đầu cho khớp với những gì select hiển thị.
+    useEffect(() => {
+        if (!showLargeSheetGroup || sheetOptions.length === 0) return;
+        if (!sheetOptions[params.largeSheetSelector]) onChange('largeSheetSelector', '0');
+    }, [showLargeSheetGroup, sheetOptions.length, params.largeSheetSelector, onChange]);
 
     // Decal (sqm) và giấy khổ cố định (per_sheet) đi nhánh tính riêng, chưa hỗ trợ nhân
     // số tờ giấy khi bồi → reset về "không bồi" thay vì báo giá sai trong im lặng.
