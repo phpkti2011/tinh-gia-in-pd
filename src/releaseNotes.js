@@ -16,6 +16,16 @@
 
 export const RELEASE_NOTES = [
     {
+        id: '2026-11-09-mang-theo-in-kts',
+        date: '2026-11-09',
+        title: 'Giá màng của Decal, Sổ lò xo, Catalogue tự theo In KTS khổ nhỏ',
+        items: [
+            'Đổi giá màng ở In KTS khổ nhỏ thì Decal (tem lẻ và bế demi), Sổ lò xo và Catalogue tự lấy giá mới khi mở module, không phải vào Cài Đặt bấm lại.',
+            'Màng nào In KTS thêm mới cũng tự có mặt ở 3 module này.',
+            'Trong Cài Đặt của 3 module, màng trùng tên với In KTS hiện giá theo In KTS và bị khoá ô; muốn đổi giá thì sửa ở In KTS. Màng riêng của từng module vẫn sửa được như cũ.',
+        ],
+    },
+    {
         id: '2026-11-09-kts-boi-keo-cong-boi',
         date: '2026-11-09',
         title: 'In KTS khổ nhỏ: bồi keo 2 mặt tính thêm công bồi',

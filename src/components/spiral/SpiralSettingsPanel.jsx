@@ -66,7 +66,8 @@ const numCls =
     'bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white w-24 focus:outline-none focus:border-blue-500';
 const btnCls = 'px-3 py-1 rounded text-sm font-medium';
 
-export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel }) {
+// `ktsFilms`: bảng màng In KTS khổ nhỏ đang chạy — màng trùng tên lấy giá theo đó.
+export default function SpiralSettingsPanel({ config, ktsFilms, onSave, onSaved, onCancel }) {
     const [localConfig, setLocalConfig] = useState(() =>
         restoreInfinity(JSON.parse(JSON.stringify(config)))
     );
@@ -197,6 +198,7 @@ export default function SpiralSettingsPanel({ config, onSave, onSaved, onCancel 
 
                 <LaminationFilmSettings
                     ktsSync
+                    ktsFilms={ktsFilms}
                     films={localConfig.LAMINATION_FILMS}
                     extraLabel="đ/trang A4, mỗi mặt cán"
                     onChange={(next) =>

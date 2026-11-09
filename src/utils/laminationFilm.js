@@ -54,24 +54,41 @@ const normFilmName = (s) =>
         .trim()
         .toLowerCase();
 
-// Đồng bộ danh sách màng ĐANG CÓ của một module theo bảng In KTS (nút "Lấy theo In KTS" ở Cài Đặt):
+// Đồng bộ danh sách màng ĐANG CÓ của một module theo bảng màng In KTS khổ nhỏ:
 //   - màng trùng tên (không phân biệt hoa/thường) ⇒ GIỮ id + tên, chỉ ghi đè `extra` theo In KTS
 //     (id giữ nguyên để báo giá đã lưu không mất loại màng);
 //   - màng In KTS còn thiếu ⇒ thêm vào cuối;
 //   - màng riêng của module không có trong In KTS ⇒ để nguyên.
+// `source` là bảng màng In KTS ĐANG CHẠY (config small-print: LAMINATION_FILMS) để module
+// theo kịp mỗi khi admin đổi giá ở In KTS. Không truyền / rỗng ⇒ dùng bảng chuẩn KTS_LAMINATION_FILMS.
 // Không bao giờ ghi `extraCost` (chênh vốn chỉ In KTS dùng). Trả mảng mới, không sửa mảng vào.
-export function mergeKtsFilms(list) {
+export function mergeKtsFilms(list, source) {
     const current = Array.isArray(list) ? list : [];
-    const byName = new Map(KTS_LAMINATION_FILMS.map((f) => [normFilmName(f.name), f]));
+    const src = Array.isArray(source) && source.length > 0 ? source : KTS_LAMINATION_FILMS;
+    const byName = new Map(src.map((f) => [normFilmName(f?.name), f]));
     const seen = new Set();
     const merged = current.map((f) => {
         const kts = byName.get(normFilmName(f?.name));
         if (!kts) return f;
         seen.add(normFilmName(kts.name));
-        return kts.extra == null ? f : { ...f, extra: kts.extra };
+        return filmUsesExtra(kts) && f.extra !== kts.extra ? { ...f, extra: Number(kts.extra) } : f;
     });
-    const missing = KTS_LAMINATION_FILMS.filter((f) => !seen.has(normFilmName(f.name)));
-    return [...merged, ...missing.map((f) => ({ ...f }))];
+    const missing = src.filter((f) => f && !seen.has(normFilmName(f.name)));
+    return [
+        ...merged,
+        ...missing.map((f) => {
+            // eslint-disable-next-line no-unused-vars
+            const { extraCost, ...rest } = f;
+            return rest;
+        }),
+    ];
+}
+
+// Màng của bảng In KTS trùng tên với `film` (để UI biết màng nào đang "lấy theo In KTS").
+export function findKtsFilm(source, film) {
+    if (!Array.isArray(source)) return null;
+    const key = normFilmName(film?.name);
+    return source.find((f) => f && normFilmName(f.name) === key) || null;
 }
 
 // Danh sách loại màng của một module. Thiếu / rỗng / sai kiểu ⇒ mặc định.

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 const CalendarModule = React.lazy(() => import('./modules/calendar/ui/CalendarModule'));
 const EnvelopeModule = React.lazy(() => import('./modules/envelope/ui/EnvelopeModule'));
 const StandardCalendarModule = React.lazy(
     () => import('./modules/standard-calendar/ui/StandardCalendarModule')
 );
+import { mergeKtsFilms } from './utils/laminationFilm';
 import InputPanel from './components/smallprint/InputPanel';
 import ResultPanel from './components/smallprint/ResultPanel';
 import SettingsPanel from './components/smallprint/SettingsPanel';
@@ -769,7 +770,20 @@ function LargePrintModule({ onBack, heading }) {
 }
 
 function DecalModule({ onBack, heading }) {
-    const [config, setConfig] = useState(null);
+    const [ownConfig, setConfig] = useState(null);
+    // Bảng màng In KTS khổ nhỏ đang chạy: màng Decal trùng tên lấy tiền chênh theo đó, nên admin
+    // đổi giá màng ở In KTS thì Decal tự theo (không phải vào Cài Đặt bấm lại).
+    const [ktsFilms, setKtsFilms] = useState(null);
+    const config = useMemo(
+        () =>
+            ownConfig && Array.isArray(ktsFilms)
+                ? {
+                      ...ownConfig,
+                      laminationFilms: mergeKtsFilms(ownConfig.laminationFilms, ktsFilms),
+                  }
+                : ownConfig,
+        [ownConfig, ktsFilms]
+    );
     const [activeTab, setActiveTab] = useState('main');
     const [params, setParams] = useState({
         mode: 'single',
@@ -798,14 +812,21 @@ function DecalModule({ onBack, heading }) {
 
     useEffect(() => {
         setConfig(loadDecalConfig());
+        setKtsFilms(loadConfig().LAMINATION_FILMS || null);
         loadConfigFromCloud('decalConfig').then((c) => {
             if (c) setConfig(c);
+        });
+        loadConfigFromCloud('printConfig').then((c) => {
+            if (c) setKtsFilms(c.LAMINATION_FILMS || null);
         });
     }, []);
 
     // Admin sửa giá ở máy khác → máy này kéo lại khi quay về tab, khỏi phải F5.
     useConfigRefreshOnFocus(
-        [{ module: 'decalConfig', apply: setConfig }],
+        [
+            { module: 'decalConfig', apply: setConfig },
+            { module: 'printConfig', apply: (c) => setKtsFilms(c?.LAMINATION_FILMS || null) },
+        ],
         activeTab === 'settings'
     );
 
@@ -1029,7 +1050,8 @@ function DecalModule({ onBack, heading }) {
             {activeTab === 'settings' && (
                 <AdminGate>
                     <DecalSettingsPanel
-                        config={config}
+                        config={ownConfig}
+                        ktsFilms={ktsFilms}
                         onSave={async (newConfig) => {
                             setConfig(newConfig);
                             // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
@@ -1210,7 +1232,10 @@ function CatalogueModule({ onBack, heading }) {
             ? {
                   ...printConfig,
                   STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG,
-                  LAMINATION_FILMS: catalogueConfig.LAMINATION_FILMS,
+                  LAMINATION_FILMS: mergeKtsFilms(
+                      catalogueConfig.LAMINATION_FILMS,
+                      printConfig.LAMINATION_FILMS
+                  ),
               }
             : null;
 
@@ -1220,7 +1245,10 @@ function CatalogueModule({ onBack, heading }) {
             const cfg = {
                 ...printConfig,
                 STAPLE_CONFIG: catalogueConfig.STAPLE_CONFIG,
-                LAMINATION_FILMS: catalogueConfig.LAMINATION_FILMS,
+                LAMINATION_FILMS: mergeKtsFilms(
+                    catalogueConfig.LAMINATION_FILMS,
+                    printConfig.LAMINATION_FILMS
+                ),
             };
             setResult(calculateCatalogue(params, cfg));
         } catch (e) {
@@ -1296,6 +1324,7 @@ function CatalogueModule({ onBack, heading }) {
                 <AdminGate>
                     <CatalogueSettingsPanel
                         config={catalogueConfig}
+                        ktsFilms={printConfig.LAMINATION_FILMS}
                         onSave={async (newConfig) => {
                             setCatalogueConfig(newConfig);
                             // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới
@@ -1378,7 +1407,10 @@ function SpiralModule({ onBack, heading }) {
             ? {
                   ...printConfig,
                   SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG,
-                  LAMINATION_FILMS: spiralConfig.LAMINATION_FILMS,
+                  LAMINATION_FILMS: mergeKtsFilms(
+                      spiralConfig.LAMINATION_FILMS,
+                      printConfig.LAMINATION_FILMS
+                  ),
               }
             : null;
 
@@ -1388,7 +1420,10 @@ function SpiralModule({ onBack, heading }) {
             const cfg = {
                 ...printConfig,
                 SPIRAL_CONFIG: spiralConfig.SPIRAL_CONFIG,
-                LAMINATION_FILMS: spiralConfig.LAMINATION_FILMS,
+                LAMINATION_FILMS: mergeKtsFilms(
+                    spiralConfig.LAMINATION_FILMS,
+                    printConfig.LAMINATION_FILMS
+                ),
             };
             setResult(calculateSpiral(params, cfg));
         } catch (e) {
@@ -1464,6 +1499,7 @@ function SpiralModule({ onBack, heading }) {
                 <AdminGate>
                     <SpiralSettingsPanel
                         config={spiralConfig}
+                        ktsFilms={printConfig.LAMINATION_FILMS}
                         onSave={async (newConfig) => {
                             setSpiralConfig(newConfig);
                             // Trả kết quả về panel: chỉ khi cloud:true thì bảng giá mới tới

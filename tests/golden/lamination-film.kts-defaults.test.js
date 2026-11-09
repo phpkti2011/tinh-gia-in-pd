@@ -178,3 +178,69 @@ describe('Decal — tiền chênh màng quy đổi theo bảng A4 của khổ t�
         expect(single(c, 330, 350, 'cu') - noFilmOne).toBeCloseTo(10 * 500 * 3 * 1.1, 6);
     });
 });
+
+// Admin đổi giá màng ở In KTS khổ nhỏ → Decal / Sổ lò xo / Catalogue phải tự theo, vì module
+// truyền BẢNG MÀNG IN KTS ĐANG CHẠY (config small-print) làm nguồn chứ không chép cứng một lần.
+describe('mergeKtsFilms — theo bảng In KTS đang chạy (source)', () => {
+    // Bản In KTS live sau khi admin sửa giá: Nhung 1600 → 2100, thêm màng mới, có chênh vốn.
+    const ktsLive = [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'bong', name: 'Bóng', percent: 0 },
+        { id: 'film_jdxlxq', name: 'Màng Nhung', percent: 200, extra: 2100, extraCost: 5500 },
+        { id: 'film_new', name: 'Màng Mới Hoàn Toàn', percent: 0, extra: 900, extraCost: 2000 },
+    ];
+    // Bản Decal đã lưu trên cloud từ trước: Nhung còn giá cũ, có màng riêng.
+    const decalOwn = [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'film_mb5atm', name: 'Màng Nhung', percent: 400, extra: 1600 },
+        { id: 'film_37544r', name: 'Màng riêng', percent: 400 },
+    ];
+
+    it('đổi giá ở In KTS ⇒ màng trùng tên đổi theo, giữ id của module', () => {
+        const out = mergeKtsFilms(decalOwn, ktsLive);
+        const nhung = out.find((f) => f.name === 'Màng Nhung');
+        expect(nhung.extra).toBe(2100);
+        expect(nhung.id).toBe('film_mb5atm');
+    });
+
+    it('In KTS thêm màng mới ⇒ module tự có, không mang theo chênh vốn', () => {
+        const out = mergeKtsFilms(decalOwn, ktsLive);
+        const added = out.find((f) => f.name === 'Màng Mới Hoàn Toàn');
+        expect(added).toMatchObject({ id: 'film_new', extra: 900 });
+        expect(added).not.toHaveProperty('extraCost');
+        expect(out.some((f) => f.name === 'Bóng')).toBe(true);
+    });
+
+    it('màng riêng của module không có trong In KTS vẫn giữ nguyên', () => {
+        const out = mergeKtsFilms(decalOwn, ktsLive);
+        expect(out.find((f) => f.id === 'film_37544r')).toEqual(decalOwn[2]);
+    });
+
+    it('màng cũ chỉ có % (chưa có extra) trùng tên với màng có chênh ở In KTS ⇒ chuyển sang chênh', () => {
+        const out = mergeKtsFilms([{ id: 'x', name: 'màng nhung', percent: 400 }], ktsLive);
+        expect(out.find((f) => f.id === 'x').extra).toBe(2100);
+    });
+
+    it('không đụng mảng đầu vào, chạy lại cho cùng kết quả', () => {
+        const snapshot = JSON.stringify(decalOwn);
+        const once = mergeKtsFilms(decalOwn, ktsLive);
+        expect(JSON.stringify(decalOwn)).toBe(snapshot);
+        expect(mergeKtsFilms(once, ktsLive)).toEqual(once);
+    });
+
+    it('nguồn rỗng / không phải mảng ⇒ rơi về bảng chuẩn KTS_LAMINATION_FILMS', () => {
+        for (const bad of [undefined, null, [], 'x']) {
+            const out = mergeKtsFilms([{ id: 'a', name: 'Màng Nhung', percent: 400 }], bad);
+            expect(out.find((f) => f.id === 'a').extra).toBe(1600);
+        }
+    });
+
+    it('giá báo thật: đổi chênh Nhung ở In KTS ⇒ đơn giá cán Decal đổi theo', () => {
+        const before = mergeKtsFilms(decalOwn, [
+            { id: 'film_jdxlxq', name: 'Màng Nhung', extra: 1600 },
+        ]);
+        const after = mergeKtsFilms(decalOwn, ktsLive);
+        const rate = (films) => filmRate(films, 'film_mb5atm', 1000, 'extra');
+        expect(rate(after) - rate(before)).toBe(500);
+    });
+});

@@ -1,6 +1,7 @@
 import {
     DEFAULT_LAMINATION_FILMS,
     filmUsesExtra,
+    findKtsFilm,
     mergeKtsFilms,
     newFilmId,
 } from '../../utils/laminationFilm';
@@ -17,16 +18,23 @@ import {
 // Màng khai từ trước (chỉ có `percent`) vẫn tính % cho tới khi admin nhập tiền chênh — để giá
 // đang chạy không đổi một đồng lúc deploy. Ô tiền chênh để TRỐNG = quay lại % cũ.
 // id sinh một lần rồi giữ nguyên: admin đổi tên không làm hỏng báo giá đã lưu.
+//
+// `ktsSync` + `ktsFilms` (bảng màng In KTS ĐANG CHẠY): màng trùng tên với In KTS luôn lấy tiền
+// chênh theo In KTS — ô bị khoá, sửa giá ở In KTS thì ở đây (và khi báo giá) tự theo; màng In KTS
+// mới thêm tự xuất hiện. Không truyền `ktsFilms` thì chỉ còn nút bấm lấy một lần như trước.
 export default function LaminationFilmSettings({
-    films,
+    films: filmsProp,
     onChange,
     title = 'Loại màng cán',
     extraLabel = 'đ/đơn vị',
     extraCostLabel = null,
     extraHint = null,
     ktsSync = false,
+    ktsFilms = null,
 }) {
-    const list = Array.isArray(films) ? films : [];
+    const followKts = ktsSync && Array.isArray(ktsFilms);
+    const ownFilms = Array.isArray(filmsProp) ? filmsProp : [];
+    const list = followKts ? mergeKtsFilms(ownFilms, ktsFilms) : ownFilms;
 
     const update = (i, patch) =>
         onChange(list.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
@@ -59,7 +67,7 @@ export default function LaminationFilmSettings({
         ]);
     const del = (i) => onChange(list.filter((_, idx) => idx !== i));
     const seed = () => onChange(DEFAULT_LAMINATION_FILMS.map((f) => ({ ...f })));
-    const syncKts = () => onChange(mergeKtsFilms(list));
+    const syncKts = () => onChange(mergeKtsFilms(list, ktsFilms));
 
     const inputCls =
         'w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500';
@@ -124,6 +132,8 @@ export default function LaminationFilmSettings({
                     <tbody>
                         {list.map((f, i) => {
                             const amountMode = filmUsesExtra(f);
+                            const kts = followKts ? findKtsFilm(ktsFilms, f) : null;
+                            const ktsLocked = filmUsesExtra(kts);
                             const pct = Number(f.percent);
                             const legacyPct = !amountMode && Number.isFinite(pct) && pct !== 0;
                             return (
@@ -133,10 +143,18 @@ export default function LaminationFilmSettings({
                                             type="text"
                                             aria-label={`Tên loại màng ${i + 1}`}
                                             value={f.name ?? ''}
+                                            disabled={!!kts}
                                             onChange={(e) => update(i, { name: e.target.value })}
                                             className={inputCls}
                                         />
-                                        {legacyPct && (
+                                        {kts && (
+                                            <p className="text-xs text-cyan-300/80 mt-1">
+                                                {ktsLocked
+                                                    ? 'Lấy theo In KTS khổ nhỏ — muốn đổi giá thì sửa ở In KTS.'
+                                                    : 'Có trong bảng In KTS khổ nhỏ.'}
+                                            </p>
+                                        )}
+                                        {legacyPct && !ktsLocked && (
                                             <p className="text-xs text-yellow-300 mt-1">
                                                 Đang tính theo % cũ: +{pct}% tiền cán. Nhập tiền
                                                 chênh để thay.
@@ -151,6 +169,12 @@ export default function LaminationFilmSettings({
                                             aria-label={`Chênh báo khách ${f.name ?? ''}`}
                                             placeholder={legacyPct ? 'chưa nhập' : '0'}
                                             value={amountMode ? f.extra : ''}
+                                            disabled={ktsLocked}
+                                            title={
+                                                ktsLocked
+                                                    ? 'Theo bảng giá màng In KTS khổ nhỏ'
+                                                    : undefined
+                                            }
                                             onChange={(e) => setAmount(i, 'extra', e.target.value)}
                                             className={numCls}
                                         />
@@ -174,8 +198,15 @@ export default function LaminationFilmSettings({
                                     <td className="px-3 py-2">
                                         <button
                                             onClick={() => del(i)}
+                                            disabled={!!kts}
+                                            title={
+                                                kts
+                                                    ? 'Màng lấy theo In KTS — xoá ở In KTS khổ nhỏ'
+                                                    : undefined
+                                            }
                                             className={
-                                                btn + ' bg-red-600 hover:bg-red-700 text-white'
+                                                btn +
+                                                ' bg-red-600 hover:bg-red-700 text-white disabled:opacity-40 disabled:cursor-not-allowed'
                                             }
                                         >
                                             Xóa

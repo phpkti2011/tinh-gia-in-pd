@@ -38,7 +38,8 @@ function NumInput({ configValue, onCommit, className, step }) {
     );
 }
 
-export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }) {
+// `ktsFilms`: bảng màng In KTS khổ nhỏ đang chạy — màng trùng tên lấy giá theo đó.
+export default function DecalSettingsPanel({ config, ktsFilms, onSave, onSaved, onCancel }) {
     // P2-03: Password gate đã chuyển sang <AdminGate> ở App.jsx.
     // JSON round-trip mất Infinity (→ null). restoreInfinity restore lại cho các
     // key upper-bound để schema validation không fail khi save.
@@ -241,6 +242,7 @@ export default function DecalSettingsPanel({ config, onSave, onSaved, onCancel }
                     title="Loai mang can"
                     films={localConfig.laminationFilms}
                     ktsSync
+                    ktsFilms={ktsFilms}
                     extraLabel="đ/trang A4"
                     extraHint="Chênh nhập cho 1 trang A4; tự nhân với cột Quy doi A4 của khổ tờ in (33 x 35 = 1,5 A4) ở cả tem lẻ lẫn bế demi, và không nhân thêm % khổ giấy."
                     onChange={(next) =>

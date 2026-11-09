@@ -117,3 +117,54 @@ describe('LaminationFilmSettings — nút lấy giá theo In KTS', () => {
         expect(screen.queryByText('Lấy giá màng theo In KTS')).toBeNull();
     });
 });
+
+describe('LaminationFilmSettings — tự theo In KTS đang chạy (ktsFilms)', () => {
+    const KTS_LIVE = [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'film_jdxlxq', name: 'Màng Nhung', extra: 2100, extraCost: 5500 },
+        { id: 'film_new', name: 'Màng Mới', extra: 900, extraCost: 2000 },
+    ];
+    const OWN = [
+        { id: 'mo', name: 'Mờ', percent: 0 },
+        { id: 'film_mb5atm', name: 'Màng Nhung', percent: 400, extra: 1600 },
+        { id: 'film_37544r', name: 'Màng riêng', percent: 400 },
+    ];
+
+    it('hiện giá THEO In KTS (không phải giá cũ đã lưu) và khoá ô + nút xoá', () => {
+        render(
+            <LaminationFilmSettings films={OWN} onChange={() => {}} ktsSync ktsFilms={KTS_LIVE} />
+        );
+        const nhung = screen.getByLabelText('Chênh báo khách Màng Nhung');
+        expect(nhung.value).toBe('2100');
+        expect(nhung.disabled).toBe(true);
+        expect(screen.getAllByText(/Lấy theo In KTS khổ nhỏ/).length).toBeGreaterThan(0);
+    });
+
+    it('màng In KTS mới thêm tự xuất hiện trong bảng', () => {
+        render(
+            <LaminationFilmSettings films={OWN} onChange={() => {}} ktsSync ktsFilms={KTS_LIVE} />
+        );
+        expect(screen.getByLabelText('Chênh báo khách Màng Mới').value).toBe('900');
+    });
+
+    it('màng riêng của module vẫn sửa / xoá được', () => {
+        const onChange = vi.fn();
+        render(
+            <LaminationFilmSettings films={OWN} onChange={onChange} ktsSync ktsFilms={KTS_LIVE} />
+        );
+        expect(screen.getByLabelText('Chênh báo khách Màng riêng').disabled).toBe(false);
+        const deleteButtons = screen.getAllByText('Xóa');
+        // thứ tự hàng: Mờ, Màng Nhung, Màng riêng, Màng Mới → hàng 3 là màng riêng
+        expect(deleteButtons[2].disabled).toBe(false);
+        expect(deleteButtons[1].disabled).toBe(true);
+        fireEvent.click(deleteButtons[2]);
+        const next = onChange.mock.calls[0][0];
+        expect(next.some((f) => f.id === 'film_37544r')).toBe(false);
+    });
+
+    it('không truyền ktsFilms ⇒ giữ hành vi cũ: không khoá gì', () => {
+        render(<LaminationFilmSettings films={OWN} onChange={() => {}} ktsSync />);
+        expect(screen.getByLabelText('Chênh báo khách Màng Nhung').value).toBe('1600');
+        expect(screen.getByLabelText('Chênh báo khách Màng Nhung').disabled).toBe(false);
+    });
+});
