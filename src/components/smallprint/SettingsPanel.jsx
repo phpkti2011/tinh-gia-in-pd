@@ -2074,9 +2074,10 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                             Bồi keo 2 mặt (2 lớp = 1 tấm keo, 3 lớp = 2 tấm keo)
                         </h4>
                         <p className="text-gray-500 text-xs mb-2">
-                            Mỗi tấm keo tính như cán màng 1 mặt trên tờ in: giá báo khách = giá cán
-                            màng của bậc (theo trang A4) + tiền chênh; giá vốn = giá màng đ/m dài +
-                            chênh vốn. Không dùng bảng công bồi ở trên.
+                            Tổng = công bồi theo bảng cùng số lớp ở trên + tiền keo. Mỗi tấm keo
+                            tính như cán màng 1 mặt trên tờ in: giá báo khách = giá cán màng của bậc
+                            (theo trang A4) + tiền chênh; giá vốn = giá màng đ/m dài + chênh vốn. Hệ
+                            số giấy trắng cũng lấy theo bảng cùng số lớp.
                         </p>
                         <div className="flex flex-wrap items-end gap-4">
                             <div>
@@ -2096,17 +2097,6 @@ export default function SettingsPanel({ config, onSave, onSaved, onCancel }) {
                                     configValue={localConfig.TAPE_MOUNTING_CONFIG?.extraCost ?? 0}
                                     step="100"
                                     onCommit={(val) => updateTapeMounting('extraCost', val)}
-                                    className={inputClsSm}
-                                />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Hệ số giá KH của giấy trắng</label>
-                                <NumInput
-                                    configValue={
-                                        localConfig.TAPE_MOUNTING_CONFIG?.blankPaperMarkup ?? 2
-                                    }
-                                    step="0.1"
-                                    onCommit={(val) => updateTapeMounting('blankPaperMarkup', val)}
                                     className={inputClsSm}
                                 />
                             </div>

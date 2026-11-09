@@ -6,6 +6,7 @@ import {
 } from '../../utils/calculator';
 import { calculateCustomerQuote } from '../../utils/customerQuote';
 import { calculateFloorPrice } from '../../modules/small-print/engine/floorPrice';
+import { mountingLayers } from '../../modules/small-print/engine/mounting';
 import NumberField from '../common/NumberField';
 import CopyButton from '../common/CopyButton';
 import { buildJobSpec } from '../../utils/jobSpec';
@@ -575,7 +576,11 @@ export default function ResultPanel({
                                 )}
                                 {displayQuote.totalPaperSurcharge > 0 && (
                                     <QuoteRow
-                                        label="Phụ thu vật liệu (Decal)"
+                                        label={`Phụ thu vật liệu${
+                                            selectedPaperInfo?.name
+                                                ? ` (${selectedPaperInfo.name})`
+                                                : ''
+                                        }`}
                                         value={displayQuote.totalPaperSurcharge}
                                         color="text-white"
                                     />
@@ -604,7 +609,7 @@ export default function ResultPanel({
                                 {displayQuote.mountingCustomerPrice > 0 && (
                                     <QuoteRow
                                         label={
-                                            params.mountingType === '3_lop'
+                                            mountingLayers(params.mountingType) === 3
                                                 ? 'Công bồi 3 lớp'
                                                 : 'Công bồi 2 lớp'
                                         }
@@ -614,7 +619,7 @@ export default function ResultPanel({
                                 )}
                                 {displayQuote.totalTapeMountingCost > 0 && (
                                     <QuoteRow
-                                        label={`Bồi keo 2 mặt (${displayQuote.tapeSheetsPerSet} tấm keo/bộ)`}
+                                        label={`Tiền keo 2 mặt (${displayQuote.tapeSheetsPerSet} tấm keo/bộ)`}
                                         value={displayQuote.totalTapeMountingCost}
                                         color="text-white"
                                     />

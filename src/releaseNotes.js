@@ -16,6 +16,17 @@
 
 export const RELEASE_NOTES = [
     {
+        id: '2026-11-09-kts-boi-keo-cong-boi',
+        date: '2026-11-09',
+        title: 'In KTS khổ nhỏ: bồi keo 2 mặt tính thêm công bồi',
+        items: [
+            'Bồi keo 2 mặt giờ gồm 2 khoản: công bồi theo bảng công bồi cùng số lớp (2 lớp / 3 lớp), cộng tiền keo như trước. Trước đây chỉ tính tiền keo nên đơn ít bị báo quá rẻ.',
+            'Ví dụ 50 tờ in khổ A4, bồi keo 2 lớp: công bồi 100.000đ + tiền keo 50.000đ = 150.000đ (trước là 50.000đ).',
+            'Báo giá hiện 2 dòng riêng: "Công bồi 2 lớp / 3 lớp" và "Tiền keo 2 mặt".',
+            'Sửa bảng công bồi 2 lớp / 3 lớp trong Cài Đặt là đổi luôn công của bồi keo cùng số lớp. Hệ số giá giấy trắng của bồi keo cũng lấy theo bảng đó, ô riêng trong khối "Bồi keo 2 mặt" đã bỏ.',
+        ],
+    },
+    {
         id: '2026-11-03-kts-boi-keo-2-mat',
         date: '2026-11-03',
         title: 'In KTS khổ nhỏ: thêm kiểu bồi keo 2 mặt',

@@ -18,7 +18,7 @@ import { computeA4Factor } from './a4.js';
 import {
     printedSheetsPerSet,
     blankSheetsPerSet,
-    isTapeMounting,
+    mountingTierKey,
     tapeSheetsPerSet,
     tapeMountingConfig,
 } from './mounting.js';
@@ -56,7 +56,8 @@ export function calculateCustomerQuote(
     const lamPackage = (pages, lump, sides) =>
         filmExtraMode ? (lump + lamExtra * pages) * sides : lump * sides * lamFilmMult;
 
-    // Bồi keo 2 mặt: mỗi tấm keo = cán màng 1 mặt trên tờ in (cùng bậc giá với cán màng)
+    // Bồi keo 2 mặt: công bồi đến qua finishingCustomerPrices.mounting như bồi thường; ở đây
+    // chỉ tính TIỀN KEO. Mỗi tấm keo = cán màng 1 mặt trên tờ in (cùng bậc giá với cán màng)
     // + tiền chênh đ/trang A4. Không phụ thuộc loại màng / có cán màng hay không.
     const tapeSheets = tapeSheetsPerSet(params.mountingType);
     const tapeCfg = tapeMountingConfig(config);
@@ -195,9 +196,7 @@ export function calculateCustomerQuote(
     // không đi qua bảng giá theo trang in như giấy in.
     let totalBlankPaperCost = 0;
     if (blanksPerSet > 0) {
-        const mountCfg = isTapeMounting(params.mountingType)
-            ? tapeCfg
-            : config.MOUNTING_CONFIG?.[params.mountingType] || {};
+        const mountCfg = config.MOUNTING_CONFIG?.[mountingTierKey(params.mountingType)] || {};
         const blankPaper = (config.PAPER_STOCK_DATA || [])[params.blankPaperType];
         const perCutSheet = blankSheetCostPerCutSheet(
             blankPaper,

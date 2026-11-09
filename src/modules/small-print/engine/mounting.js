@@ -18,13 +18,13 @@
 //
 // Key 'yes' = bồi 2 lớp. CỐ Ý giữ tên cũ: nó nằm trong config đã lưu và trong params của
 // báo giá đã lưu, đổi tên là breaking. Nhãn hiển thị mới là "Bồi 2 lớp".
-
 //
 // Bồi bằng KEO 2 MẶT (config 1.11.0): 'keo_2_lop' / 'keo_3_lop'. Luật tờ in / tờ trắng y
-// hệt bồi thường cùng số lớp. Khác ở tiền công: không tra bảng MOUNTING_CONFIG mà tính
-// theo TẤM KEO — mỗi chỗ tiếp giáp giữa 2 lớp dán 1 tấm ⇒ số tấm = số lớp − 1. Mỗi tấm
-// tính như cán màng 1 mặt trên tờ in (giá cán theo trang A4 + tiền chênh), xem
-// engine/quote.js + engine/finishing.js và TAPE_MOUNTING_CONFIG.
+// hệt bồi thường cùng số lớp, và CÔNG BỒI + hệ số giấy trắng tra chung bảng MOUNTING_CONFIG
+// cùng số lớp (mountingTierKey). Thu THÊM tiền keo theo TẤM KEO — mỗi chỗ tiếp giáp giữa 2
+// lớp dán 1 tấm ⇒ số tấm = số lớp − 1. Mỗi tấm tính như cán màng 1 mặt trên tờ in (giá cán
+// theo trang A4 + tiền chênh), xem engine/quote.js + engine/finishing.js và
+// TAPE_MOUNTING_CONFIG.
 
 export const MOUNTING_LAYERS = { none: 0, yes: 2, '3_lop': 3, keo_2_lop: 2, keo_3_lop: 3 };
 
@@ -61,6 +61,13 @@ export function tapeSheetsPerSet(type) {
     return isTapeMounting(type) ? mountingLayers(type) - 1 : 0;
 }
 
+// Key tra MOUNTING_CONFIG: bồi keo dùng chung bảng công của bồi thường cùng số lớp.
+export function mountingTierKey(type) {
+    if (type === 'keo_2_lop') return 'yes';
+    if (type === 'keo_3_lop') return '3_lop';
+    return type;
+}
+
 // Config của bồi keo, bù mặc định cho config đã lưu trước 1.11.0 / số admin nhập lỗi.
 export function tapeMountingConfig(config) {
     const c = config?.TAPE_MOUNTING_CONFIG || {};
@@ -68,7 +75,6 @@ export function tapeMountingConfig(config) {
     return {
         extra: num(c.extra, 0),
         extraCost: num(c.extraCost, 0),
-        blankPaperMarkup: num(c.blankPaperMarkup, 2),
     };
 }
 

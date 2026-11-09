@@ -61,6 +61,7 @@ import {
     calculatePlasticLamination,
 } from './utils/calculator';
 import { calculateCustomerQuote } from './utils/customerQuote';
+import { mountingTierKey } from './modules/small-print/engine/mounting';
 import { calculateLargePrint } from './utils/largePrintCalculator';
 import {
     calculateStickersPerSheet,
@@ -473,7 +474,7 @@ function SmallPrintModule({ onBack, heading }) {
                 calculateFinishingCost(
                     totalPrintSheets,
                     params.mountingType,
-                    config.MOUNTING_CONFIG?.[params.mountingType]
+                    config.MOUNTING_CONFIG?.[mountingTierKey(params.mountingType)]
                 );
             const {
                 cost: customFinishingCost,

@@ -5,7 +5,7 @@
 //   báo khách = số trang A4 vật lý × (giá cán của bậc + chênh) × số tấm   (bậc per_page)
 //             = (giá cán trọn gói + chênh × số trang A4) × số tấm           (bậc trọn gói)
 //   giá vốn   = (cao tờ in / 100) × (PRICE_PER_METER + chênh vốn) × số tấm, mỗi tờ in
-// Không tra bảng công bồi MOUNTING_CONFIG.
+// Công bồi và hệ số giấy trắng tra chung MOUNTING_CONFIG cùng số lớp (mountingTierKey).
 //
 // Số nền giống small-print.mounting.test.js: card visit 9.3×5.8, tờ in 32.2×21.2
 // (10 con/tờ, hệ số A4 = 1), C2060, C300.
@@ -13,7 +13,11 @@
 //   300 con 2 mặt → 30 tờ in →  60 trang A4 → bậc 51–79 trọn gói, cán 50.000đ
 
 import { describe, it, expect } from 'vitest';
-import { processSheet, calculatePaperOptions } from '../../src/utils/calculator.js';
+import {
+    processSheet,
+    calculatePaperOptions,
+    calculateFinishingCost,
+} from '../../src/utils/calculator.js';
 import { calculateCustomerQuote } from '../../src/utils/customerQuote.js';
 import { DEFAULT_CONFIG } from '../../src/config/defaultConfig.js';
 import {
@@ -22,6 +26,7 @@ import {
     blankSheetsPerSet,
     tapeSheetsPerSet,
     tapeMountingConfig,
+    mountingTierKey,
     MOUNTING_LABELS,
 } from '../../src/modules/small-print/engine/mounting.js';
 import { validateSmallPrintConfig } from '../../src/modules/small-print/config/schema.js';
@@ -59,11 +64,21 @@ describe('Luật số tấm keo / tờ giấy', () => {
         expect(MOUNTING_LABELS.keo_3_lop).toBe('bồi keo 2 mặt 3 lớp');
     });
 
-    it('config cũ thiếu TAPE_MOUNTING_CONFIG / số lỗi → mặc định 0, 0, ×2', () => {
-        expect(tapeMountingConfig({})).toEqual({ extra: 0, extraCost: 0, blankPaperMarkup: 2 });
+    it.each([
+        ['keo_2_lop', 'yes'],
+        ['keo_3_lop', '3_lop'],
+        ['yes', 'yes'],
+        ['3_lop', '3_lop'],
+        ['none', 'none'],
+    ])('%s tra bảng công bồi %s', (type, key) => {
+        expect(mountingTierKey(type)).toBe(key);
+    });
+
+    it('config cũ thiếu TAPE_MOUNTING_CONFIG / số lỗi → chênh 0', () => {
+        expect(tapeMountingConfig({})).toEqual({ extra: 0, extraCost: 0 });
         expect(
             tapeMountingConfig({ TAPE_MOUNTING_CONFIG: { extra: 'abc', extraCost: null } })
-        ).toEqual({ extra: 0, extraCost: 0, blankPaperMarkup: 2 });
+        ).toEqual({ extra: 0, extraCost: 0 });
     });
 });
 
@@ -114,7 +129,7 @@ describe('Báo khách (calculateCustomerQuote)', () => {
     const NO_FIN = { holePunching: 0, creasing: 0, mounting: 0 };
     const NO_DIE = { moldCost: 0, laborCustomerPrice: 0 };
 
-    function quoteFor(over, config = DEFAULT_CONFIG) {
+    function quoteFor(over, config = DEFAULT_CONFIG, fin = NO_FIN) {
         const params = {
             paperType: '3',
             productQuantity: 500,
@@ -137,8 +152,52 @@ describe('Báo khách (calculateCustomerQuote)', () => {
                 Math.abs(r.cutSheetW - 32.2) < 0.01 &&
                 Math.abs(r.cutSheetH - 21.2) < 0.01
         );
-        return calculateCustomerQuote(best, params, NO_FIN, NO_DIE, null, config);
+        return calculateCustomerQuote(best, params, fin, NO_DIE, null, config);
     }
+
+    // Đi đúng đường App.jsx: công bồi tra theo số tờ in rồi truyền vào quote.
+    function quoteWithLabor(over, config = DEFAULT_CONFIG) {
+        const sheets = Math.ceil(over.productQuantity / 10);
+        const labor = calculateFinishingCost(
+            sheets,
+            over.mountingType,
+            config.MOUNTING_CONFIG[mountingTierKey(over.mountingType)]
+        );
+        const q = quoteFor(over, config, { ...NO_FIN, mounting: labor.customerPrice });
+        return { q, labor };
+    }
+
+    // 10 con/tờ. 300 tờ thuộc bậc công 201–500 nên công là 300.000đ.
+    it.each([
+        [10, 1, 100000, 8000],
+        [50, 1, 100000, 40000],
+        [500, 2, 100000, 50000],
+        [3000, 2, 300000, 180000],
+    ])('keo 2 lớp, %s con %s mặt: công %s + keo %s', (productQuantity, printSides, cong, keo) => {
+        const { q } = quoteWithLabor({ mountingType: 'keo_2_lop', productQuantity, printSides });
+        expect(q.mountingCustomerPrice).toBe(cong);
+        expect(q.totalTapeMountingCost).toBe(keo);
+    });
+
+    it('keo 3 lớp lấy công từ bảng 3 lớp, cả giá khách lẫn giá vốn', () => {
+        const cfg = structuredClone(DEFAULT_CONFIG);
+        cfg.MOUNTING_CONFIG['3_lop'].customer_tiers[0].price = 150000;
+        cfg.MOUNTING_CONFIG['3_lop'].cost_tiers[0].price = 80000;
+        const { q, labor } = quoteWithLabor(
+            { mountingType: 'keo_3_lop', productQuantity: 500 },
+            cfg
+        );
+        expect(q.mountingCustomerPrice).toBe(150000);
+        expect(labor.cost).toBe(80000);
+        expect(q.totalTapeMountingCost).toBe(100000);
+    });
+
+    it('hệ số giấy trắng lấy theo bảng cùng số lớp', () => {
+        const cfg = structuredClone(DEFAULT_CONFIG);
+        const base = quoteFor({ mountingType: 'keo_3_lop' }, cfg).totalBlankPaperCost;
+        cfg.MOUNTING_CONFIG['3_lop'].blankPaperMarkup = 4;
+        expect(quoteFor({ mountingType: 'keo_3_lop' }, cfg).totalBlankPaperCost).toBe(base * 2);
+    });
 
     it('bậc per_page: 50 trang A4 × (1.000 + chênh) × số tấm keo', () => {
         expect(quoteFor({ mountingType: 'keo_2_lop' }).totalTapeMountingCost).toBe(50000);

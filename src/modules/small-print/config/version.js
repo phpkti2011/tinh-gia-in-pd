@@ -76,10 +76,13 @@ export const SMALL_PRINT_MODULE_NAME = 'small-print';
 //   (tiền chênh giá vốn, chỉ In KTS: đ/m dài màng), optional. Có `extra` ⇒ giá màng =
 //   giá Mờ/Bóng + chênh mỗi đơn vị, bỏ qua `percent`. Thiếu ⇒ % cũ ⇒ giá không đổi.
 //   Xem src/utils/laminationFilm.js filmRate().
-// 1.11.0 — TAPE_MOUNTING_CONFIG (optional object { extra, extraCost, blankPaperMarkup }) +
-//   2 kiểu bồi mới 'keo_2_lop' / 'keo_3_lop' (bồi keo 2 mặt). Mỗi tấm keo (số lớp − 1)
-//   tính như cán màng 1 mặt trên tờ in + tiền chênh. Key mới tầng 1 ⇒ merge nông tự bù
-//   default. Đơn không chọn bồi keo ⇒ giá không đổi. Xem engine/mounting.js.
+// 1.11.0 — TAPE_MOUNTING_CONFIG (optional object { extra, extraCost }) + 2 kiểu bồi mới
+//   'keo_2_lop' / 'keo_3_lop' (bồi keo 2 mặt). Tổng = công bồi theo MOUNTING_CONFIG cùng số
+//   lớp + tiền keo; mỗi tấm keo (số lớp − 1) tính như cán màng 1 mặt trên tờ in + tiền chênh.
+//   Key mới tầng 1 ⇒ merge nông tự bù default. Đơn không chọn bồi keo ⇒ giá không đổi.
+//   Xem engine/mounting.js.
+//   (2026-11-09: bản đầu chỉ tính tiền keo và có `blankPaperMarkup` riêng; nay thêm công
+//   bồi và bỏ field đó. Config cũ còn field này vẫn hợp lệ, engine bỏ qua.)
 export const SMALL_PRINT_CONFIG_SCHEMA_VERSION = '1.11.0';
 
 export const SMALL_PRINT_CONFIG_LAST_UPDATED = '2026-11-03';

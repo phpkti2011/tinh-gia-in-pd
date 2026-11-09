@@ -500,7 +500,7 @@ export function validateSmallPrintConfig(config) {
         if (typeof t !== 'object' || Array.isArray(t)) {
             errors.push('TAPE_MOUNTING_CONFIG: phải là object');
         } else {
-            for (const f of ['extra', 'extraCost', 'blankPaperMarkup']) {
+            for (const f of ['extra', 'extraCost']) {
                 if (t[f] != null && !(typeof t[f] === 'number' && Number.isFinite(t[f])))
                     errors.push(`TAPE_MOUNTING_CONFIG.${f}: phải là number`);
             }

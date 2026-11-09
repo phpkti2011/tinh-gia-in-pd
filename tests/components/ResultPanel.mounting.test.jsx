@@ -35,6 +35,7 @@ vi.mock('../../src/auth/useUserRole', () => ({
 import ResultPanel from '../../src/components/smallprint/ResultPanel.jsx';
 import { calculatePaperOptions, calculateFinishingCost } from '../../src/utils/calculator.js';
 import { calculateCustomerQuote } from '../../src/utils/customerQuote.js';
+import { mountingTierKey } from '../../src/modules/small-print/engine/mounting.js';
 import { DEFAULT_CONFIG } from '../../src/modules/small-print/config/index.js';
 
 if (typeof globalThis.IntersectionObserver === 'undefined') {
@@ -94,7 +95,7 @@ function renderPanel(overrides = {}) {
     const mounting = calculateFinishingCost(
         totalPrintSheets,
         params.mountingType,
-        DEFAULT_CONFIG.MOUNTING_CONFIG?.[params.mountingType]
+        DEFAULT_CONFIG.MOUNTING_CONFIG?.[mountingTierKey(params.mountingType)]
     );
     const finishingCustomerPrices = {
         holePunching: 0,
@@ -140,6 +141,19 @@ describe('Nhãn công bồi', () => {
         renderPanel({ mountingType: '3_lop', printSides: 2 });
         expect(body()).toContain('Công bồi 3 lớp');
         expect(body()).not.toContain('Công bồi 2 lớp');
+    });
+
+    it('bồi keo 3 lớp → "Công bồi 3 lớp" + dòng tiền keo riêng', () => {
+        renderPanel({ mountingType: 'keo_3_lop', printSides: 2 });
+        expect(body()).toContain('Công bồi 3 lớp');
+        expect(body()).not.toContain('Công bồi 2 lớp');
+        expect(body()).toContain('Tiền keo 2 mặt (2 tấm keo/bộ)');
+    });
+
+    it('bồi keo 2 lớp → "Công bồi 2 lớp" + dòng tiền keo riêng', () => {
+        renderPanel({ mountingType: 'keo_2_lop', printSides: 2 });
+        expect(body()).toContain('Công bồi 2 lớp');
+        expect(body()).toContain('Tiền keo 2 mặt (1 tấm keo/bộ)');
     });
 
     it('không bồi → không có dòng công bồi nào', () => {

@@ -197,3 +197,17 @@ describe('Config cũ chỉ có bồi 2 lớp', () => {
         expect(screen.queryByTestId(THREE)).toBeNull();
     });
 });
+
+describe('Bồi keo 2 mặt', () => {
+    it('nhập chênh báo khách / chênh vốn → lưu vào TAPE_MOUNTING_CONFIG', async () => {
+        const { save, table } = renderPanel();
+        const inputs = within(table('mounting-tape')).getAllByRole('spinbutton');
+        expect(inputs).toHaveLength(2);
+        fireEvent.change(inputs[0], { target: { value: '500' } });
+        fireEvent.change(inputs[1], { target: { value: '800' } });
+        const cfg = await save();
+
+        expect(cfg.TAPE_MOUNTING_CONFIG).toEqual({ extra: 500, extraCost: 800 });
+        expect(validateSmallPrintConfig(cfg).isValid).toBe(true);
+    });
+});

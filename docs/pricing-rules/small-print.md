@@ -72,6 +72,21 @@ gắn với *giấy in*, mượn lại là định giá lớp lót sai.
 **Công bồi** đếm theo **số TỜ IN** (1 bộ bồi = 1 tờ in, bất kể mấy lớp), không theo số sản
 phẩm. Hai kiểu có **bảng bậc riêng**, thêm/xoá bậc được trong Cài Đặt.
 
+### Bồi keo 2 mặt (config v1.11.0)
+
+`keo_2_lop` (1 tấm keo) và `keo_3_lop` (2 tấm keo). Số tờ in, tờ trắng, công bồi và hệ số
+giấy trắng **y hệt bồi thường cùng số lớp**: công tra chung bảng `MOUNTING_CONFIG` qua
+`mountingTierKey()`, nên sửa bảng 2 lớp / 3 lớp là đổi luôn công của bồi keo. Thu **thêm**
+tiền keo, tính như cán màng 1 mặt trên tờ in, trang A4 không nhân số mặt in:
+
+- Báo khách, bậc theo trang: số trang A4 × (giá cán của bậc + `extra`) × số tấm keo.
+- Báo khách, bậc trọn gói: (giá cán trọn gói + `extra` × số trang A4) × số tấm keo.
+- Giá vốn mỗi tờ in: (cao tờ in / 100) × (`PRICE_PER_METER` + `extraCost`) × số tấm keo.
+
+Ví dụ bảng mặc định, keo 2 lớp, chênh 0, tờ in khổ A4: 300 tờ in 2 mặt là 600 trang in, bậc
+cán 600đ/trang ⇒ tiền keo 300 × 600 = 180.000đ, công bồi bậc 201–500 tờ là 300.000đ, tổng
+480.000đ (chưa gồm tiền in và giấy).
+
 ### Ba thay đổi giá so với trước v1.5.0
 
 1. **Bồi 2 lớp 1 mặt đắt hơn**: trước đây tờ giấy lót không tính đồng nào.
